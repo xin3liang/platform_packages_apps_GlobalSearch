@@ -54,6 +54,13 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
 
     // Cached icon for the activity
     private String mIcon;
+    
+    // An override value for the max number of results to provide.
+    private int mMaxResultsOverride;
+    
+    // A private column the web search source uses to instruct us to pin a result
+    // (like "Manage search history") to the bottom of the list when appropriate.
+    private static final String SUGGEST_COLUMN_PIN_TO_BOTTOM = "suggest_pin_to_bottom";
 
     public SearchableSuggestionSource(Context context, SearchableInfo searchable) {
         mContext = context;
@@ -68,6 +75,13 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         }
         mLabel = findLabel();
         mIcon = findIcon();
+        mMaxResultsOverride = 0;
+    }
+    
+    public SearchableSuggestionSource(Context context, SearchableInfo searchable,
+            int maxResultsOverride) {
+        this(context, searchable);
+        mMaxResultsOverride = maxResultsOverride;
     }
 
     /**
@@ -109,6 +123,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         // Be resilient to non-existent suggestion providers, as the build this is running on
         // is not guaranteed to have anything in particular.
         if (cursor == null) return mEmptyResult;
+        
+        maxResults = (mMaxResultsOverride > 0) ? mMaxResultsOverride : maxResults;
 
         try {
             ArrayList<SuggestionData> suggestions
@@ -261,6 +277,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         String actionMsgCall = getActionMsgCall(cursor);
         String intentExtraData = getComponentName().flattenToShortString();
         String shortcutId = getShortcutId(cursor);
+        boolean pinToBottom = isPinToBottom(cursor);
 
         return new SuggestionData.Builder(getComponentName())
                 .format(format)
@@ -274,6 +291,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
                 .actionMsgCall(actionMsgCall)
                 .intentExtraData(intentExtraData)
                 .shortcutId(shortcutId)
+                .pinToBottom(pinToBottom)
                 .build();
     }
 
@@ -412,6 +430,16 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     protected String getShortcutId(Cursor cursor) {
         return getColumnString(cursor, SearchManager.SUGGEST_COLUMN_SHORTCUT_ID);
     }
+    
+    /**
+     * Determines whether this suggestion is a pin-to-bottom suggestion.
+     * 
+     * @return The value of the {@link #SUGGEST_COLUMN_PIN_TO_BOTTOM} column, or
+     * <code>false</code> if the cursor does not contain that column.
+     */
+    protected boolean isPinToBottom(Cursor cursor) {
+        return "true".equals(getColumnString(cursor, SUGGEST_COLUMN_PIN_TO_BOTTOM));
+    }
 
     /**
      * Gets the action message for the CALL key for the current entry.
@@ -505,6 +533,27 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
             return null;
         }
         return new SearchableSuggestionSource(context, si);
+    }
+    
+    /**
+     * Factory method. Creates a suggestion source from the searchable
+     * information of a given component.
+     *
+     * @param context Context to use in the suggestion source.
+     * @param componentName Component whose searchable information will be
+     * used to construct this suggestion source.
+     * @param maxResultsOverride An override value to use for the number of results that
+     * this source should be allowed to provide.
+     * @return A suggestion source, or <code>null</code> if the given component
+     * is not searchable.
+     */
+    public static SearchableSuggestionSource create(Context context, ComponentName componentName,
+            int maxResultsOverride) {
+        SearchableInfo si = SearchManager.getSearchableInfo(componentName, false);
+        if (si == null) {
+            return null;
+        }
+        return new SearchableSuggestionSource(context, si, maxResultsOverride);
     }
 
 }

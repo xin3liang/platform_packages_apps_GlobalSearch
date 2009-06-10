@@ -37,6 +37,7 @@ public final class SuggestionData {
     private final String mIntentExtraData;
     private final String mShortcutId;
     private final int mBackgroundColor;
+    private final boolean mPinToBottom;
 
     private SuggestionData(
             ComponentName source,
@@ -51,7 +52,8 @@ public final class SuggestionData {
             String actionMsgCall,
             String intentExtraData,
             String shortcutId,
-            int backgroundColor) {
+            int backgroundColor,
+            boolean pinToBottom) {
         mSource = source;
         mFormat = format;
         mTitle = title;
@@ -65,6 +67,7 @@ public final class SuggestionData {
         mIntentExtraData = intentExtraData;
         mShortcutId = shortcutId;
         mBackgroundColor = backgroundColor;
+        mPinToBottom = pinToBottom;
     }
 
     /**
@@ -144,12 +147,25 @@ public final class SuggestionData {
         return mIntentExtraData;
     }
 
+    /**
+     * The shortcut id.
+     */
     public String getShortcutId() {
         return mShortcutId;
     }
-
+    
+    /**
+     * The background color.
+     */
     public int getBackgroundColor() {
         return mBackgroundColor;
+    }
+    
+    /**
+     * Whether this suggestion should be pinned to the very bottom of the suggestion list.
+     */
+    public boolean isPinToBottom() {
+        return mPinToBottom;
     }
 
     /**
@@ -157,18 +173,19 @@ public final class SuggestionData {
      */
     public Builder buildUpon() {
         return new Builder(mSource)
-        .format(mFormat)
-        .title(mTitle)
-        .description(mDescription)
-        .icon1(mIcon1)
-        .icon2(mIcon2)
-        .intentAction(mIntentAction)
-        .intentData(mIntentData)
-        .intentQuery(mIntentQuery)
-        .actionMsgCall(mActionMsgCall)
-        .intentExtraData(mIntentExtraData)
-        .shortcutId(mShortcutId)
-        .backgroundColor(mBackgroundColor);
+                .format(mFormat)
+                .title(mTitle)
+                .description(mDescription)
+                .icon1(mIcon1)
+                .icon2(mIcon2)
+                .intentAction(mIntentAction)
+                .intentData(mIntentData)
+                .intentQuery(mIntentQuery)
+                .actionMsgCall(mActionMsgCall)
+                .intentExtraData(mIntentExtraData)
+                .shortcutId(mShortcutId)
+                .backgroundColor(mBackgroundColor)
+                .pinToBottom(mPinToBottom);
     }
 
 
@@ -196,6 +213,7 @@ public final class SuggestionData {
         if (notEqual(mIntentExtraData, that.mIntentExtraData)) return false;
         if (notEqual(mShortcutId, that.mShortcutId)) return false;
         if (mBackgroundColor != that.mBackgroundColor) return false;
+        if (mPinToBottom != that.mPinToBottom) return false;
         return true;
     }
 
@@ -218,6 +236,7 @@ public final class SuggestionData {
         result = addHashCode(result, mIntentExtraData);
         result = addHashCode(result, mShortcutId);
         result = addHashCode(result, Integer.toString(mBackgroundColor));
+        result = addHashCode(result, String.valueOf(mPinToBottom));
         return result;
     }
 
@@ -245,6 +264,9 @@ public final class SuggestionData {
         if (mShortcutId != null) {
             builder.append(", shortcutid=").append(mShortcutId);
         }
+        if (mPinToBottom) {
+            builder.append(", pin to bottom=true");
+        }
 
         builder.append(")");
         return builder.toString();
@@ -267,6 +289,7 @@ public final class SuggestionData {
         private String mIntentExtraData;
         private String mShortcutId;
         private int mBackgroundColor;
+        private boolean mPinToBottom;
 
         /**
          * Creates a new suggestion builder.
@@ -296,7 +319,8 @@ public final class SuggestionData {
                     mActionMsgCall,
                     mIntentExtraData,
                     mShortcutId,
-                    mBackgroundColor);
+                    mBackgroundColor,
+                    mPinToBottom);
         }
 
         /**
@@ -400,9 +424,20 @@ public final class SuggestionData {
             mShortcutId = shortcutId;
             return this;
         }
-
+        
+        /**
+         * Sets the background color.
+         */
         public Builder backgroundColor(int backgroundColor) {
             mBackgroundColor = backgroundColor;
+            return this;
+        }
+        
+        /**
+         * Sets whether to pin this suggestion to the very bottom of the suggestion list.
+         */
+        public Builder pinToBottom(boolean pinToBottom) {
+            mPinToBottom = pinToBottom;
             return this;
         }
     }

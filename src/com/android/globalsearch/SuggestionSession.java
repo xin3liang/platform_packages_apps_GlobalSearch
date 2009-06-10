@@ -231,6 +231,7 @@ public class SuggestionSession {
                 // its own copy since we add cached values
                 new ArrayList<SuggestionSource>(sourcesToQuery),
                 promoted,
+                mSources.getSelectedWebSearchSource(),
                 resultFactory.createGoToWebsiteSuggestion(),
                 resultFactory.createSearchTheWebSuggestion(),
                 MAX_RESULTS_TO_DISPLAY,

@@ -105,6 +105,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.newArrayList(mShortcut1),
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2), // promoted sources
+                mSource1,
                 null,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -294,6 +295,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.<SuggestionData>newArrayList(),  // no shortcuts
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2, mName3), // all 3 are promoted sources
+                mSource1,
                 null,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -361,6 +363,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.<SuggestionData>newArrayList(),  // no shortcuts
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2, mName3), // all 3 are promoted sources
+                mSource1,
                 null,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -491,6 +494,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.newArrayList(mShortcut1),
                 Lists.<SuggestionSource>newArrayList(), // no sources
                 Sets.<ComponentName>newHashSet(),
+                mSource1,
                 null,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -515,6 +519,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.newArrayList(mShortcut1),
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2),
                 Sets.<ComponentName>newHashSet(mName1, mName2), // every source is promoted
+                mSource1,
                 null,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -551,6 +556,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.newArrayList(mShortcut1),
                 Lists.<SuggestionSource>newArrayList(),
                 Sets.<ComponentName>newHashSet(), // promoted sources
+                mSource1,
                 null,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -597,6 +603,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.newArrayList(mShortcut1),
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2), // promoted sources
+                mSource1,
                 mGoToWebsite,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -641,6 +648,62 @@ public class SourceSuggestionBackerTest extends TestCase
                 mMoreNotExpanded);
     }
     
+    public void testPinToBottomSuggestion() {
+        // each one reports 4 results; source 1 reports a pin-to-bottom suggestion last
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource1, Lists.newArrayList(
+                        makeSourceResult(mName1, 0),
+                        makeSourceResult(mName1, 1),
+                        makeSourceResult(mName1, 2),
+                        makeSourceResult(mName1, 3),
+                        makePinToBottomSourceResult(mName1, 4)
+                )));
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource2, Lists.newArrayList(
+                        makeSourceResult(mName2, 0),
+                        makeSourceResult(mName2, 1),
+                        makeSourceResult(mName2, 2),
+                        makeSourceResult(mName2, 3)
+                )));
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource3, Lists.newArrayList(
+                        makeSourceResult(mName3, 0),
+                        makeSourceResult(mName3, 1),
+                        makeSourceResult(mName3, 2),
+                        makeSourceResult(mName3, 3)
+                )));
+
+        assertContentsInOrder(
+                "pin to bottom non-expanded.",
+                getSnapshotFromBacker(false),
+                mShortcut1,
+                makeSourceResult(mName1, 0),
+                makeSourceResult(mName1, 1),
+                makeSourceResult(mName2, 0),
+                makeSourceResult(mName2, 1),
+                makeSourceResult(mName1, 2),  // remaining slots (source 3 is not promoted)
+                mSearchTheWeb,
+                mMoreNotExpanded,
+                makePinToBottomSourceResult(mName1, 4));
+
+        assertContentsInOrder(
+                "pin to bottom expanded.",
+                getSnapshotFromBacker(true),
+                mShortcut1,
+                makeSourceResult(mName1, 0),
+                makeSourceResult(mName1, 1),
+                makeSourceResult(mName2, 0),
+                makeSourceResult(mName2, 1),
+                makeSourceResult(mName1, 2),
+                mSearchTheWeb,
+                mMoreExpanded,
+                makeCorpusEntry(SOURCE1_LABEL, true, 1),  // 1 remaining
+                makeCorpusEntry(SOURCE2_LABEL, true, 2),  // 2 remaining
+                makeCorpusEntry(SOURCE3_LABEL, true, 4),
+                makePinToBottomSourceResult(mName1, 4));
+
+    }
+    
     List<SuggestionData> getSnapshotFromBacker(boolean expandAdditional) {
         final ArrayList<SuggestionData> list = Lists.newArrayList();
         mBacker.snapshotSuggestions(list, expandAdditional);
@@ -666,6 +729,15 @@ public class SourceSuggestionBackerTest extends TestCase
                 .intentData("" + index)
                 .build();
     }
+    
+    private SuggestionData makePinToBottomSourceResult(ComponentName name, int index) {
+        return new SuggestionData.Builder(name)
+                .title(name.getClassName() + " manage search history " + index)
+                .intentAction(name.getClassName())
+                .intentData("" + index)
+                .pinToBottom(true)
+                .build();
+    }
 
     /**
      * Allows setting what "now" is for testing
@@ -678,13 +750,14 @@ public class SourceSuggestionBackerTest extends TestCase
                 List<SuggestionData> shortcuts,
                 List<SuggestionSource> sources,
                 HashSet<ComponentName> promotedSources,
+                SuggestionSource selectedWebSearchSource,
                 SuggestionData goToWebsite,
                 SuggestionData searchTheWeb,
                 int maxPromotedSlots,
                 long deadline,
                 MoreExpanderFactory moreFactory,
                 CorpusResultFactory corpusFactory) {
-            super(shortcuts, sources, promotedSources, goToWebsite,
+            super(shortcuts, sources, promotedSources, selectedWebSearchSource, goToWebsite,
                     searchTheWeb, maxPromotedSlots, deadline, moreFactory, corpusFactory);
         }
 

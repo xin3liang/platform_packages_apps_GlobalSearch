@@ -74,6 +74,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     private final List<SuggestionData> mShortcuts;
     private final List<SuggestionSource> mSources;
     private final HashSet<ComponentName> mPromotedSources;
+    private final SuggestionSource mSelectedWebSearchSource;
     private final SuggestionData mGoToWebsiteSuggestion;
     private final SuggestionData mSearchTheWebSuggestion;
     private final MoreExpanderFactory mMoreFactory;
@@ -81,6 +82,11 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     private final int mMaxPromotedSlots;
     private final long mPromotedSourceDeadline;
     private long mPromotedQueryStartTime;
+    
+    // The suggestion to pin to the bottom of the list, if any, coming from the web search source.
+    // This is used by the Google search provider to pin a "Manage search history" item to the
+    // bottom whenever we show search history related suggestions.
+    private SuggestionData mPinToBottomSuggestion;
 
     private final LinkedHashMap<ComponentName, SuggestionResult> mReportedResults =
             new LinkedHashMap<ComponentName, SuggestionResult>();
@@ -93,6 +99,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
      * @param shortcuts To be shown at top.
      * @param sources The sources expected to report
      * @param promotedSources The promoted sources expecting to report
+     * @param selectedWebSearchSource the currently selected web search source
      * @param goToWebsiteSuggestion The "go to website" entry to show if appropriate
      * @param searchTheWebSuggestion The "search the web" entry to show if appropriate
      * @param maxPromotedSlots The maximum numer of results to show for the promoted sources
@@ -105,6 +112,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
             List<SuggestionData> shortcuts,
             List<SuggestionSource> sources,
             HashSet<ComponentName> promotedSources,
+            SuggestionSource selectedWebSearchSource,
             SuggestionData goToWebsiteSuggestion,
             SuggestionData searchTheWebSuggestion,
             int maxPromotedSlots,
@@ -126,6 +134,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         mSources = sources;
         mPromotedSources = promotedSources;
         mMaxPromotedSlots = maxPromotedSlots;
+        mSelectedWebSearchSource = selectedWebSearchSource;
 
         mPromotedQueryStartTime = getNow();
 
@@ -294,6 +303,15 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                             ? sourceToNumDisplayed.get(source.getComponentName()) : 0;
 
                     if (numDisplayed < sourceResult.getSuggestions().size()) {
+                        // Decrement the number of results remaining by one if one of them
+                        // is a pin-to-bottom suggestion from the web search source.
+                        int numResultsRemaining = sourceResult.getCount() - numDisplayed;
+                        int queryLimit = sourceResult.getQueryLimit() - numDisplayed;
+                        if (mPinToBottomSuggestion != null && isWebSuggestionSource(source)) {
+                            numResultsRemaining--;
+                            queryLimit--;
+                        }
+                        
                         moreSources.add(
                                 new SourceStat(
                                         source.getComponentName(),
@@ -301,8 +319,8 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                                         source.getLabel(),
                                         source.getIcon(),
                                         true,
-                                        sourceResult.getCount() - numDisplayed,
-                                        sourceResult.getQueryLimit() - numDisplayed));
+                                        numResultsRemaining,
+                                        queryLimit));
                     }
                 } else {
                     // unpromoted sources that have reported
@@ -339,6 +357,13 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                     }
                 }
             }
+            
+            // add a pin-to-bottom suggestion if one has been found to use
+            if (mPinToBottomSuggestion != null) {
+                if (DBG) Log.d(TAG, "snapshot: adding a pin-to-bottom suggestion");
+                dest.add(mPinToBottomSuggestion);
+            }
+            
             return indexOfMore;
         }
         return dest.size();
@@ -355,12 +380,36 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     @Override
     protected synchronized boolean addSourceResults(SuggestionResult suggestionResult) {
         final SuggestionSource source = suggestionResult.getSource();
+        
+        // If the source is the web search source and there is a pin-to-bottom suggestion at
+        // the end of the list of suggestions, store it separately, remove it from the list,
+        // and keep going. The stored suggestion will be added to the very bottom of the list
+        // in snapshotSuggestions.
+        if (isWebSuggestionSource(source)) {
+            List<SuggestionData> suggestions = suggestionResult.getSuggestions();
+            if (!suggestions.isEmpty()) {
+                int lastPosition = suggestions.size() - 1;
+                SuggestionData lastSuggestion = suggestions.get(lastPosition);
+                if (lastSuggestion.isPinToBottom()) {
+                    mPinToBottomSuggestion = lastSuggestion;
+                    suggestions.remove(lastPosition);
+                }
+            }
+        }
+        
         mReportedResults.put(source.getComponentName(), suggestionResult);
         final boolean pastDeadline = isPastDeadline();
         if (!pastDeadline) {
             mReportedBeforeDeadline.add(source.getComponentName());
         }
         return pastDeadline || !suggestionResult.getSuggestions().isEmpty();
+    }
+    
+    /**
+     * Compares the provided source to the selected web search source.
+     */
+    private boolean isWebSuggestionSource(SuggestionSource source) {
+        return source.getComponentName().equals(mSelectedWebSearchSource.getComponentName());
     }
 
     @Override

@@ -42,7 +42,9 @@ public class SuggestionSources {
     // The intent action broadcasted by our settings UI when any of our settings change.
     public static final String ACTION_SETTINGS_CHANGED =
         "com.android.globalsearch.settings_changed";
-
+    
+    // An override value for web search providers to provide more results than others.
+    private static final int WEB_RESULTS_OVERRIDE_LIMIT = 20;
 
     private Context mContext;
 
@@ -265,8 +267,11 @@ public class SuggestionSources {
             SearchableInfo webSearchable = SearchManager.getDefaultSearchableForWebSearch();
             if (webSearchable != null) {
                 if (DBG) Log.d(TAG, "Adding web source " + webSearchable.getSearchActivity());
+                // Construct a SearchableSuggestionSource around the web search source. Allow
+                // the web search source to provide a larger number of results with
+                // WEB_RESULTS_OVERRIDE_LIMIT.
                 mSelectedWebSearchSource = SearchableSuggestionSource.create(
-                        mContext, webSearchable.getSearchActivity());
+                        mContext, webSearchable.getSearchActivity(), WEB_RESULTS_OVERRIDE_LIMIT);
                 if (mSelectedWebSearchSource != null) {
                     enabledSources.add(mSelectedWebSearchSource);
                 }
