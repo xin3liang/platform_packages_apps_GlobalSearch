@@ -40,7 +40,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
     private static final String TAG = "GlobalSearch";
 
     private static final String DB_NAME = "shortcuts-log.db";
-    private static final int DB_VERSION = 15;
+    private static final int DB_VERSION = 16;
 
     private static final String HAS_HISTORY_QUERY =
         "SELECT " + Shortcuts.intent_key.fullName + " FROM " + Shortcuts.TABLE_NAME;
@@ -84,10 +84,11 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
         intent_data,
         intent_query,
         intent_extradata,
-        shortcut_id;
-        // note: deliberately omitting background color since it is only for global search
-        // "more results" entries
-        
+        shortcut_id,
+        // Note: deliberately omitting background color and pin-to-bottom values since they
+        // are only used for suggestions which cannot be shortcutted (namely, "more results"
+        // and "manage search history" respectively).
+        spinner_while_refreshing;
 
         static final String[] COLUMNS = initColumns();
 
@@ -198,6 +199,13 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
                     SHORTCUT_DELETE_SQL,
                     new Object[] {shortcutId, source.flattenToShortString()});
         } else {
+            // Store the spinner icon as the icon2 if we need to show one whenever this
+            // shortcut gets displayed. We always store the spinner as icon2 for these cases,
+            // but the shortcut refresh query will update the in-memory results, thereby
+            // removing the spinner when the refresh is complete.
+            final String icon2 = refreshed.isSpinnerWhileRefreshing() ?
+                    String.valueOf(com.android.internal.R.drawable.search_spinner) :
+                    refreshed.getIcon2();
             db.execSQL(
                     SHORTCUT_UPDATE_SQL,
                     new Object[]{
@@ -205,7 +213,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
                             refreshed.getTitle(),          // ?2
                             refreshed.getDescription(),    // ?3
                             refreshed.getIcon1(),          // ?4
-                            refreshed.getIcon2(),          // ?5
+                            icon2,                         // ?5
                             shortcutId,                    // ?6
                             source.flattenToShortString(), // ?7
                     });
@@ -280,6 +288,13 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
         // Since intent_key is the primary key, any existing
         // suggestion with the same source+data+action will be replaced
         {
+            // Store the spinner icon as the icon2 if we need to show one whenever this
+            // shortcut gets displayed. We always store the spinner as icon2 for these cases,
+            // but the shortcut refresh query will update the in-memory results, thereby
+            // removing the spinner when the refresh is complete.
+            String icon2 = clicked.isSpinnerWhileRefreshing() ?
+                    String.valueOf(com.android.internal.R.drawable.search_spinner) :
+                    clicked.getIcon2();
             final ContentValues cv = new ContentValues();
             cv.put(Shortcuts.intent_key.name(), intentKey);
             cv.put(Shortcuts.source.name(), clicked.getSource().flattenToShortString());
@@ -287,12 +302,13 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
             cv.put(Shortcuts.title.name(), clicked.getTitle());
             cv.put(Shortcuts.description.name(), clicked.getDescription());
             cv.put(Shortcuts.icon1.name(), clicked.getIcon1());
-            cv.put(Shortcuts.icon2.name(), clicked.getIcon2());
+            cv.put(Shortcuts.icon2.name(), icon2);
             cv.put(Shortcuts.intent_action.name(), clicked.getIntentAction());
             cv.put(Shortcuts.intent_data.name(), clicked.getIntentData());
             cv.put(Shortcuts.intent_query.name(), clicked.getIntentQuery());
             cv.put(Shortcuts.intent_extradata.name(), clicked.getIntentExtraData());
             cv.put(Shortcuts.shortcut_id.name(), clicked.getShortcutId());
+            cv.put(Shortcuts.spinner_while_refreshing.name(), clicked.isSpinnerWhileRefreshing());
             db.replaceOrThrow(Shortcuts.TABLE_NAME, null, cv);
         }
 
@@ -501,7 +517,8 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
                     Shortcuts.intent_data.name() + " TEXT, " +
                     Shortcuts.intent_query.name() + " TEXT, " +
                     Shortcuts.intent_extradata.name() + " TEXT, " +
-                    Shortcuts.shortcut_id.name() + " TEXT" +
+                    Shortcuts.shortcut_id.name() + " TEXT, " +
+                    Shortcuts.spinner_while_refreshing.name() + " TEXT" +
                     ");");
 
             db.execSQL("CREATE TABLE " + ClickLog.TABLE_NAME + " ( " +

@@ -432,14 +432,22 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     @Override
     protected synchronized boolean refreshShortcut(
             ComponentName source, String shortcutId, SuggestionData refreshed) {
-        // don't do anything in the removal case
-        if (refreshed == null) return false;
-
         final int size = mShortcuts.size();
         for (int i = 0; i < size; i++) {
             final SuggestionData shortcut = mShortcuts.get(i);
             if (shortcutId.equals(shortcut.getShortcutId())) {
-                mShortcuts.set(i, refreshed);
+                if (refreshed == null) {
+                    // If we're removing this shortcut, we still need to stop the spinner in
+                    // the icon2 value of any shortcut which was set to spin while refreshing.
+                    if (shortcut.isSpinnerWhileRefreshing()) {
+                        mShortcuts.set(i, shortcut.buildUpon().icon2(null).build());
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    mShortcuts.set(i, refreshed);
+                }
                 return true;
             }
         }

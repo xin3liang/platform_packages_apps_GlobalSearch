@@ -38,6 +38,7 @@ public final class SuggestionData {
     private final String mShortcutId;
     private final int mBackgroundColor;
     private final boolean mPinToBottom;
+    private final boolean mSpinnerWhileRefreshing;
 
     private SuggestionData(
             ComponentName source,
@@ -53,7 +54,8 @@ public final class SuggestionData {
             String intentExtraData,
             String shortcutId,
             int backgroundColor,
-            boolean pinToBottom) {
+            boolean pinToBottom,
+            boolean spinnerWhileRefreshing) {
         mSource = source;
         mFormat = format;
         mTitle = title;
@@ -68,6 +70,7 @@ public final class SuggestionData {
         mShortcutId = shortcutId;
         mBackgroundColor = backgroundColor;
         mPinToBottom = pinToBottom;
+        mSpinnerWhileRefreshing = spinnerWhileRefreshing;
     }
 
     /**
@@ -167,6 +170,13 @@ public final class SuggestionData {
     public boolean isPinToBottom() {
         return mPinToBottom;
     }
+    
+    /**
+     * Whether this suggestion should show a spinner while refreshing.
+     */
+    public boolean isSpinnerWhileRefreshing() {
+        return mSpinnerWhileRefreshing;
+    }
 
     /**
      * Gets a builder initialized with the values from this suggestion.
@@ -185,7 +195,8 @@ public final class SuggestionData {
                 .intentExtraData(mIntentExtraData)
                 .shortcutId(mShortcutId)
                 .backgroundColor(mBackgroundColor)
-                .pinToBottom(mPinToBottom);
+                .pinToBottom(mPinToBottom)
+                .spinnerWhileRefreshing(mSpinnerWhileRefreshing);
     }
 
 
@@ -214,6 +225,7 @@ public final class SuggestionData {
         if (notEqual(mShortcutId, that.mShortcutId)) return false;
         if (mBackgroundColor != that.mBackgroundColor) return false;
         if (mPinToBottom != that.mPinToBottom) return false;
+        if (mSpinnerWhileRefreshing != that.mSpinnerWhileRefreshing) return false;
         return true;
     }
 
@@ -237,6 +249,7 @@ public final class SuggestionData {
         result = addHashCode(result, mShortcutId);
         result = addHashCode(result, Integer.toString(mBackgroundColor));
         result = addHashCode(result, String.valueOf(mPinToBottom));
+        result = addHashCode(result, String.valueOf(mSpinnerWhileRefreshing));
         return result;
     }
 
@@ -267,6 +280,9 @@ public final class SuggestionData {
         if (mPinToBottom) {
             builder.append(", pin to bottom=true");
         }
+        if (mSpinnerWhileRefreshing) {
+            builder.append(", spinner while refreshing=true");
+        }
 
         builder.append(")");
         return builder.toString();
@@ -290,6 +306,7 @@ public final class SuggestionData {
         private String mShortcutId;
         private int mBackgroundColor;
         private boolean mPinToBottom;
+        private boolean mSpinnerWhileRefreshing;
 
         /**
          * Creates a new suggestion builder.
@@ -320,7 +337,8 @@ public final class SuggestionData {
                     mIntentExtraData,
                     mShortcutId,
                     mBackgroundColor,
-                    mPinToBottom);
+                    mPinToBottom,
+                    mSpinnerWhileRefreshing);
         }
 
         /**
@@ -438,6 +456,14 @@ public final class SuggestionData {
          */
         public Builder pinToBottom(boolean pinToBottom) {
             mPinToBottom = pinToBottom;
+            return this;
+        }
+        
+        /**
+         * Sets whether this suggestion should show a spinner while refreshing.
+         */
+        public Builder spinnerWhileRefreshing(boolean spinnerWhileRefreshing) {
+            mSpinnerWhileRefreshing = spinnerWhileRefreshing;
             return this;
         }
     }

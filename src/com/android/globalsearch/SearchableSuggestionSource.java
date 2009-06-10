@@ -278,6 +278,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         String intentExtraData = getComponentName().flattenToShortString();
         String shortcutId = getShortcutId(cursor);
         boolean pinToBottom = isPinToBottom(cursor);
+        boolean spinnerWhileRefreshing = isSpinnerWhileRefreshing(cursor);
 
         return new SuggestionData.Builder(getComponentName())
                 .format(format)
@@ -292,6 +293,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
                 .intentExtraData(intentExtraData)
                 .shortcutId(shortcutId)
                 .pinToBottom(pinToBottom)
+                .spinnerWhileRefreshing(spinnerWhileRefreshing)
                 .build();
     }
 
@@ -439,6 +441,17 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      */
     protected boolean isPinToBottom(Cursor cursor) {
         return "true".equals(getColumnString(cursor, SUGGEST_COLUMN_PIN_TO_BOTTOM));
+    }
+    
+    /**
+     * Determines whether this suggestion should show a spinner while refreshing.
+     * 
+     * @return The value of the {@link SearchManager#SUGGEST_COLUMN_SPINNER_WHILE_REFRESHING}
+     * column, or <code>false</code> if the cursor does not contain that column.
+     */
+    protected boolean isSpinnerWhileRefreshing(Cursor cursor) {
+        return "true".equals(
+                getColumnString(cursor, SearchManager.SUGGEST_COLUMN_SPINNER_WHILE_REFRESHING));
     }
 
     /**
