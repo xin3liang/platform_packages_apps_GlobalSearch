@@ -95,6 +95,9 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
     private final HashSet<String> mShortcutIntentKeys = new HashSet<String>();
 
+    private final HashSet<ComponentName> mPendingSources
+            = new HashSet<ComponentName>();
+
     /**
      * @param shortcuts To be shown at top.
      * @param sources The sources expected to report
@@ -291,9 +294,13 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
                 if (!reported) {
                     // sources that haven't reported yet
+                    SourceStat.ResponseStatus responseStatus =
+                            mPendingSources.contains(source.getComponentName()) ?
+                                    SourceStat.ResponseStatus.InProgress :
+                                    SourceStat.ResponseStatus.NotStarted;
                     moreSources.add(new SourceStat(
                             source.getComponentName(), promoted, source.getLabel(),
-                            source.getIcon(), false, 0, 0));
+                            source.getIcon(), responseStatus, 0, 0));
                 } else if (beforeDeadline && promoted) {
                     // promoted sources that have reported before the deadline are only in "more"
                     // if they have undisplayed results
@@ -318,7 +325,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                                         promoted,
                                         source.getLabel(),
                                         source.getIcon(),
-                                        true,
+                                        SourceStat.ResponseStatus.Finished,
                                         numResultsRemaining,
                                         queryLimit));
                     }
@@ -332,7 +339,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                                     false,
                                     source.getLabel(),
                                     source.getIcon(),
-                                    true,
+                                    SourceStat.ResponseStatus.Finished,
                                     sourceResult.getCount(),
                                     sourceResult.getQueryLimit()));
                 }
@@ -378,9 +385,19 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     }
 
     @Override
+    public synchronized boolean reportSourceStarted(ComponentName source) {
+        mPendingSources.add(source);
+
+        // only refresh if it is one of the non-promoted sources, since that is the only case
+        // where it currently results in the UI changing (the progress icon starts for the
+        // corresponding corpus result).
+        return !mPromotedSources.contains(source);
+    }
+
+    @Override
     protected synchronized boolean addSourceResults(SuggestionResult suggestionResult) {
         final SuggestionSource source = suggestionResult.getSource();
-        
+
         // If the source is the web search source and there is a pin-to-bottom suggestion at
         // the end of the list of suggestions, store it separately, remove it from the list,
         // and keep going. The stored suggestion will be added to the very bottom of the list
@@ -396,7 +413,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                 }
             }
         }
-        
+        mPendingSources.remove(source.getComponentName());
         mReportedResults.put(source.getComponentName(), suggestionResult);
         final boolean pastDeadline = isPastDeadline();
         if (!pastDeadline) {
@@ -449,11 +466,17 @@ public class SourceSuggestionBacker extends SuggestionBacker {
      * "more results" entries.
      */
     static class SourceStat {
+        enum ResponseStatus {
+            NotStarted,
+            InProgress,
+            Finished
+        }
+
         private final ComponentName mName;
         private final boolean mShowingPromotedResults;
         private final String mLabel;
         private final String mIcon;
-        private final boolean mResponded;
+        private final ResponseStatus mResponseStatus;
         private final int mNumResults;
         private final int mQueryLimit;
 
@@ -463,17 +486,17 @@ public class SourceSuggestionBacker extends SuggestionBacker {
          *        slots.
          * @param label The label.
          * @param icon The icon.
-         * @param responded Whether it has responded.
+         * @param responseStatus Whether it has responded.
          * @param numResults The number of results (if applicable).
          * @param queryLimit The number of results requested from the source.
          */
         SourceStat(ComponentName name, boolean showingPromotedResults, String label, String icon,
-                   boolean responded, int numResults, int queryLimit) {
+                   ResponseStatus responseStatus, int numResults, int queryLimit) {
             this.mName = name;
             mShowingPromotedResults = showingPromotedResults;
             this.mLabel = label;
             this.mIcon = icon;
-            this.mResponded = responded;
+            this.mResponseStatus = responseStatus;
             this.mNumResults = numResults;
             mQueryLimit = queryLimit;
         }
@@ -494,8 +517,8 @@ public class SourceSuggestionBacker extends SuggestionBacker {
             return mIcon;
         }
 
-        public boolean isResponded() {
-            return mResponded;
+        public ResponseStatus getResponseStatus() {
+            return mResponseStatus;
         }
 
         public int getNumResults() {

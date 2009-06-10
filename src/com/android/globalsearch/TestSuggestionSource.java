@@ -93,6 +93,24 @@ class TestSuggestionSource extends AbstractSuggestionSource {
         return mShouldIgnoreAfterNoResults;
     }
 
+    /**
+     * Makes a test source that will returned 1 canned result matching the given query.
+     */
+    public static SuggestionSource makeCanned(String query, String s, long delay) {
+        final ComponentName name = new ComponentName("com.test." + s, "Class$" + s);
+
+        final SuggestionData suggestion = new SuggestionData.Builder(name)
+                .title(s)
+                .build();
+
+        return new TestSuggestionSource.Builder()
+                .setComponent(name)
+                .setLabel(s)
+                .setDelay(delay)
+                .addCannedResponse(query, suggestion)
+                .create();
+    }
+
     static class Builder {
         private ComponentName mComponent =
                 new ComponentName(

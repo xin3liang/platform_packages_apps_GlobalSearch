@@ -109,6 +109,12 @@ public class QueryMultiplexer implements Runnable {
             mSuggestionSource = suggestionSource;
         }
 
+        @Override
+        public void run() {
+            mReceiver.onSourceQueryStart(mSuggestionSource.getComponentName());
+            super.run();
+        }
+
         /**
          * Cancels the suggestion request.
          *

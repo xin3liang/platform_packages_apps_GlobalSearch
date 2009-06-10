@@ -43,7 +43,7 @@ public class SuggestionProvider extends ContentProvider {
     private static final String TAG = "GlobalSearch";
 
     // the number of threads used for the asynchronous handling of suggestions
-    private static final int ASYNC_THREAD_POOL_SIZE = 6;
+    private static final int ASYNC_THREAD_POOL_SIZE = 4;
 
     private static final String AUTHORITY = "com.android.globalsearch.SuggestionProvider";
 
@@ -167,5 +167,4 @@ public class SuggestionProvider extends ContentProvider {
                 SEARCH_SUGGEST);
         return matcher;
     }
-
 }

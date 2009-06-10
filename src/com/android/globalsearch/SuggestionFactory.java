@@ -11,6 +11,8 @@ import android.util.TypedValue;
 
 import java.util.List;
 
+import static com.android.globalsearch.SourceSuggestionBacker.SourceStat;
+
 /**
  * Contains methods to create special results for the suggestion list such as "search the web",
  * "more results" and the corpus results.
@@ -61,7 +63,7 @@ public class SuggestionFactory implements SourceSuggestionBacker.MoreExpanderFac
         boolean anyPending = false;
         for (int i = 0; i < sourceCount; i++) {
             SourceSuggestionBacker.SourceStat sourceStat = sourceStats.get(i);
-            if (!sourceStat.isResponded()) {
+            if (sourceStat.getResponseStatus() != SourceStat.ResponseStatus.Finished) {
                 anyPending = true;
             }
             int suggestionCount = sourceStat.getNumResults();
@@ -112,16 +114,8 @@ public class SuggestionFactory implements SourceSuggestionBacker.MoreExpanderFac
     /** {@inheritDoc} */
     public SuggestionData getCorpusEntry(SourceSuggestionBacker.SourceStat sourceStat) {
         int suggestionCount = sourceStat.getNumResults();
-        final Resources resources = mContext.getResources();
-        final String description = sourceStat.isShowingPromotedResults() ?
-                resources.getQuantityString(
-                        R.plurals.additional_result_count, suggestionCount, suggestionCount) :
-                resources.getQuantityString(
-                        R.plurals.total_result_count, suggestionCount, suggestionCount);
-
         final SuggestionData.Builder builder = new SuggestionData.Builder(sourceStat.getName())
                 .title(sourceStat.getLabel())
-                .description(description)
                 .shortcutId(SearchManager.SUGGEST_NEVER_MAKE_SHORTCUT)
                 .icon1(sourceStat.getIcon())
                 .intentAction(SearchManager.INTENT_ACTION_CHANGE_SEARCH_SOURCE)
@@ -129,7 +123,19 @@ public class SuggestionFactory implements SourceSuggestionBacker.MoreExpanderFac
                 .backgroundColor(mCorpusItemBackgroundColor)
                 .intentQuery(mQuery);
 
-        if (!sourceStat.isResponded()) {
+        final SourceStat.ResponseStatus responseStatus = sourceStat.getResponseStatus();
+
+        if (responseStatus == SourceStat.ResponseStatus.Finished) {
+            final Resources resources = mContext.getResources();
+            final String description = sourceStat.isShowingPromotedResults() ?
+                    resources.getQuantityString(
+                            R.plurals.additional_result_count, suggestionCount, suggestionCount) :
+                    resources.getQuantityString(
+                            R.plurals.total_result_count, suggestionCount, suggestionCount);
+            builder.description(description);            
+        }
+
+        if (responseStatus == SourceStat.ResponseStatus.InProgress) {
             builder.icon2(com.android.internal.R.drawable.search_spinner);
         }
 

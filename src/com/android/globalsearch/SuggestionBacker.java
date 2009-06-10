@@ -56,6 +56,19 @@ public abstract class SuggestionBacker {
     public abstract void snapshotSuggestions(
             ArrayList<SuggestionData> dest, boolean expandAdditional);
 
+
+    /**
+     * Reports that a source has begun retrieving its results, and notifies the listener if
+     * appropriate.
+     *
+     * @param source The name of the source.
+     */
+    public void onSourceQueryStart(ComponentName source) {
+        if (reportSourceStarted(source)) {
+            notifyListener();
+        }
+    }
+
     /**
      * Reports the results from a source, and notifies the listener if appropriate.
      *
@@ -101,6 +114,15 @@ public abstract class SuggestionBacker {
      *   any check for whether the "more results" entry was clicked on will always be false.
      */
     public abstract int getMoreResultPosition();
+
+
+    /**
+     * Reports that a source has begun work retrieving its results.
+     *
+     * @param source The name of the source.
+     * @return true if the listener should be notified.
+     */
+    protected abstract boolean reportSourceStarted(ComponentName source);
 
     /**
      * Add the results from a source.

@@ -199,13 +199,13 @@ public class SuggestionSession {
                     Log.d(TAG, "skipping " + enabledSource.getLabel()
                             + " (zero results for prefix)");
                 }
-
                 continue;
             }
 
             if (DBG && SPEW) Log.d(TAG, "adding " + enabledSource.getLabel());
             sourcesToQuery.add(enabledSource);
         }
+
         if (DBG) Log.d(TAG, sourcesToQuery.size() + " sources will be queried.");
 
         // get the shortcuts to refresh
@@ -598,6 +598,11 @@ public class SuggestionSession {
         @Override
         public int getMoreResultPosition() {
             return mBackerToReportTo.getMoreResultPosition();
+        }
+
+        @Override
+        public boolean reportSourceStarted(ComponentName source) {
+            return mBackerToReportTo.reportSourceStarted(source);
         }
 
         @Override
