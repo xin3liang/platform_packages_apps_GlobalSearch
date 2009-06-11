@@ -62,13 +62,6 @@ public abstract class AbstractSuggestionSource implements SuggestionSource {
         return 0;
     }
 
-    /**
-     * By default assume a source can be ignored after returning no results.
-     */
-    public boolean shouldIgnoreAfterNoResults() {
-        return true;
-    }
-
     /** {@inheritDoc} */
     public Callable<SuggestionResult> getSuggestionTask(final String query, final int maxResults,
             final int queryLimit) {

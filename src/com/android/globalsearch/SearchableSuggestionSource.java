@@ -569,4 +569,13 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         return new SearchableSuggestionSource(context, si, maxResultsOverride);
     }
 
+    /**
+     * Checks whether this source needs to be invoked after an earlier query returned zero results.
+     *
+     * @return <code>true</code> if this source needs to be invoked after returning zero results.
+     */
+    public boolean queryAfterZeroResults() {
+        return mSearchable.queryAfterZeroResults();
+    }
+
 }

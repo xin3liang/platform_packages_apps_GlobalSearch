@@ -54,16 +54,16 @@ public interface SuggestionSource {
     int getQueryThreshold();
 
     /**
-     * Indicates whether a source may be ignored for supersets of queries it has returned zero
+     * Indicates whether a source should be invoked for supersets of queries it has returned zero
      * results for in the past.  For example, if a source returned zero results for "bo", it would
      * be ignored for "bob".
      *
-     * If set to <code>true</code>, this source will only be ignored for a single session; the next
+     * If set to <code>false</code>, this source will only be ignored for a single session; the next
      * time the search dialog is brought up, all sources will be queried.
      *
-     * @return <code>true</code> if this source can safely be ignored after returning no results.
+     * @return <code>true</code> if this source should be queried after returning no results.
      */
-    boolean shouldIgnoreAfterNoResults();
+    boolean queryAfterZeroResults();
 
     /**
      * Gets a {@link Callable} task that will produce a {@link SuggestionResult} for the given

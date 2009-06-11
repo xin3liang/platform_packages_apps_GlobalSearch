@@ -31,18 +31,18 @@ class TestSuggestionSource extends AbstractSuggestionSource {
     private final ComponentName mComponent;
     private final long mDelay;
     private final Map<String, List<SuggestionData>> mCannedResponses;
-    private final boolean mShouldIgnoreAfterNoResults;
+    private final boolean mQueryAfterZeroResults;
     private final String mLabel;
 
     private TestSuggestionSource(
             ComponentName component,
             long delay,
             Map<String, List<SuggestionData>> cannedResponses,
-            boolean shouldIgnoreAfterNoResults, String label) {
+            boolean queryAfterZeroResults, String label) {
         mComponent = component;
         mDelay = delay;
         mCannedResponses = cannedResponses;
-        mShouldIgnoreAfterNoResults = shouldIgnoreAfterNoResults;
+        mQueryAfterZeroResults = queryAfterZeroResults;
         mLabel = label;
     }
 
@@ -89,8 +89,8 @@ class TestSuggestionSource extends AbstractSuggestionSource {
     }
 
     @Override
-    public boolean shouldIgnoreAfterNoResults() {
-        return mShouldIgnoreAfterNoResults;
+    public boolean queryAfterZeroResults() {
+        return mQueryAfterZeroResults;
     }
 
     /**
@@ -118,7 +118,7 @@ class TestSuggestionSource extends AbstractSuggestionSource {
         private long mDelay = 0;
         private Map<String, List<SuggestionData>> mCannedResponses =
                 new HashMap<String, List<SuggestionData>>();
-        private boolean mShouldIgnoreAfterNoResults = true;
+        private boolean mQueryAfterNoResults = false;
         private String mLabel = "TestSuggestionSource";
 
         public Builder setComponent(ComponentName component) {
@@ -131,8 +131,8 @@ class TestSuggestionSource extends AbstractSuggestionSource {
             return this;
         }
 
-        public Builder setShouldIgnoreAfterNoResults(boolean shouldIgnoreAfterNoResults) {
-            mShouldIgnoreAfterNoResults = shouldIgnoreAfterNoResults;
+        public Builder setQueryAfterNoResults(boolean queryAfterNoResults) {
+            mQueryAfterNoResults = queryAfterNoResults;
             return this;
         }
 
@@ -161,7 +161,7 @@ class TestSuggestionSource extends AbstractSuggestionSource {
 
         public TestSuggestionSource create() {
             return new TestSuggestionSource(
-                    mComponent, mDelay, mCannedResponses, mShouldIgnoreAfterNoResults, mLabel);
+                    mComponent, mDelay, mCannedResponses, mQueryAfterNoResults, mLabel);
         }
     }
 }

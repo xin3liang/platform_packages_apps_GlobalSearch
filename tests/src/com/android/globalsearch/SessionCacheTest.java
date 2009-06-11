@@ -43,15 +43,15 @@ public class SessionCacheTest extends TestCase {
 
     public void testZeroResultPrefix() {
         final TestSuggestionSource source = mBuilder.create();
-        assertTrue(source.shouldIgnoreAfterNoResults());
+        assertTrue(source.queryAfterZeroResults());
 
         mCache.reportSourceResult("yo", new SuggestionResult(source));
         assertTrue(mCache.hasReportedZeroResultsForPrefix("yo man", mSourceName));
     }
 
     public void testZeroResultPrefix_sourceNotIgnored() {
-        final TestSuggestionSource source = mBuilder.setShouldIgnoreAfterNoResults(false).create();
-        assertFalse(source.shouldIgnoreAfterNoResults());
+        final TestSuggestionSource source = mBuilder.setQueryAfterNoResults(true).create();
+        assertFalse(source.queryAfterZeroResults());
 
         mCache.reportSourceResult("yo", new SuggestionResult(source));
         assertFalse(mCache.hasReportedZeroResultsForPrefix("yo man", mSourceName));

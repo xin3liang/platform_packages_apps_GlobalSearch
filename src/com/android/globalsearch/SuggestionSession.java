@@ -40,8 +40,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * During the session, no {@link SuggestionSource} will be queried more than once for a given query.
  *
  * If a given source returns zero results for a query, that source will be ignored for supersets of
- * that query for the rest of the session.  Sources can opt out by returning <code>false</code> in
- * {@link SuggestionSource#shouldIgnoreAfterNoResults()}
+ * that query for the rest of the session.  Sources can opt out by setting their
+ * <code>queryAfterZeroResults</code> property to <code>true</code> in searchable.xml
  *
  * If there are no shortcuts or cached entries for a given query, we prefill with the results from
  * the previous query for up to {@link #DONE_TYPING_REST} millis until the first result comes back.
@@ -192,7 +192,7 @@ public class SuggestionSession {
             }
 
             // source returned zero results for a prefix of query
-            if (enabledSource.shouldIgnoreAfterNoResults()
+            if (!enabledSource.queryAfterZeroResults()
                     && mSessionCache.hasReportedZeroResultsForPrefix(
                     query, sourceName)) {
                 if (DBG && SPEW) {
@@ -464,7 +464,7 @@ public class SuggestionSession {
             }
             querySourceResults.addResult(sourceResult);
 
-            if (sourceResult.getSource().shouldIgnoreAfterNoResults()
+            if (!sourceResult.getSource().queryAfterZeroResults()
                     && sourceResult.getSuggestions().isEmpty()) {
                 HashSet<ComponentName> zeros = mZeroResultSources.get(query);
                 if (zeros == null) {
