@@ -88,7 +88,6 @@ class TestSuggestionSource extends AbstractSuggestionSource {
         return null;
     }
 
-    @Override
     public boolean queryAfterZeroResults() {
         return mQueryAfterZeroResults;
     }
