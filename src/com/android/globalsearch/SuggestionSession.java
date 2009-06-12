@@ -243,7 +243,7 @@ public class SuggestionSession {
             final ComponentName name = result.getSource().getComponentName();
             backer.addCachedSourceResult(
                     result,
-                    !MusicSuggestionSource.MUSIC_COMPONENT.equals(name));
+                    promoted.contains(name));
         }
 
         if (DBG) {

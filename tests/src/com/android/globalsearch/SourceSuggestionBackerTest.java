@@ -32,6 +32,9 @@ import java.util.Arrays;
 
 /**
  * Tests {@link SourceSuggestionBacker}
+ *
+ * see the {@link #setUp()} method for the default setup of the backer that is used by most
+ * test cases.
  */
 public class SourceSuggestionBackerTest extends TestCase
         implements SourceSuggestionBacker.MoreExpanderFactory,
@@ -107,13 +110,13 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.newArrayList(mShortcut1),
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2), // promoted sources
-                mSource1,
-                null,
-                mSearchTheWeb,
+                mSource1,             // source1 is the web souce
+                null,                 // no "go to website" suggestion
+                mSearchTheWeb,        // the "search the web" suggestion
                 MAX_PROMOTED_SHOWING,
                 DEADLINE,
-                this,
-                this);
+                this,        /** more factory points to {@link #getMoreEntry} */
+                this);       /** corpus factory points to {@link #getCorpusEntry} */
 
         mMoreNotExpanded = new SuggestionData.Builder(mName1)
                 .title("more unexpanded")
@@ -710,9 +713,96 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeCorpusEntry(SOURCE2_LABEL, ResponseStatus.Finished, 2),  // 2 remaining
                 makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.Finished, 4),
                 makePinToBottomSourceResult(mName1, 4));
-
     }
-    
+
+    /**
+     * If non promoted sources report zero results before the user has expanded "more", then
+     * we don't bother showing "source X reported 0 results" upon expansion
+     */
+    public void testNonPromotedSourcesWithZeroResults_reportedBeforeViewed() {
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource1, Lists.newArrayList(
+                        makeSourceResult(mName1, 0),
+                        makeSourceResult(mName1, 1)
+                )));
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource2, Lists.newArrayList(
+                        makeSourceResult(mName2, 0),
+                        makeSourceResult(mName2, 1)
+                )));
+
+        assertContentsInOrder(
+                "non promoted source with zero results before viewed.",
+                getSnapshotFromBacker(false),
+                mShortcut1,
+                makeSourceResult(mName1, 0),
+                makeSourceResult(mName1, 1),
+                makeSourceResult(mName2, 0),
+                makeSourceResult(mName2, 1),
+                mSearchTheWeb,
+                mMoreNotExpanded);
+
+        // non-promoted source 3
+        mBacker.addSourceResults(new SuggestionResult(mSource3));
+
+        assertContentsInOrder(
+                "non promoted source with zero results after expansion.",
+                getSnapshotFromBacker(true),  // EXPANDED
+                mShortcut1,
+                makeSourceResult(mName1, 0),
+                makeSourceResult(mName1, 1),
+                makeSourceResult(mName2, 0),
+                makeSourceResult(mName2, 1),
+                mSearchTheWeb,
+                mMoreExpanded);
+    }
+
+    /**
+     * Similar to {@link #testNonPromotedSourcesWithZeroResults_reportedBeforeViewed()}, but in
+     * this case, the user has expanded the "more results" and thus viewed the entries; we can't
+     * remove them at this point and will continue to show them, even though they returned
+     * zero results.
+     */
+    public void testNonPromotedSourcesWithZeroResults_reportedAfterViewed() {
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource1, Lists.newArrayList(
+                        makeSourceResult(mName1, 0),
+                        makeSourceResult(mName1, 1)
+                )));
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource2, Lists.newArrayList(
+                        makeSourceResult(mName2, 0),
+                        makeSourceResult(mName2, 1)
+                )));
+
+        assertContentsInOrder(
+                "non promoted source with zero results viewed before report.",
+                getSnapshotFromBacker(true),
+                mShortcut1,
+                makeSourceResult(mName1, 0),
+                makeSourceResult(mName1, 1),
+                makeSourceResult(mName2, 0),
+                makeSourceResult(mName2, 1),
+                mSearchTheWeb,
+                mMoreExpanded,
+                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.NotStarted, 0));
+
+        // non-promoted source 3
+        mBacker.addSourceResults(new SuggestionResult(mSource3));
+
+        assertContentsInOrder(
+                "non promoted source with zero results pinned after being viewed.",
+                getSnapshotFromBacker(true),  // EXPANDED
+                mShortcut1,
+                makeSourceResult(mName1, 0),
+                makeSourceResult(mName1, 1),
+                makeSourceResult(mName2, 0),
+                makeSourceResult(mName2, 1),
+                mSearchTheWeb,
+                mMoreExpanded,
+                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.Finished, 0));
+    }
+
     List<SuggestionData> getSnapshotFromBacker(boolean expandAdditional) {
         final ArrayList<SuggestionData> list = Lists.newArrayList();
         mBacker.snapshotSuggestions(list, expandAdditional);

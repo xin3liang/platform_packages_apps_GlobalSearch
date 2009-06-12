@@ -26,6 +26,8 @@ import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.HashMap;
 
+import static com.android.globalsearch.SourceSuggestionBacker.SourceStat.ResponseStatus;
+
 /**
  * Source suggestion backer shows (that is, snapshots) the results in the following order:
  * - shortcuts
@@ -96,6 +98,12 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     private final HashSet<String> mShortcutIntentKeys = new HashSet<String>();
 
     private final HashSet<ComponentName> mPendingSources
+            = new HashSet<ComponentName>();
+
+    // non-promoted sources that have been viewed (snapshotted while "more" was expanded).
+    // we keep track of this because we never want to remove a source that we have shown
+    // before, even if they end up having zero results
+    private final HashSet<ComponentName> mViewedNonPromoted
             = new HashSet<ComponentName>();
 
     /**
@@ -224,20 +232,14 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         // fill in chunk size
         int numSlotsUsed = 0;
         for (Iterator<SuggestionData> reportedResult : reportedResults) {
-            for (int i = 0; i < chunkSize; i++) {
-                if (reportedResult.hasNext()) {
-                    final SuggestionData suggestionData = reportedResult.next();
-                    if (!isDupeOfShortcut(suggestionData)) {
-                        dest.add(suggestionData);
-                        final Integer displayed =
-                                sourceToNumDisplayed.get(suggestionData.getSource());
-                        sourceToNumDisplayed.put(
-                            suggestionData.getSource(), displayed == null ? 1 : displayed + 1);
-                        numSlotsUsed++;
-                    }
-                } else {
-                    break;
-                }
+            for (int i = 0; i < chunkSize && reportedResult.hasNext(); i++) {
+                final SuggestionData suggestionData = reportedResult.next();
+                if (isDupeOfShortcut(suggestionData)) continue;
+                dest.add(suggestionData);
+                final Integer displayed = sourceToNumDisplayed.get(suggestionData.getSource());
+                sourceToNumDisplayed.put(
+                        suggestionData.getSource(), displayed == null ? 1 : displayed + 1);
+                numSlotsUsed++;
             }
         }
 
@@ -296,8 +298,8 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                     // sources that haven't reported yet
                     SourceStat.ResponseStatus responseStatus =
                             mPendingSources.contains(source.getComponentName()) ?
-                                    SourceStat.ResponseStatus.InProgress :
-                                    SourceStat.ResponseStatus.NotStarted;
+                                    ResponseStatus.InProgress :
+                                    ResponseStatus.NotStarted;
                     moreSources.add(new SourceStat(
                             source.getComponentName(), promoted, source.getLabel(),
                             source.getIcon(), responseStatus, 0, 0));
@@ -325,7 +327,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                                         promoted,
                                         source.getLabel(),
                                         source.getIcon(),
-                                        SourceStat.ResponseStatus.Finished,
+                                        ResponseStatus.Finished,
                                         numResultsRemaining,
                                         queryLimit));
                     }
@@ -339,7 +341,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                                     false,
                                     source.getLabel(),
                                     source.getIcon(),
-                                    SourceStat.ResponseStatus.Finished,
+                                    ResponseStatus.Finished,
                                     sourceResult.getCount(),
                                     sourceResult.getQueryLimit()));
                 }
@@ -359,8 +361,13 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                 dest.add(mMoreFactory.getMoreEntry(expandAdditional, moreSources));
                 if (expandAdditional) {
                     for (SourceStat moreSource : moreSources) {
-                        if (DBG) Log.d(TAG, "snapshot: adding 'more' " + moreSource.getLabel());
-                        dest.add(mCorpusFactory.getCorpusEntry(moreSource));
+                        if (moreSource.getNumResults() > 0
+                                || moreSource.getResponseStatus() != ResponseStatus.Finished
+                                || mViewedNonPromoted.contains(moreSource.getName())) {
+                            if (DBG) Log.d(TAG, "snapshot: adding 'more' " + moreSource.getLabel());
+                            dest.add(mCorpusFactory.getCorpusEntry(moreSource));
+                            mViewedNonPromoted.add(moreSource.getName());
+                        }
                     }
                 }
             }
