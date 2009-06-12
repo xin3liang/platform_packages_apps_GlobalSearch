@@ -42,8 +42,8 @@ public class GenieLatency extends SourceLatency {
              "sanxjkashasrxae" };
 
     private static ComponentName GENIE_COMPONENT =
-            new ComponentName("com.google.android.providers.genie",
-                    "com.google.android.providers.genie.GenieLauncher");
+            new ComponentName("com.google.android.providers.enhancedgooglesearch",
+                    "com.google.android.providers.enhancedgooglesearch.Launcher");
 
     @Override
     protected void onResume() {
