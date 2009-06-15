@@ -24,13 +24,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.globalsearch.tests">
 
+    <uses-permission android:name="com.android.globalsearch.GET_SUGGESTIONS" />
+
     <!-- We add an application tag here just so that we can indicate that
          this package needs to link against the android.test library,
          which is needed when building test cases. -->
     <application>
         <uses-library android:name="android.test.runner" />
     </application>
-
 
     <!--
     This declares that this app uses the instrumentation test runner targeting
@@ -42,6 +43,3 @@
                      android:label="Tests for Global Search."/>
     
 </manifest>
-
-
-

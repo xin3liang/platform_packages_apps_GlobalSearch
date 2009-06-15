@@ -28,11 +28,30 @@
     <uses-permission android:name="android.permission.SET_PREFERRED_APPLICATIONS" />
     <uses-permission android:name="com.android.browser.permission.READ_HISTORY_BOOKMARKS" />
 
+    <!-- Only the system process (where the search dialog runs) is allowed to get suggestions,
+         since they can come from content provider that require special permission to read. -->
+    <permission android:name="com.android.globalsearch.GET_SUGGESTIONS"
+        android:permissionGroup="android.permission-group.SYSTEM_TOOLS"
+        android:protectionLevel="signature" />
+
+    <!-- Only the system process (where the search dialog runs) is allowed to write
+         search statistics, to keep applications from gaming the source ranking. -->
+    <permission android:name="com.android.globalsearch.WRITE_STATS"
+        android:permissionGroup="android.permission-group.SYSTEM_TOOLS"
+        android:protectionLevel="signature" />
+
+    <!-- Only the system process (where the search dialog runs) is allowed to launch
+         search suggestions, since they can be arbitrary intents. -->
+    <permission android:name="com.android.globalsearch.LAUNCH_SUGGESTIONS"
+        android:permissionGroup="android.permission-group.SYSTEM_TOOLS"
+        android:protectionLevel="signature" />
+
     <application
         android:label="@string/global_search">
 
         <activity android:name=".GlobalSearch"
                 android:process="android.process.acore"
+                android:permission="com.android.globalsearch.LAUNCH_SUGGESTIONS"
                 android:stateNotNeeded="true"
                 android:theme="@android:style/Theme.NoDisplay"
                 android:excludeFromRecents="true">
@@ -63,9 +82,11 @@
 
         <provider android:name=".SuggestionProvider"
             android:authorities="com.android.globalsearch.SuggestionProvider"
-            android:process="android.process.acore" />
+            android:process="android.process.acore"
+            android:permission="com.android.globalsearch.GET_SUGGESTIONS" />
 
         <provider android:name=".StatsProvider"
+            android:permission="com.android.globalsearch.WRITE_STATS"
             android:authorities="com.android.globalsearch.stats"
             android:process="android.process.acore" />
 

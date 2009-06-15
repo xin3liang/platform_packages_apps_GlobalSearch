@@ -20,6 +20,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.globalsearch.benchmarks">
 
+    <uses-permission android:name="com.android.globalsearch.GET_SUGGESTIONS" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <application>
