@@ -47,13 +47,13 @@ public class GlobalSearch extends Activity {
         if (intent != null) {
             if (DBG) Log.d(TAG, "Got intent: " + intent.toURI());
 
-            // We use the 'extra data' column of the suggestion cursor to report a different
+            // We use the 'component name' column of the suggestion cursor to report a different
             // component to which this intent should be directed.
-            String intentComponent = intent.getStringExtra(SearchManager.EXTRA_DATA_KEY);
+            String intentComponent = intent.getStringExtra(SearchManager.COMPONENT_NAME_KEY);
             if (intentComponent != null) {
                 ComponentName componentName = ComponentName.unflattenFromString(intentComponent);
                 intent.setComponent(componentName);
-                intent.removeExtra(SearchManager.EXTRA_DATA_KEY);
+                intent.removeExtra(SearchManager.COMPONENT_NAME_KEY);
             } else {
                 // No component in the suggestion, so it must have come from one
                 // of our built-in sources. Just launch it.

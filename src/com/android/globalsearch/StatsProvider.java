@@ -62,6 +62,8 @@ public class StatsProvider extends ContentProvider {
                 .intentAction(values.getAsString(SearchManager.SUGGEST_COLUMN_INTENT_ACTION))
                 .intentData(values.getAsString(SearchManager.SUGGEST_COLUMN_INTENT_DATA))
                 .intentExtraData(values.getAsString(SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA))
+                .intentComponentName(
+                        values.getAsString(SearchManager.SUGGEST_COLUMN_INTENT_COMPONENT_NAME))
                 .shortcutId(values.getAsString(SearchManager.SUGGEST_COLUMN_SHORTCUT_ID))
                 // note: deliberately omitting background color since it is only for global search
                 // "more results" entries

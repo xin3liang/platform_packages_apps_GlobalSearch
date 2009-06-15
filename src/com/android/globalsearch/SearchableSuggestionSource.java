@@ -275,7 +275,10 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         String intentData = getIntentData(cursor);
         String query = getQuery(cursor);
         String actionMsgCall = getActionMsgCall(cursor);
-        String intentExtraData = getComponentName().flattenToShortString();
+        String intentExtraData = getIntentExtraData(cursor);
+        // The following overwrites any value provided by the searchable since we only direct
+        // intents provided by third-party searchables to that searchable activity.
+        String intentComponentName = getComponentName().flattenToShortString();
         String shortcutId = getShortcutId(cursor);
         boolean pinToBottom = isPinToBottom(cursor);
         boolean spinnerWhileRefreshing = isSpinnerWhileRefreshing(cursor);
@@ -291,6 +294,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
                 .intentQuery(query)
                 .actionMsgCall(actionMsgCall)
                 .intentExtraData(intentExtraData)
+                .intentComponentName(intentComponentName)
                 .shortcutId(shortcutId)
                 .pinToBottom(pinToBottom)
                 .spinnerWhileRefreshing(spinnerWhileRefreshing)
@@ -411,6 +415,16 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         }
         String intentDataId = getColumnString(cursor, SearchManager.SUGGEST_COLUMN_INTENT_DATA_ID);
         return intentDataId == null ? intentData : intentData + "/" + Uri.encode(intentDataId);
+    }
+
+    /**
+     * Gets the intent extra data for the current entry.
+     *
+     * @return The value of the {@link SearchManager#SUGGEST_COLUMN_INTENT_EXTRA_DATA} column,
+     * or <code>null</code> if the cursor does not contain that column.
+     */
+    protected String getIntentExtraData(Cursor cursor) {
+        return getColumnString(cursor, SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA);
     }
 
     /**

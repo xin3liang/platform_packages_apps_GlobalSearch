@@ -35,6 +35,7 @@ public final class SuggestionData {
     private final String mIntentQuery;
     private final String mActionMsgCall;
     private final String mIntentExtraData;
+    private final String mIntentComponentName;
     private final String mShortcutId;
     private final int mBackgroundColor;
     private final boolean mPinToBottom;
@@ -52,6 +53,7 @@ public final class SuggestionData {
             String intentQuery,
             String actionMsgCall,
             String intentExtraData,
+            String intentComponentName,
             String shortcutId,
             int backgroundColor,
             boolean pinToBottom,
@@ -67,6 +69,7 @@ public final class SuggestionData {
         mIntentQuery = intentQuery;
         mActionMsgCall = actionMsgCall;
         mIntentExtraData = intentExtraData;
+        mIntentComponentName = intentComponentName;
         mShortcutId = shortcutId;
         mBackgroundColor = backgroundColor;
         mPinToBottom = pinToBottom;
@@ -151,6 +154,13 @@ public final class SuggestionData {
     }
 
     /**
+     * The intent component name.
+     */
+    public String getIntentComponentName() {
+        return mIntentComponentName;
+    }
+
+    /**
      * The shortcut id.
      */
     public String getShortcutId() {
@@ -193,6 +203,7 @@ public final class SuggestionData {
                 .intentQuery(mIntentQuery)
                 .actionMsgCall(mActionMsgCall)
                 .intentExtraData(mIntentExtraData)
+                .intentComponentName(mIntentComponentName)
                 .shortcutId(mShortcutId)
                 .backgroundColor(mBackgroundColor)
                 .pinToBottom(mPinToBottom)
@@ -222,6 +233,7 @@ public final class SuggestionData {
         if (notEqual(mIntentQuery, that.mIntentQuery)) return false;
         if (notEqual(mActionMsgCall, that.mActionMsgCall)) return false;
         if (notEqual(mIntentExtraData, that.mIntentExtraData)) return false;
+        if (notEqual(mIntentComponentName, that.mIntentComponentName)) return false;
         if (notEqual(mShortcutId, that.mShortcutId)) return false;
         if (mBackgroundColor != that.mBackgroundColor) return false;
         if (mPinToBottom != that.mPinToBottom) return false;
@@ -246,6 +258,7 @@ public final class SuggestionData {
         result = addHashCode(result, mIntentQuery);
         result = addHashCode(result, mActionMsgCall);
         result = addHashCode(result, mIntentExtraData);
+        result = addHashCode(result, mIntentComponentName);
         result = addHashCode(result, mShortcutId);
         result = addHashCode(result, Integer.toString(mBackgroundColor));
         result = addHashCode(result, String.valueOf(mPinToBottom));
@@ -303,6 +316,7 @@ public final class SuggestionData {
         private String mIntentQuery;
         private String mActionMsgCall;
         private String mIntentExtraData;
+        private String mIntentComponentName;
         private String mShortcutId;
         private int mBackgroundColor;
         private boolean mPinToBottom;
@@ -335,6 +349,7 @@ public final class SuggestionData {
                     mIntentQuery,
                     mActionMsgCall,
                     mIntentExtraData,
+                    mIntentComponentName,
                     mShortcutId,
                     mBackgroundColor,
                     mPinToBottom,
@@ -432,6 +447,14 @@ public final class SuggestionData {
          */
         public Builder intentExtraData(String intentExtraData) {
             mIntentExtraData = intentExtraData;
+            return this;
+        }
+
+        /**
+         * Sets the intent component name.
+         */
+        public Builder intentComponentName(String intentComponentName) {
+            mIntentComponentName = intentComponentName;
             return this;
         }
 

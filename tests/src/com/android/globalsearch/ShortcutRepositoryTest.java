@@ -128,6 +128,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
                 .intentData("data")
                 .intentQuery("query")
                 .intentExtraData("extradata")
+                .intentComponentName("componentname")
                 .shortcutId("idofshortcut")
                 .build();
 

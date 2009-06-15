@@ -67,6 +67,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
         IntentData(SearchManager.SUGGEST_COLUMN_INTENT_DATA),
         ActionMsgCall(SUGGEST_COLUMN_ACTION_MSG_CALL),
         IntentExtraData(SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA),
+        IntentComponentName(SearchManager.SUGGEST_COLUMN_INTENT_COMPONENT_NAME),
         ShortcutId(SearchManager.SUGGEST_COLUMN_SHORTCUT_ID),
         BackgroundColor(SearchManager.SUGGEST_COLUMN_BACKGROUND_COLOR);
 
@@ -396,6 +397,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
             case IntentData: return suggestion.getIntentData();
             case ActionMsgCall: return suggestion.getActionMsgCall();
             case IntentExtraData: return suggestion.getIntentExtraData();
+            case IntentComponentName: return suggestion.getIntentComponentName();
             case ShortcutId: return suggestion.getShortcutId();
             case BackgroundColor: return Integer.toString(suggestion.getBackgroundColor());
             default:

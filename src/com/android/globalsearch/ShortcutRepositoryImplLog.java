@@ -40,7 +40,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
     private static final String TAG = "GlobalSearch";
 
     private static final String DB_NAME = "shortcuts-log.db";
-    private static final int DB_VERSION = 16;
+    private static final int DB_VERSION = 17;
 
     private static final String HAS_HISTORY_QUERY =
         "SELECT " + Shortcuts.intent_key.fullName + " FROM " + Shortcuts.TABLE_NAME;
@@ -84,6 +84,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
         intent_data,
         intent_query,
         intent_extradata,
+        intent_component_name,
         shortcut_id,
         // Note: deliberately omitting background color and pin-to-bottom values since they
         // are only used for suggestions which cannot be shortcutted (namely, "more results"
@@ -307,6 +308,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
             cv.put(Shortcuts.intent_data.name(), clicked.getIntentData());
             cv.put(Shortcuts.intent_query.name(), clicked.getIntentQuery());
             cv.put(Shortcuts.intent_extradata.name(), clicked.getIntentExtraData());
+            cv.put(Shortcuts.intent_component_name.name(), clicked.getIntentComponentName());
             cv.put(Shortcuts.shortcut_id.name(), clicked.getShortcutId());
             cv.put(Shortcuts.spinner_while_refreshing.name(), clicked.isSpinnerWhileRefreshing());
             db.replaceOrThrow(Shortcuts.TABLE_NAME, null, cv);
@@ -481,6 +483,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
             .intentData(cursor.getString(Shortcuts.intent_data.ordinal()))
             .intentQuery(cursor.getString(Shortcuts.intent_query.ordinal()))
             .intentExtraData(cursor.getString(Shortcuts.intent_extradata.ordinal()))
+            .intentComponentName(cursor.getString(Shortcuts.intent_component_name.ordinal()))
             .shortcutId(cursor.getString(Shortcuts.shortcut_id.ordinal()))
             .build();
     }
@@ -517,6 +520,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
                     Shortcuts.intent_data.name() + " TEXT, " +
                     Shortcuts.intent_query.name() + " TEXT, " +
                     Shortcuts.intent_extradata.name() + " TEXT, " +
+                    Shortcuts.intent_component_name.name() + " TEXT, " +
                     Shortcuts.shortcut_id.name() + " TEXT, " +
                     Shortcuts.spinner_while_refreshing.name() + " TEXT" +
                     ");");
