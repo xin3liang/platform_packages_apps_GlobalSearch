@@ -18,9 +18,9 @@
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.android.globalsearch.tests">
+    package="com.android.globalsearch.permission.tests">
 
-    <uses-permission android:name="com.android.globalsearch.GET_SUGGESTIONS" />
+    <!-- the permissions test apk has no permissions by design. -->
 
     <!-- We add an application tag here just so that we can indicate that
          this package needs to link against the android.test library,
@@ -30,12 +30,11 @@
     </application>
 
     <!--
-    This declares that this app uses the instrumentation test runner targeting
-    the package of com.android.globalsearch.  To run the tests use the command:
-    "adb shell am instrument -w com.android.globalsearch.tests/android.test.InstrumentationTestRunner"
+    We are self instrumenting so the test can be run, but since this is for permissions test, we are
+    not instrumenting any app (we want to be accessing it from the outside).
     -->
     <instrumentation android:name="android.test.InstrumentationTestRunner"
-                     android:targetPackage="com.android.globalsearch"
-                     android:label="Tests for Global Search."/>
+                     android:targetPackage="com.android.globalsearch.permission.tests"
+                     android:label="Permission tests for Global Search."/>
     
 </manifest>

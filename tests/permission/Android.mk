@@ -25,19 +25,12 @@ LOCAL_JAVA_LIBRARIES := android.test.runner
 # Include all test java files.
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
-# Notice that we don't have to include the src files of GlobalSearch because, by
-# running the tests using an instrumentation targeting GlobalSearch, we
-# automatically get all of its classes loaded into our environment.
-
-LOCAL_PACKAGE_NAME := GlobalSearchTests
+LOCAL_PACKAGE_NAME := GlobalSearchPermissionTests
 LOCAL_CERTIFICATE := shared
 
+# note: *not* a local instrumentation for GlobalSearch because we want to be outside
+# the app when launching GlobalSearch so the permission fails as expected
 # Link with the package under test, so its classes are available to tests.
-LOCAL_INSTRUMENTATION_FOR := GlobalSearch
-
 
 include $(BUILD_PACKAGE)
-
-# Use the following include to make our permission test apk.
-include $(call all-makefiles-under,$(LOCAL_PATH))
 
