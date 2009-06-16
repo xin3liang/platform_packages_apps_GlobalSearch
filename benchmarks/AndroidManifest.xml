@@ -42,7 +42,16 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".GenieLatency"
+        <activity android:name=".EnhancedGoogleSearchConcurrency"
+                android:stateNotNeeded="true"
+                android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".EnhancedGoogleSearchLatency"
                 android:stateNotNeeded="true"
                 android:excludeFromRecents="true">
             <intent-filter>

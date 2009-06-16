@@ -68,6 +68,35 @@ public class SourceLatency extends Activity {
         // TODO: call finish() when all tasks are done
     }
 
+    private SearchableInfo getSearchable(ComponentName componentName) {
+        SearchableInfo searchable = SearchManager.getSearchableInfo(componentName, false);
+        if (searchable == null || searchable.getSuggestAuthority() == null) {
+            throw new RuntimeException("Component is not searchable: "
+                    + componentName.flattenToShortString());
+        }
+        return searchable;
+    }
+
+    public void checkSourceConcurrent(final String src, final ComponentName componentName,
+            String query, long delay) {
+        final SearchableInfo searchable = getSearchable(componentName);
+        int length = query.length();
+        for (int end = 0; end <= length; end++) {
+            final String prefix = query.substring(0, end);
+            (new Thread() {
+                @Override
+                public void run() {
+                    checkSourceInternal(src, searchable, prefix);
+                }
+            }).start();
+            try {
+                Thread.sleep(delay);
+            } catch (InterruptedException ex) {
+                Log.e(TAG, "sleep() in checkSourceConcurrent() interrupted.");
+            }
+        }
+    }
+
     public double checkSource(String src, ComponentName componentName, String[] queries) {
         double totalMs = 0.0;
         int count = queries.length;
@@ -81,11 +110,11 @@ public class SourceLatency extends Activity {
     }
 
     public double checkSource(String src, ComponentName componentName, String query) {
-        SearchableInfo searchable = SearchManager.getSearchableInfo(componentName, false);
-        if (searchable == null || searchable.getSuggestAuthority() == null) {
-            throw new RuntimeException("Component is not searchable: "
-                    + componentName.flattenToShortString());
-        }
+        SearchableInfo searchable = getSearchable(componentName);
+        return checkSourceInternal(src, searchable, query);
+    }
+
+    private double checkSourceInternal(String src, SearchableInfo searchable, String query) {
         Cursor cursor = null;
         try {
             final long start = System.nanoTime();

@@ -32,7 +32,7 @@ import android.view.KeyEvent;
 
 To build and run:
 
-mmm vendor/google/apps/GlobalSearch/benchmarks \
+mmm packages/apps/GlobalSearch/benchmarks \
 && adb -e install -r $OUT/system/app/GlobalSearchBenchmarks.apk \
 && sleep 10 \
 && adb -e shell am start -a android.intent.action.MAIN \
