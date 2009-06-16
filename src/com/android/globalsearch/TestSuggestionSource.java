@@ -117,7 +117,7 @@ class TestSuggestionSource extends AbstractSuggestionSource {
         private long mDelay = 0;
         private Map<String, List<SuggestionData>> mCannedResponses =
                 new HashMap<String, List<SuggestionData>>();
-        private boolean mQueryAfterNoResults = false;
+        private boolean mQueryAfterZeroResults = false;
         private String mLabel = "TestSuggestionSource";
 
         public Builder setComponent(ComponentName component) {
@@ -130,8 +130,8 @@ class TestSuggestionSource extends AbstractSuggestionSource {
             return this;
         }
 
-        public Builder setQueryAfterNoResults(boolean queryAfterNoResults) {
-            mQueryAfterNoResults = queryAfterNoResults;
+        public Builder setQueryAfterZeroResults(boolean queryAfterNoResults) {
+            mQueryAfterZeroResults = queryAfterNoResults;
             return this;
         }
 
@@ -160,7 +160,7 @@ class TestSuggestionSource extends AbstractSuggestionSource {
 
         public TestSuggestionSource create() {
             return new TestSuggestionSource(
-                    mComponent, mDelay, mCannedResponses, mQueryAfterNoResults, mLabel);
+                    mComponent, mDelay, mCannedResponses, mQueryAfterZeroResults, mLabel);
         }
     }
 }

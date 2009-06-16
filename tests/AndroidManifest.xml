@@ -18,7 +18,8 @@
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.android.globalsearch.tests">
+    package="com.android.globalsearch.tests"
+    android:sharedUserId="android.uid.shared">
 
     <uses-permission android:name="com.android.globalsearch.GET_SUGGESTIONS" />
 
