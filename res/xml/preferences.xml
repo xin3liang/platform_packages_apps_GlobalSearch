@@ -45,14 +45,11 @@
             
         <PreferenceScreen
                 android:title="@string/search_sources"
+                android:key="search_sources"
                 android:summary="@string/search_sources_summary">
-            
-            <PreferenceCategory
-                    android:title="@string/search_sources"
-                    android:key="search_sources">
-                <!-- CheckBoxPreferences added here dynamically -->
-            </PreferenceCategory>
-        
+
+            <!-- CheckBoxPreferences added here dynamically -->
+
         </PreferenceScreen>
 
         <!-- TODO: Use DialogPreference instead. -->
