@@ -168,8 +168,12 @@ public class SuggestionSession {
         final QuerySourceResults querySourceResults = mSessionCache.getSourceResults(query);
 
         // get sources to query
-        final List<SuggestionSource> enabledSources =
-                orderSources(mShortcutRepo.getSourceRanking(), mSources.getEnabledSources());
+        final SuggestionSource webSearchSource = mSources.getSelectedWebSearchSource();
+        final List<SuggestionSource> enabledSources = orderSources(
+                mSources.getEnabledSources(),
+                webSearchSource == null ? null : webSearchSource.getComponentName(),
+                mShortcutRepo.getSourceRanking()
+        );
         final int cutoff = Math.max(1, queryLength);
         final ArrayList<SuggestionSource> sourcesToQuery = new ArrayList<SuggestionSource>();
         if (DBG && SPEW) Log.d(TAG, "filtering enabled sources to those we want to query...");
@@ -231,7 +235,7 @@ public class SuggestionSession {
                 // its own copy since we add cached values
                 new ArrayList<SuggestionSource>(sourcesToQuery),
                 promoted,
-                mSources.getSelectedWebSearchSource(),
+                webSearchSource,
                 resultFactory.createGoToWebsiteSuggestion(),
                 resultFactory.createSearchTheWebSuggestion(),
                 MAX_RESULTS_TO_DISPLAY,
@@ -338,14 +342,17 @@ public class SuggestionSession {
 
     /**
      * Produces a list of sources that are ordered by source ranking.  Any sources that do not
-     * appear in the source ranking list are appended at the end.
+     * appear in the source ranking list are appended at the end.  The web search source will always
+     * be first.
      *
-     * @param sourceRanking The order the sources should be in.
      * @param sources The sources.
+     * @param webSearchSource The name of the web search source, or <code>null</code> otherwise.
+      *@param sourceRanking The order the sources should be in.
      * @return A list of sources that are ordered by the source ranking.
      */
     private ArrayList<SuggestionSource> orderSources(
-            ArrayList<ComponentName> sourceRanking, List<SuggestionSource> sources) {
+            List<SuggestionSource> sources, ComponentName webSearchSource,
+            ArrayList<ComponentName> sourceRanking) {
 
         // get any sources that are in sourceRanking in the order
         HashMap<ComponentName, SuggestionSource> linkMap =
@@ -354,6 +361,12 @@ public class SuggestionSession {
             linkMap.put(source.getComponentName(), source);
         }
         ArrayList<SuggestionSource> ordered = new ArrayList<SuggestionSource>(sources.size());
+
+        // start with the web source if it exists
+        if (webSearchSource != null) {
+            ordered.add(linkMap.remove(webSearchSource));
+        }
+
         for (ComponentName name : sourceRanking) {
             final SuggestionSource source = linkMap.get(name);
             if (source != null) {
