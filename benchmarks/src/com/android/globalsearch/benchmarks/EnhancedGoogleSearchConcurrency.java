@@ -35,7 +35,7 @@ public class EnhancedGoogleSearchConcurrency extends SourceLatency {
     private static final String QUERY = "hillary clinton";
 
     // Delay between queries (in milliseconds).
-    private static final long DELAY = 150;
+    private static final long DELAY_MS = 150;
 
     private static ComponentName EGS_COMPONENT =
             new ComponentName("com.google.android.providers.enhancedgooglesearch",
@@ -49,7 +49,7 @@ public class EnhancedGoogleSearchConcurrency extends SourceLatency {
     }
 
     private void testEnhancedGoogleSearchConcurrent() {
-        checkSourceConcurrent("EGS", EGS_COMPONENT, QUERY, DELAY);
+        checkSourceConcurrent("EGS", EGS_COMPONENT, QUERY, DELAY_MS);
     }
 
 }

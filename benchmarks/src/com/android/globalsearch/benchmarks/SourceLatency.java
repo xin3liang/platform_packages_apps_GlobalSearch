@@ -77,8 +77,30 @@ public class SourceLatency extends Activity {
         return searchable;
     }
 
+    /**
+     * Keeps track of timings in nanoseconds.
+     */
+    private static class ElapsedTime {
+        private long mTotal = 0;
+        private int mCount = 0;
+        public synchronized void addTime(long time) {
+            mTotal += time;
+            mCount++;
+        }
+        public synchronized long getTotal() {
+            return mTotal;
+        }
+        public synchronized long getAverage() {
+            return mTotal / mCount;
+        }
+        public synchronized int getCount() {
+            return mCount;
+        }
+    }
+
     public void checkSourceConcurrent(final String src, final ComponentName componentName,
             String query, long delay) {
+        final ElapsedTime time = new ElapsedTime();
         final SearchableInfo searchable = getSearchable(componentName);
         int length = query.length();
         for (int end = 0; end <= length; end++) {
@@ -86,7 +108,8 @@ public class SourceLatency extends Activity {
             (new Thread() {
                 @Override
                 public void run() {
-                    checkSourceInternal(src, searchable, prefix);
+                    long t = checkSourceInternal(src, searchable, prefix);
+                    time.addTime(t);
                 }
             }).start();
             try {
@@ -95,45 +118,59 @@ public class SourceLatency extends Activity {
                 Log.e(TAG, "sleep() in checkSourceConcurrent() interrupted.");
             }
         }
+        int count = length + 1;
+        // wait for all requests to finish
+        while (time.getCount() < count) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ex) {
+                Log.e(TAG, "sleep() in checkSourceConcurrent() interrupted.");
+            }
+        }
+        Log.d(TAG, src + "[DONE]: " + length + " queries in " + formatTime(time.getAverage())
+                + " (average), " + formatTime(time.getTotal()) + " (total)");
     }
 
-    public double checkSource(String src, ComponentName componentName, String[] queries) {
-        double totalMs = 0.0;
+    public void checkSource(String src, ComponentName componentName, String[] queries) {
+        ElapsedTime time = new ElapsedTime();
         int count = queries.length;
         for (int i = 0; i < queries.length; i++) {
-            totalMs += checkSource(src, componentName, queries[i]);
+            long t = checkSource(src, componentName, queries[i]);
+            time.addTime(t);
         }
-        double average = totalMs / count;
-        Log.d(TAG, src + "[DONE]: " + count + " queries in " + average + " ms (average), "
-                + totalMs + " ms (total)");
-        return average;
+        Log.d(TAG, src + "[DONE]: " + count + " queries in " + formatTime(time.getAverage())
+                + " (average), " + formatTime(time.getTotal()) + " (total)");
     }
 
-    public double checkSource(String src, ComponentName componentName, String query) {
+    public long checkSource(String src, ComponentName componentName, String query) {
         SearchableInfo searchable = getSearchable(componentName);
         return checkSourceInternal(src, searchable, query);
     }
 
-    private double checkSourceInternal(String src, SearchableInfo searchable, String query) {
+    private long checkSourceInternal(String src, SearchableInfo searchable, String query) {
         Cursor cursor = null;
         try {
             final long start = System.nanoTime();
             cursor = SearchManager.getSuggestions(SourceLatency.this, searchable, query);
             long end = System.nanoTime();
-            double elapsedMs = (end - start) / 1000000.0d;
+            long elapsed = end - start;
             if (cursor == null) {
-                Log.d(TAG, src + ": null cursor in " + elapsedMs
-                        + " ms for '" + query + "'");
+                Log.d(TAG, src + ": null cursor in " + formatTime(elapsed)
+                        + " for '" + query + "'");
             } else {
-                Log.d(TAG, src + ": " + cursor.getCount() + " rows in " + elapsedMs
-                        + " ms for '" + query + "'");
+                Log.d(TAG, src + ": " + cursor.getCount() + " rows in " + formatTime(elapsed)
+                        + " for '" + query + "'");
             }
-            return elapsedMs;
+            return elapsed;
         } finally {
             if (cursor != null) {
                 cursor.close();
             }
         }
+    }
+
+    private static String formatTime(long ns) {
+        return (ns / 1000000.0d) + " ms";
     }
 
     public void checkLiveSource(String src, ComponentName componentName, String query) {
@@ -161,13 +198,13 @@ public class SourceLatency extends Activity {
                 final long start = System.nanoTime();
                 cursor = SearchManager.getSuggestions(SourceLatency.this, mSearchable, mQuery);
                 long end = System.nanoTime();
-                double elapsedMs = (end - start) / 1000000.0d;
+                long elapsed = (end - start);
                 if (cursor == null) {
-                    Log.d(TAG, mSrc + ": null cursor in " + elapsedMs
-                            + " ms for '" + mQuery + "'");
+                    Log.d(TAG, mSrc + ": null cursor in " + formatTime(elapsed)
+                            + " for '" + mQuery + "'");
                 } else {
-                    Log.d(TAG, mSrc + ": " + cursor.getCount() + " rows in " + elapsedMs
-                            + " ms for '" + mQuery + "'");
+                    Log.d(TAG, mSrc + ": " + cursor.getCount() + " rows in " + formatTime(elapsed)
+                            + " for '" + mQuery + "'");
                     cursor.registerContentObserver(new ChangeObserver(cursor));
                     cursor.registerDataSetObserver(new MyDataSetObserver(mSrc, start, cursor));
                     try {
@@ -216,10 +253,10 @@ public class SourceLatency extends Activity {
             @Override
             public void onChanged() {
                 long end = System.nanoTime();
-                double elapsedMs = (end - mStart) / 1000000.0d;
+                long elapsed = end - mStart;
                 mUpdateCount++;
                 Log.d(TAG, mSrc + ", update " + mUpdateCount + ": " + mCursor.getCount()
-                        + " rows in " + elapsedMs + " ms");
+                        + " rows in " + formatTime(elapsed));
             }
 
             @Override
