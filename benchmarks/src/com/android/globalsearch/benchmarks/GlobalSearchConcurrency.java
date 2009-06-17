@@ -18,6 +18,10 @@ package com.android.globalsearch.benchmarks;
 
 import android.content.ComponentName;
 
+/**
+ * Latency tests for suggestion sources.
+ */
+
 /*
 
 To build and run:
@@ -26,32 +30,29 @@ mmm packages/apps/GlobalSearch/benchmarks \
 && adb -e install -r $OUT/system/app/GlobalSearchBenchmarks.apk \
 && sleep 10 \
 && adb -e shell am start -a android.intent.action.MAIN \
-        -n com.android.globalsearch.benchmarks/.EnhancedGoogleSearchLatency \
+        -n com.android.globalsearch.benchmarks/.GlobalSearchConcurrency \
 && adb -e logcat
 
  */
-public class EnhancedGoogleSearchLatency extends SourceLatency {
 
-    private static final String[] queries =
-            { "", "a", "s", "e", "r", "pub", "taxi", "kilt hire", "pizza",
-             "weather london uk", "terminator showtimes", "obama news",
-             "12 USD in GBP", "how to pass a drug test", "goog stock",
-             "76 Bucking",
-             "sanxjkashasrxae" };
+public class GlobalSearchConcurrency extends SourceLatency {
 
-    private static ComponentName EGS_COMPONENT =
-            new ComponentName("com.google.android.providers.enhancedgooglesearch",
-                    "com.google.android.providers.enhancedgooglesearch.Launcher");
+    private static final String QUERY = "hillary clinton";
+
+    // Delay between queries (in milliseconds).
+    private static final long DELAY_MS = 150;
+
+    private static ComponentName GLOBAL_SEARCH_COMPONENT =
+            new ComponentName("com.android.globalsearch",
+                "com.android.globalsearch.GlobalSearch");
 
     @Override
     protected void onResume() {
         super.onResume();
-        testEnhancedGoogleSearch();
-        finish();
+        testGlobalSearchConcurrency();
     }
 
-    private void testEnhancedGoogleSearch() {
-        checkSource("EGS", EGS_COMPONENT, queries);
+    private void testGlobalSearchConcurrency() {
+        checkSourceConcurrent("GLOBAL", GLOBAL_SEARCH_COMPONENT, QUERY, DELAY_MS);
     }
-
 }
