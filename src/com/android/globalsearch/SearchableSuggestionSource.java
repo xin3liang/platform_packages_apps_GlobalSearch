@@ -123,13 +123,14 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         // Be resilient to non-existent suggestion providers, as the build this is running on
         // is not guaranteed to have anything in particular.
         if (cursor == null) return mEmptyResult;
-        // Return without touching the cursor if we have been interrupted. This avoids
-        // filling cursor windows and triggering evaluation of lazy cursors.
-        if (Thread.interrupted()) return mEmptyResult;
-
-        maxResults = (mMaxResultsOverride > 0) ? mMaxResultsOverride : maxResults;
 
         try {
+            // Return without touching the cursor if we have been interrupted. This avoids
+            // filling cursor windows and triggering evaluation of lazy cursors.
+            if (Thread.interrupted()) return mEmptyResult;
+
+            maxResults = (mMaxResultsOverride > 0) ? mMaxResultsOverride : maxResults;
+
             ArrayList<SuggestionData> suggestions
                     = new ArrayList<SuggestionData>(cursor.getCount());
             while (cursor.moveToNext() && suggestions.size() < maxResults) {
