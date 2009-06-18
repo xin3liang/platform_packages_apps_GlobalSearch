@@ -164,10 +164,7 @@ public class SuggestionSession {
         // get shortcuts
         final ArrayList<SuggestionData> shortcuts = mShortcutRepo.getShortcutsForQuery(query);
 
-        // cached source results
-        final QuerySourceResults querySourceResults = mSessionCache.getSourceResults(query);
-
-        // get sources to query
+        // filter out sources that aren't relevant to this query
         final SuggestionSource webSearchSource = mSources.getSelectedWebSearchSource();
         final List<SuggestionSource> enabledSources = orderSources(
                 mSources.getEnabledSources(),
@@ -188,12 +185,6 @@ public class SuggestionSession {
             }
 
             final ComponentName sourceName = enabledSource.getComponentName();
-
-            // source has already returned results
-            if (querySourceResults.getResult(sourceName) != null) {
-                if (DBG && SPEW) Log.d(TAG, "skipping " + enabledSource.getLabel() + " (cached)");
-                continue;
-            }
 
             // source returned zero results for a prefix of query
             if (!enabledSource.queryAfterZeroResults()
@@ -230,28 +221,25 @@ public class SuggestionSession {
         for (int i = 0; i < NUM_PROMOTED_SOURCES && i < sourcesToQuery.size(); i++) {
             promoted.add(sourcesToQuery.get(i).getComponentName());
         }
+        // cached source results
+        final QueryCacheResults queryCacheResults = mSessionCache.getSourceResults(query);
+
         final SourceSuggestionBacker backer = new SourceSuggestionBacker(
                 shortcuts,
                 // its own copy since we add cached values
                 new ArrayList<SuggestionSource>(sourcesToQuery),
                 promoted,
                 webSearchSource,
+                queryCacheResults.getResults(),
                 resultFactory.createGoToWebsiteSuggestion(),
                 resultFactory.createSearchTheWebSuggestion(),
                 MAX_RESULTS_TO_DISPLAY,
                 PROMOTED_SOURCE_DEADLINE,
                 resultFactory,
                 resultFactory);
-        // add any cached results
-        for (SuggestionResult result : querySourceResults.getResults()) {
-            final ComponentName name = result.getSource().getComponentName();
-            backer.addCachedSourceResult(
-                    result,
-                    promoted.contains(name));
-        }
 
         if (DBG) {
-            Log.d(TAG, "starting off with " + querySourceResults.getResults().size() + " cached "
+            Log.d(TAG, "starting off with " + queryCacheResults.getResults().size() + " cached "
                     + "sources");
             Log.d(TAG, "identified " + sourcesToQuery.size() + " promoted sources to query");
             Log.d(TAG, "identified " + shortcutsToRefresh.size()
@@ -417,13 +405,13 @@ public class SuggestionSession {
      */
     static class SessionCache {
 
-        static final QuerySourceResults EMPTY = new QuerySourceResults();
+        static final QueryCacheResults EMPTY = new QueryCacheResults();
 
         private HashMap<String, HashSet<ComponentName>> mZeroResultSources
                 = new HashMap<String, HashSet<ComponentName>>();
 
-        private HashMap<String, SoftReference<QuerySourceResults>> mResultsCache
-                = new HashMap<String, SoftReference<QuerySourceResults>>();
+        private HashMap<String, SoftReference<QueryCacheResults>> mResultsCache
+                = new HashMap<String, SoftReference<QueryCacheResults>>();
 
         private HashSet<String> mRefreshedShortcuts = new HashSet<String>();
 
@@ -460,9 +448,9 @@ public class SuggestionSession {
          * @param query The query
          * @return The results for any sources that have reported results.
          */
-        synchronized QuerySourceResults getSourceResults(String query) {
-            final QuerySourceResults querySourceResults = getCachedResult(query);
-            return querySourceResults == null ? EMPTY : querySourceResults;
+        synchronized QueryCacheResults getSourceResults(String query) {
+            final QueryCacheResults queryCacheResults = getCachedResult(query);
+            return queryCacheResults == null ? EMPTY : queryCacheResults;
         }
 
         /**
@@ -470,12 +458,12 @@ public class SuggestionSession {
          */
         synchronized void reportSourceResult(String query, SuggestionResult sourceResult) {
 
-            QuerySourceResults querySourceResults = getCachedResult(query);
-            if (querySourceResults == null) {
-                querySourceResults = new QuerySourceResults();
-                mResultsCache.put(query, new SoftReference<QuerySourceResults>(querySourceResults));
+            QueryCacheResults queryCacheResults = getCachedResult(query);
+            if (queryCacheResults == null) {
+                queryCacheResults = new QueryCacheResults();
+                mResultsCache.put(query, new SoftReference<QueryCacheResults>(queryCacheResults));
             }
-            querySourceResults.addResult(sourceResult);
+            queryCacheResults.addResult(sourceResult);
 
             if (!sourceResult.getSource().queryAfterZeroResults()
                     && sourceResult.getSuggestions().isEmpty()) {
@@ -496,8 +484,8 @@ public class SuggestionSession {
             mRefreshedShortcuts.add(shortcutId);
         }
 
-        private QuerySourceResults getCachedResult(String query) {
-            final SoftReference<QuerySourceResults> ref = mResultsCache.get(query);
+        private QueryCacheResults getCachedResult(String query) {
+            final SoftReference<QueryCacheResults> ref = mResultsCache.get(query);
             if (ref == null) return null;
 
             if (ref.get() == null) {
@@ -513,7 +501,7 @@ public class SuggestionSession {
      * Preserves order of when they were reported back, provides efficient lookup for a given
      * source
      */
-    static class QuerySourceResults {
+    static class QueryCacheResults {
 
         ArrayList<SuggestionResult> mSourceResults = new ArrayList<SuggestionResult>();
 

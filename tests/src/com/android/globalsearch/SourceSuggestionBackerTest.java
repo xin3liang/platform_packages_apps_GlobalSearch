@@ -22,7 +22,7 @@ import android.content.ComponentName;
 import android.test.MoreAsserts;
 import com.google.android.collect.Sets;
 import com.google.android.collect.Lists;
-import static com.android.globalsearch.SourceSuggestionBacker.SourceStat;
+
 import static com.android.globalsearch.SourceSuggestionBacker.SourceStat.ResponseStatus;
 
 import java.util.List;
@@ -111,6 +111,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2), // promoted sources
                 mSource1,             // source1 is the web souce
+                Lists.<SuggestionResult>newArrayList(),
                 null,                 // no "go to website" suggestion
                 mSearchTheWeb,        // the "search the web" suggestion
                 MAX_PROMOTED_SHOWING,
@@ -308,6 +309,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2, mName3), // all 3 are promoted sources
                 mSource1,
+                Lists.<SuggestionResult>newArrayList(),
                 null,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -376,6 +378,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2, mName3), // all 3 are promoted sources
                 mSource1,
+                Lists.<SuggestionResult>newArrayList(),
                 null,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -507,6 +510,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.<SuggestionSource>newArrayList(), // no sources
                 Sets.<ComponentName>newHashSet(),
                 mSource1,
+                Lists.<SuggestionResult>newArrayList(),
                 null,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -532,6 +536,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2),
                 Sets.<ComponentName>newHashSet(mName1, mName2), // every source is promoted
                 mSource1,
+                Lists.<SuggestionResult>newArrayList(),
                 null,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -563,36 +568,29 @@ public class SourceSuggestionBackerTest extends TestCase
 
     public void testCachedSourceResults() {
 
-        // start off with no sources
+        final ArrayList<SuggestionResult> cached = Lists.newArrayList(
+                new SuggestionResult(mSource1, Lists.newArrayList(
+                        makeSourceResult(mName1, 0),
+                        makeSourceResult(mName1, 1))),
+                new SuggestionResult(mSource2, Lists.newArrayList(
+                        makeSourceResult(mName2, 0),
+                        makeSourceResult(mName2, 1))),
+                new SuggestionResult(mSource3, Lists.newArrayList(
+                        makeSourceResult(mName3, 0),
+                        makeSourceResult(mName3, 1))));
+
         mBacker = new TestBacker(
                 Lists.newArrayList(mShortcut1),
-                Lists.<SuggestionSource>newArrayList(),
-                Sets.<ComponentName>newHashSet(), // promoted sources
+                Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
+                Sets.<ComponentName>newHashSet(mName1, mName2), // promoted sources
                 mSource1,
+                cached,
                 null,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
                 DEADLINE,
                 this,
                 this);
-
-        // report them each as cached results
-
-        mBacker.addCachedSourceResult(
-                new SuggestionResult(mSource1, Lists.newArrayList(
-                        makeSourceResult(mName1, 0),
-                        makeSourceResult(mName1, 1))),
-                true);
-        mBacker.addCachedSourceResult(
-                new SuggestionResult(mSource2, Lists.newArrayList(
-                        makeSourceResult(mName2, 0),
-                        makeSourceResult(mName2, 1))),
-                true);
-        mBacker.addCachedSourceResult(
-                new SuggestionResult(mSource3, Lists.newArrayList(
-                        makeSourceResult(mName3, 0),
-                        makeSourceResult(mName3, 1))),
-                false);
 
         assertContentsInOrder(
                 "three cached sources, 2 promoted, one not.",
@@ -616,6 +614,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2), // promoted sources
                 mSource1,
+                Lists.<SuggestionResult>newArrayList(),
                 mGoToWebsite,
                 mSearchTheWeb,
                 MAX_PROMOTED_SHOWING,
@@ -847,14 +846,16 @@ public class SourceSuggestionBackerTest extends TestCase
                 List<SuggestionSource> sources,
                 HashSet<ComponentName> promotedSources,
                 SuggestionSource selectedWebSearchSource,
+                List<SuggestionResult> cachedResults,
                 SuggestionData goToWebsite,
                 SuggestionData searchTheWeb,
                 int maxPromotedSlots,
                 long deadline,
                 MoreExpanderFactory moreFactory,
                 CorpusResultFactory corpusFactory) {
-            super(shortcuts, sources, promotedSources, selectedWebSearchSource, goToWebsite,
-                    searchTheWeb, maxPromotedSlots, deadline, moreFactory, corpusFactory);
+            super(shortcuts, sources, promotedSources, selectedWebSearchSource, cachedResults,
+                    goToWebsite, searchTheWeb, maxPromotedSlots, deadline, moreFactory,
+                    corpusFactory);
         }
 
 
