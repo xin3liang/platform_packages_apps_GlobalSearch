@@ -211,17 +211,18 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     @Override
     protected SuggestionData validateShortcut(String shortcutId) {
         Cursor cursor = getValidationCursor(shortcutId);
-
         if (cursor == null) return null;
-
-        int count = cursor.getCount();
-        if (count == 0) return null;
-
-        if (count > 1) {
-            Log.w(LOG_TAG, "received " + count + " results for validation of a single shortcut");
+        try {
+            int count = cursor.getCount();
+            if (count == 0) return null;
+            if (count > 1) {
+                Log.w(LOG_TAG, "received " + count + " results for validation of a single shortcut");
+            }
+            cursor.moveToNext();
+            return makeSuggestion(cursor);
+        } finally {
+          cursor.close();
         }
-        cursor.moveToNext();
-        return makeSuggestion(cursor);
     }
 
     protected Cursor getValidationCursor(String shortcutId) {
