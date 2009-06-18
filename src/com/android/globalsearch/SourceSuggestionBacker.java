@@ -111,11 +111,12 @@ public class SourceSuggestionBacker extends SuggestionBacker {
      * @param sources The sources expected to report
      * @param promotedSources The promoted sources expecting to report
      * @param selectedWebSearchSource the currently selected web search source
+     * @param cachedResults Any results we are already privy to
      * @param goToWebsiteSuggestion The "go to website" entry to show if appropriate
      * @param searchTheWebSuggestion The "search the web" entry to show if appropriate
      * @param maxPromotedSlots The maximum numer of results to show for the promoted sources
      * @param promotedSourceDeadline How long to wait for the promoted sources before mixing in the
-     *   results and displaying the "search the web" and "more results" entries.
+     *        results and displaying the "search the web" and "more results" entries.
      * @param moreFactory How to create the expander entry
      * @param corpusFactory How to create results for each corpus
      */
@@ -124,6 +125,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
             List<SuggestionSource> sources,
             HashSet<ComponentName> promotedSources,
             SuggestionSource selectedWebSearchSource,
+            List<SuggestionResult> cachedResults,
             SuggestionData goToWebsiteSuggestion,
             SuggestionData searchTheWebSuggestion,
             int maxPromotedSlots,
@@ -152,6 +154,10 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         for (SuggestionData shortcut : shortcuts) {
             mShortcutIntentKeys.add(makeSuggestionKey(shortcut));
         }
+
+        for (SuggestionResult cachedResult : cachedResults) {
+            addSourceResults(cachedResult);
+        }
     }
 
     /**
@@ -161,20 +167,6 @@ public class SourceSuggestionBacker extends SuggestionBacker {
      */
     public synchronized void reportPromotedQueryStartTime() {
         mPromotedQueryStartTime = getNow();
-    }
-
-    /**
-     * Adds a cached result; one that should be displayed as if it is a source that reported even
-     * though we are not expecting it to report via {@link #addSourceResults(SuggestionResult)}.
-     *
-     * @param result The result.
-     * @param promoted Whether it is a promoted source.
-     */
-    public synchronized void addCachedSourceResult(SuggestionResult result, boolean promoted) {
-        mSources.add(result.getSource());
-        if (promoted) mPromotedSources.add(result.getSource().getComponentName());
-
-        addSourceResults(result);
     }
 
     /**
