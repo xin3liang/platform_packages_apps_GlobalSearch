@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.Collection;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -197,8 +198,7 @@ public class SuggestionSession {
         final SuggestionSource webSearchSource = mSources.getSelectedWebSearchSource();
         final SourceSuggestionBacker backer = new SourceSuggestionBacker(
                 shortcuts,
-                // its own copy since we add cached values
-                new ArrayList<SuggestionSource>(sourcesToQuery),
+                sourcesToQuery,
                 promoted,
                 webSearchSource,
                 queryCacheResults.getResults(),
@@ -223,7 +223,7 @@ public class SuggestionSession {
                 mSessionCache,
                 query,
                 shortcutsToRefresh,
-                sourcesToQuery,
+                removeCached(sourcesToQuery, queryCacheResults),
                 promoted,
                 backer,
                 mShortcutRepo);
@@ -297,6 +297,25 @@ public class SuggestionSession {
         }
         mPreviousCursor = cursor;
         return cursor;
+    }
+
+    /**
+     * @param sources The sources
+     * @param queryCacheResults The cached results for the current query
+     * @return A list of sources not including any of the cached results.
+     */
+    private ArrayList<SuggestionSource> removeCached(
+            ArrayList<SuggestionSource> sources, QueryCacheResults queryCacheResults) {
+        final int numSources = sources.size();
+        final ArrayList<SuggestionSource> unCached = new ArrayList<SuggestionSource>(numSources);
+
+        for (int i = 0; i < numSources; i++) {
+            final SuggestionSource source = sources.get(i);
+            if (queryCacheResults.getResult(source.getComponentName()) == null) {
+                unCached.add(source);
+            }
+        }
+        return unCached;
     }
 
     /**
@@ -476,24 +495,19 @@ public class SuggestionSession {
      */
     static class QueryCacheResults {
 
-        ArrayList<SuggestionResult> mSourceResults = new ArrayList<SuggestionResult>();
+        private final LinkedHashMap<ComponentName, SuggestionResult> mSourceResults
+                = new LinkedHashMap<ComponentName, SuggestionResult>();
 
         public void addResult(SuggestionResult result) {
-            mSourceResults.add(result);
+            mSourceResults.put(result.getSource().getComponentName(), result);
         }
 
-        public List<SuggestionResult> getResults() {
-            return mSourceResults;
+        public Collection<SuggestionResult> getResults() {
+            return mSourceResults.values();
         }
 
         public SuggestionResult getResult(ComponentName source) {
-            // TODO: store hash map?
-            for (SuggestionResult sourceResult : mSourceResults) {
-                if (sourceResult.getSource().getComponentName().equals(source)) {
-                    return sourceResult;
-                }
-            }
-            return null;
+            return mSourceResults.get(source);
         }
     }
 

@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.HashMap;
+import java.util.Collection;
 
 import static com.android.globalsearch.SourceSuggestionBacker.SourceStat.ResponseStatus;
 
@@ -108,7 +109,8 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
     /**
      * @param shortcuts To be shown at top.
-     * @param sources The sources expected to report
+     * @param sources The sources that are either part of the cahced results, or that are expected
+     *        to report.
      * @param promotedSources The promoted sources expecting to report
      * @param selectedWebSearchSource the currently selected web search source
      * @param cachedResults Any results we are already privy to
@@ -125,7 +127,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
             List<SuggestionSource> sources,
             HashSet<ComponentName> promotedSources,
             SuggestionSource selectedWebSearchSource,
-            List<SuggestionResult> cachedResults,
+            Collection<SuggestionResult> cachedResults,
             SuggestionData goToWebsiteSuggestion,
             SuggestionData searchTheWebSuggestion,
             int maxPromotedSlots,
