@@ -18,10 +18,15 @@ package com.android.globalsearch;
 
 import android.database.Cursor;
 import android.content.Context;
+import android.content.ComponentName;
 import android.os.Handler;
 import android.util.Log;
 
 import java.util.concurrent.Executor;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 /**
  * Holds onto the current {@link SuggestionSession} and manages its lifecycle.  When a session ends,
@@ -93,6 +98,57 @@ public class SessionManager implements SuggestionSession.SessionCallback {
 
     private SuggestionSession createSession() {
         if (DBG) Log.d(TAG, "createSession()");
-        return new SuggestionSession(mSources, mShortcutRepo, mExecutor, mHandler, this);
+        final SuggestionSource webSearchSource = mSources.getSelectedWebSearchSource();
+        final ArrayList<SuggestionSource> enabledSources = orderSources(
+                mSources.getEnabledSources(),
+                webSearchSource == null ? null : webSearchSource.getComponentName(),
+                mShortcutRepo.getSourceRanking());
+        return new SuggestionSession(
+                mSources, enabledSources,
+                mShortcutRepo, mExecutor, mHandler, this);
+    }
+
+    /**
+     * Produces a list of sources that are ordered by source ranking.  Any sources that do not
+     * appear in the source ranking list are appended at the end.  The web search source will always
+     * be first.
+     *
+     * @param sources The sources.
+     * @param webSearchSource The name of the web search source, or <code>null</code> otherwise.
+      *@param sourceRanking The order the sources should be in.
+     * @return A list of sources that are ordered by the source ranking.
+     */
+    private ArrayList<SuggestionSource> orderSources(
+            List<SuggestionSource> sources, ComponentName webSearchSource,
+            ArrayList<ComponentName> sourceRanking) {
+
+        // get any sources that are in sourceRanking in the order
+        final int numSources = sources.size();
+        HashMap<ComponentName, SuggestionSource> linkMap =
+                new LinkedHashMap<ComponentName, SuggestionSource>(numSources);
+        for (int i = 0; i < numSources; i++) {
+            final SuggestionSource source = sources.get(i);
+            linkMap.put(source.getComponentName(), source);
+        }
+
+        ArrayList<SuggestionSource> ordered = new ArrayList<SuggestionSource>(numSources);
+
+        // start with the web source if it exists
+        if (webSearchSource != null) {
+            ordered.add(linkMap.remove(webSearchSource));
+        }
+
+        final int numRanked = sourceRanking.size();
+        for (int i = 0; i < numRanked; i++) {
+            final ComponentName name = sourceRanking.get(i);
+            final SuggestionSource source = linkMap.remove(name);
+            if (source != null) ordered.add(source);
+        }
+
+        // add any remaining (in the order they were passed in)
+        for (SuggestionSource source : linkMap.values()) {
+            ordered.add(source);
+        }
+        return ordered;
     }
 }

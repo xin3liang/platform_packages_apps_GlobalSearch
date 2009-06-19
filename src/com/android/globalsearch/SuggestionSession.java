@@ -64,6 +64,7 @@ public class SuggestionSession {
     private static final String TAG = "GlobalSearch";
 
     private final SuggestionSources mSources;
+    private final ArrayList<SuggestionSource> mEnabledSources;
     private final ShortcutRepository mShortcutRepo;
     private final Executor mExecutor;
     private final Handler mHandler;
@@ -124,18 +125,21 @@ public class SuggestionSession {
 
     /**
      * @param sources The sources to query for results
+     * @param enabledSources The enabled sources, in the order that they should be queried.
      * @param shortcutRepo How to find shortcuts for a given query
      * @param executor Used to execute the asynchronous queriies (passed along to
-     *   {@link QueryMultiplexer}
+     *        {@link QueryMultiplexer}
      * @param handler Used to post messages.
      * @param listener The listener.
      */
     public SuggestionSession(SuggestionSources sources,
-                             ShortcutRepository shortcutRepo,
-                             Executor executor,
-                             Handler handler,
-                             SessionCallback listener) {
+            ArrayList<SuggestionSource> enabledSources,
+            ShortcutRepository shortcutRepo,
+            Executor executor,
+            Handler handler,
+            SessionCallback listener) {
         mSources = sources;
+        mEnabledSources = enabledSources;
         mShortcutRepo = shortcutRepo;
         mExecutor = executor;
         mHandler = handler;
@@ -160,46 +164,12 @@ public class SuggestionSession {
         mLastCharTime = now;
         if (DBG) Log.d(TAG, "sinceLast=" + sinceLast);
 
-        final int queryLength = query.length();
         // get shortcuts
         final ArrayList<SuggestionData> shortcuts = mShortcutRepo.getShortcutsForQuery(query);
 
         // filter out sources that aren't relevant to this query
-        final SuggestionSource webSearchSource = mSources.getSelectedWebSearchSource();
-        final List<SuggestionSource> enabledSources = orderSources(
-                mSources.getEnabledSources(),
-                webSearchSource == null ? null : webSearchSource.getComponentName(),
-                mShortcutRepo.getSourceRanking()
-        );
-        final int cutoff = Math.max(1, queryLength);
-        final ArrayList<SuggestionSource> sourcesToQuery = new ArrayList<SuggestionSource>();
-        if (DBG && SPEW) Log.d(TAG, "filtering enabled sources to those we want to query...");
-        for (SuggestionSource enabledSource : enabledSources) {
-
-            // query too short
-            if (enabledSource.getQueryThreshold() > cutoff || queryLength == 0) {
-                if (DBG && SPEW) {
-                    Log.d(TAG, "skipping " + enabledSource.getLabel() + " (query thresh)");
-                }
-                continue;
-            }
-
-            final ComponentName sourceName = enabledSource.getComponentName();
-
-            // source returned zero results for a prefix of query
-            if (!enabledSource.queryAfterZeroResults()
-                    && mSessionCache.hasReportedZeroResultsForPrefix(
-                    query, sourceName)) {
-                if (DBG && SPEW) {
-                    Log.d(TAG, "skipping " + enabledSource.getLabel()
-                            + " (zero results for prefix)");
-                }
-                continue;
-            }
-
-            if (DBG && SPEW) Log.d(TAG, "adding " + enabledSource.getLabel());
-            sourcesToQuery.add(enabledSource);
-        }
+        final ArrayList<SuggestionSource> sourcesToQuery =
+                filterSourcesForQuery(query, mEnabledSources);
 
         if (DBG) Log.d(TAG, sourcesToQuery.size() + " sources will be queried.");
 
@@ -224,6 +194,7 @@ public class SuggestionSession {
         // cached source results
         final QueryCacheResults queryCacheResults = mSessionCache.getSourceResults(query);
 
+        final SuggestionSource webSearchSource = mSources.getSelectedWebSearchSource();
         final SourceSuggestionBacker backer = new SourceSuggestionBacker(
                 shortcuts,
                 // its own copy since we add cached values
@@ -329,45 +300,47 @@ public class SuggestionSession {
     }
 
     /**
-     * Produces a list of sources that are ordered by source ranking.  Any sources that do not
-     * appear in the source ranking list are appended at the end.  The web search source will always
-     * be first.
+     * Filter the sources to query based on properties of each source related to the query.
      *
-     * @param sources The sources.
-     * @param webSearchSource The name of the web search source, or <code>null</code> otherwise.
-      *@param sourceRanking The order the sources should be in.
-     * @return A list of sources that are ordered by the source ranking.
+     * @param query The query.
+     * @param enabledSources The full list of sources.
+     * @return A list of sources that should be queried.
      */
-    private ArrayList<SuggestionSource> orderSources(
-            List<SuggestionSource> sources, ComponentName webSearchSource,
-            ArrayList<ComponentName> sourceRanking) {
+    private ArrayList<SuggestionSource> filterSourcesForQuery(String query, ArrayList<SuggestionSource> enabledSources) {
+        final int queryLength = query.length();
+        final int cutoff = Math.max(1, queryLength);
+        final ArrayList<SuggestionSource> sourcesToQuery = new ArrayList<SuggestionSource>();
 
-        // get any sources that are in sourceRanking in the order
-        HashMap<ComponentName, SuggestionSource> linkMap =
-                new LinkedHashMap<ComponentName, SuggestionSource>(sources.size());
-        for (SuggestionSource source : sources) {
-            linkMap.put(source.getComponentName(), source);
-        }
-        ArrayList<SuggestionSource> ordered = new ArrayList<SuggestionSource>(sources.size());
+        if (queryLength == 0) return sourcesToQuery;
 
-        // start with the web source if it exists
-        if (webSearchSource != null) {
-            ordered.add(linkMap.remove(webSearchSource));
-        }
+        if (DBG && SPEW) Log.d(TAG, "filtering enabled sources to those we want to query...");
+        for (SuggestionSource enabledSource : enabledSources) {
 
-        for (ComponentName name : sourceRanking) {
-            final SuggestionSource source = linkMap.get(name);
-            if (source != null) {
-                ordered.add(source);
-                linkMap.remove(name);
+            // query too short
+            if (enabledSource.getQueryThreshold() > cutoff) {
+                if (DBG && SPEW) {
+                    Log.d(TAG, "skipping " + enabledSource.getLabel() + " (query thresh)");
+                }
+                continue;
             }
-        }
 
-        // add any remaining (in the order they were passed in)
-        for (SuggestionSource source : linkMap.values()) {
-            ordered.add(source);
+            final ComponentName sourceName = enabledSource.getComponentName();
+
+            // source returned zero results for a prefix of query
+            if (!enabledSource.queryAfterZeroResults()
+                    && mSessionCache.hasReportedZeroResultsForPrefix(
+                    query, sourceName)) {
+                if (DBG && SPEW) {
+                    Log.d(TAG, "skipping " + enabledSource.getLabel()
+                            + " (zero results for prefix)");
+                }
+                continue;
+            }
+
+            if (DBG && SPEW) Log.d(TAG, "adding " + enabledSource.getLabel());
+            sourcesToQuery.add(enabledSource);
         }
-        return ordered;
+        return sourcesToQuery;
     }
 
     /**

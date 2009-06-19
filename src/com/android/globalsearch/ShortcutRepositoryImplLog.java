@@ -40,7 +40,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
     private static final String TAG = "GlobalSearch";
 
     private static final String DB_NAME = "shortcuts-log.db";
-    private static final int DB_VERSION = 17;
+    private static final int DB_VERSION = 18;
 
     private static final String HAS_HISTORY_QUERY =
         "SELECT " + Shortcuts.intent_key.fullName + " FROM " + Shortcuts.TABLE_NAME;
@@ -53,7 +53,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
     private static final String SOURCE_RANKING_SQL = buildSourceRankingSql();
 
     private DbOpenHelper mOpenHelper;
-
+    
     /**
      * @param context Used to create / open db
      * @param name The name of the database to create.
@@ -171,6 +171,37 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
         }
     }
 
+    /**
+     * This is an aggregate table of {@link SourceLog} that stays up to date with the total
+     * clicks and impressions for each source.  This makes computing the source ranking more
+     * more efficient, at the expense of some extra work when the source clicks and impressions
+     * are reported at the end of the session.
+     */
+    enum SourceStats {
+        component,
+        total_clicks,
+        total_impressions;
+
+        static final String TABLE_NAME = "sourcetotals";
+
+        static final String[] COLUMNS = initColumns();
+
+        private static String[] initColumns() {
+            SourceStats[] vals = SourceStats.values();
+            String[] columns = new String[vals.length];
+            for (int i = 0; i < vals.length; i++) {
+                columns[i] = vals[i].fullName;
+            }
+            return columns;
+        }
+
+        public final String fullName;
+
+        SourceStats() {
+            fullName = TABLE_NAME + "." + name();
+        }
+    }
+
     @Override
     protected DbOpenHelper getOpenHelper() {
         return mOpenHelper;
@@ -178,7 +209,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
 
     @Override
     public boolean hasHistory() {
-        SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+        SQLiteDatabase db = mOpenHelper.getReadableDatabase();
         Cursor cursor = db.rawQuery(HAS_HISTORY_QUERY, null);
         try {
             if (DBG) Log.d(TAG, "hasHistory(): cursor=" + cursor);
@@ -261,7 +292,8 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
     @Override
     protected void reportStats(SessionStats stats, long now) {
         logClicked(stats, now);
-        logSourceImpressions(stats, now);
+        logSourceEvents(stats, now);
+        postSourceEventCleanup(now);
     }
 
     private void logClicked(SessionStats stats, long now) {
@@ -324,12 +356,10 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
         }
     }
 
-    private void logSourceImpressions(SessionStats stats, long now) {
+    private void logSourceEvents(SessionStats stats, long now) {
         final SuggestionData clicked = stats.getClicked();
         final SQLiteDatabase db = mOpenHelper.getWritableDatabase();
 
-        // TODO: i'm assuming using a transaction improves bulk insert time? verify this,
-        // since we don't really need it to be transactional
         db.beginTransaction();
         final ContentValues cv = new ContentValues();
         try {
@@ -354,6 +384,32 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
         } finally {
             db.endTransaction();
         }
+    }
+
+    /**
+     * Execute queries necessary to keep things up to date after inserting into {@link SourceLog}.
+     *
+     * Note: we aren't using a TRIGGER because there are usually several writes to the log at a
+     * time, and triggers execute on each individual row insert.
+     *
+     * @param now Millis since epoch of "now".
+     */
+    private void postSourceEventCleanup(long now) {
+        SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+
+        // purge old log entries
+        db.execSQL("DELETE FROM " + SourceLog.TABLE_NAME + " WHERE "
+                + SourceLog.time.name() + " <"
+                + now + " - " + MAX_SOURCE_EVENT_AGE_MILLIS + ";");
+
+        // update the source stats
+        final String columns = SourceLog.component + "," +
+                "SUM(" + SourceLog.click_count.fullName + ")" + "," +
+                "SUM(" + SourceLog.impression_count.fullName + ")";
+        db.execSQL("DELETE FROM " + SourceStats.TABLE_NAME);
+        db.execSQL("INSERT INTO " + SourceStats.TABLE_NAME  + " "
+                + "SELECT " + columns + " FROM " + SourceLog.TABLE_NAME + " GROUP BY "
+                + SourceLog.component.name());
     }
 
     @Override
@@ -400,7 +456,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
     }
 
     private ComponentName sourceFromCursor(Cursor cursor) {
-        return ComponentName.unflattenFromString(cursor.getString(SourceLog.component.ordinal()));
+        return ComponentName.unflattenFromString(cursor.getString(SourceStats.component.ordinal()));
     }
 
     /**
@@ -447,17 +503,16 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
 
     private static String buildSourceRankingSql() {
         // construct ordering expression based on a click through rate with priors:
-        // "1000*(SUM(click_count)+$1)/(SUM(impression_count)+$2)"
-        final String sumClicks = "SUM(" + SourceLog.click_count + ")";
-        final String sumImpressions = "SUM(" + SourceLog.impression_count + ")";
-        final String totalClicksExpr = "(" + sumClicks + "+ ?1)";
-        final String totalImpressionsExpr = "(" + sumImpressions + "+ ?2)";
+        // "(total_clicks+$1)/(total_impressions+$2)"
+        final String totalClicksExpr = "(" + SourceStats.total_clicks.name() + " + ?1)";
+        final String totalImpressionsExpr =
+                "(" + SourceStats.total_impressions.name() + " + ?2)";
         final String orderingExpr = "1000*" + totalClicksExpr + "/" + totalImpressionsExpr;
 
-        final String tables = SourceLog.TABLE_NAME;
-        final String[] columns = SourceLog.COLUMNS;
+        final String tables = SourceStats.TABLE_NAME;
+        final String[] columns = SourceStats.COLUMNS;
         final String where = null;
-        final String groupBy = SourceLog.component.name();
+        final String groupBy = null;
         final String having = null;
         final String orderBy = orderingExpr + " DESC";
         final String limit = null;
@@ -572,7 +627,11 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
                     SourceLog.impression_count + " INTEGER);"
             );
 
-            // TODO: add trigger to purge source log data older than X~30 days
+            db.execSQL("CREATE TABLE " + SourceStats.TABLE_NAME + " ( " +
+                    SourceStats.component.name() + " TEXT NOT NULL COLLATE UNICODE PRIMARY KEY, " +
+                    SourceStats.total_clicks + " INTEGER, " +
+                    SourceStats.total_impressions + " INTEGER);"
+                    );
         }
 
         @Override
@@ -584,6 +643,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
             db.execSQL("DROP TABLE IF EXISTS " + ClickLog.TABLE_NAME);
             db.execSQL("DROP TABLE IF EXISTS " + Shortcuts.TABLE_NAME);
             db.execSQL("DROP TABLE IF EXISTS " + SourceLog.TABLE_NAME);
+            db.execSQL("DROP TABLE IF EXISTS " + SourceStats.TABLE_NAME);
         }
 
         @Override
@@ -591,6 +651,7 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
             db.delete(ClickLog.TABLE_NAME, null, null);
             db.delete(Shortcuts.TABLE_NAME, null, null);
             db.delete(SourceLog.TABLE_NAME, null, null);
+            db.delete(SourceStats.TABLE_NAME, null, null);
         }
     }
 }

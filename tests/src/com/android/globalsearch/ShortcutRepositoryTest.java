@@ -532,6 +532,28 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
                 CONTACTS_COMPONENT, APP_COMPONENT);        
     }
 
+    public void testOldSourceStatsDontCount() {
+        // apps were popular back in the day
+        final long toOld = ShortcutRepository.MAX_SOURCE_EVENT_AGE_MILLIS + 1;
+        sourceImpression(APP_COMPONENT, true, NOW - toOld);
+        sourceImpression(APP_COMPONENT, true, NOW - toOld);
+        sourceImpression(APP_COMPONENT, true, NOW - toOld);
+        sourceImpression(APP_COMPONENT, true, NOW - toOld);
+
+        // more recently apps has bombed
+        sourceImpression(APP_COMPONENT, false, NOW);
+        sourceImpression(APP_COMPONENT, false, NOW);
+
+        // and apps is 1/2
+        sourceImpression(CONTACTS_COMPONENT, true, NOW);
+        sourceImpression(CONTACTS_COMPONENT, false, NOW);
+
+        assertContentsInOrder(
+                "old clicks for apps shouldn't count.",
+                mRepo.getSourceRanking(0, 0),
+                CONTACTS_COMPONENT, APP_COMPONENT);
+    }
+
     protected void sourceImpressions(ComponentName source, int clicks, int impressions) {
         if (clicks > impressions) throw new IllegalArgumentException("ya moran!");
 
@@ -547,6 +569,16 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
      * @param click Whether to register a click in addition to the impression.
      */
     protected void sourceImpression(ComponentName source, boolean click) {
+        sourceImpression(source, click, NOW);
+    }
+
+    /**
+     * Simulate an impression, and optionally a click, on a source.
+     *
+     * @param source The name of the source.
+     * @param click Whether to register a click in addition to the impression.
+     */
+    protected void sourceImpression(ComponentName source, boolean click, long now) {
         SuggestionData suggestionClicked = !click ?
                 null :
                 new SuggestionData.Builder(source)
@@ -558,8 +590,9 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
         mRepo.reportStats(
                 new SessionStats("a",
                         suggestionClicked,
-                        Lists.newArrayList(source)), NOW);
+                        Lists.newArrayList(source)), now);
     }
+
 
     static void assertContentsInOrder(Iterable<?> actual, Object... expected) {
         assertContentsInOrder(null, actual, expected);
