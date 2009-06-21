@@ -694,8 +694,8 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName2, 1),
                 makeSourceResult(mName1, 2),  // remaining slots (source 3 is not promoted)
                 mSearchTheWeb,
-                mMoreNotExpanded,
-                makePinToBottomSourceResult(mName1, 4));
+                makePinToBottomSourceResult(mName1, 4),
+                mMoreNotExpanded);
 
         assertContentsInOrder(
                 "pin to bottom expanded.",
@@ -707,11 +707,11 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName2, 1),
                 makeSourceResult(mName1, 2),
                 mSearchTheWeb,
+                makePinToBottomSourceResult(mName1, 4),
                 mMoreExpanded,
                 makeCorpusEntry(SOURCE1_LABEL, ResponseStatus.Finished, 1),  // 1 remaining
                 makeCorpusEntry(SOURCE2_LABEL, ResponseStatus.Finished, 2),  // 2 remaining
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.Finished, 4),
-                makePinToBottomSourceResult(mName1, 4));
+                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.Finished, 4));
     }
 
     /**
