@@ -47,6 +47,7 @@ public class SuggestionSources {
     private static final int WEB_RESULTS_OVERRIDE_LIMIT = 20;
 
     private Context mContext;
+    private SearchManager mSearchManager;
 
     private boolean mLoaded;
 
@@ -70,6 +71,7 @@ public class SuggestionSources {
      */
     public SuggestionSources(Context context) {
         mContext = context;
+        mSearchManager = (SearchManager) context.getSystemService(Context.SEARCH_SERVICE);
         mLoaded = false;
     }
 
@@ -228,7 +230,7 @@ public class SuggestionSources {
     }
 
     private void addExternalSources()  {
-        for (SearchableInfo searchable : SearchManager.getSearchablesInGlobalSearch()) {
+        for (SearchableInfo searchable : mSearchManager.getSearchablesInGlobalSearch()) {
             SuggestionSource source = new SearchableSuggestionSource(mContext, searchable);
             addSuggestionSource(source);
         }
@@ -264,7 +266,7 @@ public class SuggestionSources {
                 Settings.System.SHOW_WEB_SUGGESTIONS,
                 1 /* default on until user actually changes it */) == 1) {
             mSelectedWebSearchSource = null;
-            SearchableInfo webSearchable = SearchManager.getDefaultSearchableForWebSearch();
+            SearchableInfo webSearchable = mSearchManager.getDefaultSearchableForWebSearch();
             if (webSearchable != null) {
                 if (DBG) Log.d(TAG, "Adding web source " + webSearchable.getSearchActivity());
                 // Construct a SearchableSuggestionSource around the web search source. Allow

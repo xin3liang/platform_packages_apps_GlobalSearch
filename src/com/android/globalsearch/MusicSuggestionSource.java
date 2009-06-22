@@ -37,7 +37,9 @@ public class MusicSuggestionSource extends SearchableSuggestionSource {
      * Factory method.
      */
     public static MusicSuggestionSource create(Context context) {
-        SearchableInfo si = SearchManager.getSearchableInfo(MUSIC_COMPONENT, false);
+        SearchManager searchManager = (SearchManager)
+                context.getSystemService(Context.SEARCH_SERVICE);
+        SearchableInfo si = searchManager.getSearchableInfo(MUSIC_COMPONENT, false);
         if (si == null) {
             return null;
         }

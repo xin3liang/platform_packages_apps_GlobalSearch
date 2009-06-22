@@ -20,6 +20,7 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.SearchManager;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -60,6 +61,8 @@ public class SearchSettings extends PreferenceActivity
     private static final String SHOW_WEB_SUGGESTIONS_PREF = "show_web_suggestions";
     private static final String SEARCH_SOURCES_PREF = "search_sources";
 
+    private SearchManager mSearchManager;
+
     // These instances are not shared with SuggestionProvider
     private SuggestionSources mSources;
     private ShortcutRepository mShortcuts;
@@ -77,6 +80,8 @@ public class SearchSettings extends PreferenceActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mSearchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
 
         mSources = new SuggestionSources(this);
         mSources.load();
@@ -129,7 +134,7 @@ public class SearchSettings extends PreferenceActivity
 
         // Get the list of all packages handling intent action web search, these are the providers
         // that we display in the selection list.
-        List<SearchableInfo> webSearchActivities = SearchManager.getSearchablesForWebSearch();
+        List<SearchableInfo> webSearchActivities = mSearchManager.getSearchablesForWebSearch();
         PackageManager pm = getPackageManager();
 
         ArrayList<String> labels = new ArrayList<String>();
@@ -382,7 +387,7 @@ public class SearchSettings extends PreferenceActivity
             ComponentName activity = ComponentName.unflattenFromString(valueStr);
             if (DBG) Log.i(TAG, "Setting default web search source as " + valueStr);
 
-            SearchManager.setDefaultWebSearch(activity);
+            mSearchManager.setDefaultWebSearch(activity);
             updateSearchEngineSettingsPreference(valueStr);
         } else {
             broadcastSettingsChanged();

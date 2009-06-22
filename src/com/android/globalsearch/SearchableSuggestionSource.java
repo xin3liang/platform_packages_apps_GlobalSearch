@@ -560,7 +560,9 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * is not searchable.
      */
     public static SearchableSuggestionSource create(Context context, ComponentName componentName) {
-        SearchableInfo si = SearchManager.getSearchableInfo(componentName, false);
+        SearchManager searchManager = (SearchManager)
+                context.getSystemService(Context.SEARCH_SERVICE);
+        SearchableInfo si = searchManager.getSearchableInfo(componentName, false);
         if (si == null) {
             return null;
         }
@@ -581,7 +583,9 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      */
     public static SearchableSuggestionSource create(Context context, ComponentName componentName,
             int maxResultsOverride) {
-        SearchableInfo si = SearchManager.getSearchableInfo(componentName, false);
+        SearchManager searchManager = (SearchManager)
+                context.getSystemService(Context.SEARCH_SERVICE);
+        SearchableInfo si = searchManager.getSearchableInfo(componentName, false);
         if (si == null) {
             return null;
         }

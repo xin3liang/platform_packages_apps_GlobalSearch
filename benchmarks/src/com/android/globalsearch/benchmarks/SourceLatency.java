@@ -52,12 +52,15 @@ public class SourceLatency extends Activity {
 
     private static final String TAG = "SourceLatency";
 
+    private SearchManager mSearchManager;
+
     private ExecutorService mExecutorService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        mSearchManager = (SearchManager) getSystemService(SEARCH_SERVICE);
         mExecutorService = Executors.newSingleThreadExecutor();
     }
 
@@ -69,7 +72,7 @@ public class SourceLatency extends Activity {
     }
 
     private SearchableInfo getSearchable(ComponentName componentName) {
-        SearchableInfo searchable = SearchManager.getSearchableInfo(componentName, false);
+        SearchableInfo searchable = mSearchManager.getSearchableInfo(componentName, false);
         if (searchable == null || searchable.getSuggestAuthority() == null) {
             throw new RuntimeException("Component is not searchable: "
                     + componentName.flattenToShortString());
@@ -151,7 +154,7 @@ public class SourceLatency extends Activity {
         Cursor cursor = null;
         try {
             final long start = System.nanoTime();
-            cursor = SearchManager.getSuggestions(SourceLatency.this, searchable, query);
+            cursor = mSearchManager.getSuggestions(searchable, query);
             long end = System.nanoTime();
             long elapsed = end - start;
             if (cursor == null) {
@@ -186,7 +189,7 @@ public class SourceLatency extends Activity {
 
         public LiveSourceCheck(String src, ComponentName componentName, String query) {
             mSrc = src;
-            mSearchable = SearchManager.getSearchableInfo(componentName, false);
+            mSearchable = mSearchManager.getSearchableInfo(componentName, false);
             assert(mSearchable != null);
             assert(mSearchable.getSuggestAuthority() != null);
             mQuery = query;
@@ -196,7 +199,7 @@ public class SourceLatency extends Activity {
             Cursor cursor = null;
             try {
                 final long start = System.nanoTime();
-                cursor = SearchManager.getSuggestions(SourceLatency.this, mSearchable, mQuery);
+                cursor = mSearchManager.getSuggestions(mSearchable, mQuery);
                 long end = System.nanoTime();
                 long elapsed = (end - start);
                 if (cursor == null) {

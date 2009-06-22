@@ -18,6 +18,7 @@ package com.android.globalsearch;
 
 import android.app.SearchManager;
 import android.content.ComponentName;
+import android.content.Context;
 import android.server.search.SearchableInfo;
 import android.test.AndroidTestCase;
 
@@ -31,7 +32,9 @@ public class GlobalSearchTest extends AndroidTestCase {
                     "com.android.globalsearch.GlobalSearch");
     
     public void testDefaultSearchable() {
-        SearchableInfo si = SearchManager.getSearchableInfo(null, true);
+        SearchManager searchManager = (SearchManager)
+                getContext().getSystemService(Context.SEARCH_SERVICE);
+        SearchableInfo si = searchManager.getSearchableInfo(null, true);
         assertNotNull("No default searchable.", si);
         assertEquals("GlobalSearch is not the default searchable.", 
                 GLOBAL_SEARCH_COMPONENT, si.getSearchActivity());
