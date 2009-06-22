@@ -71,8 +71,9 @@ public class SuggestionFactory implements SourceSuggestionBacker.MoreExpanderFac
                 if (desc.length() > 0) {
                     desc.append(appSeparator).append(" ");
                 }
-                desc.append(getCountString(sourceStat.getLabel(),
-                        suggestionCount, sourceStat.getQueryLimit()));
+                desc.append(sourceStat.getLabel()).append(": ")
+                        .append(getCountString(suggestionCount, sourceStat.getQueryLimit()));
+
             }
         }
         int icon = expanded ? R.drawable.more_results_expanded : R.drawable.more_results;
@@ -99,15 +100,15 @@ public class SuggestionFactory implements SourceSuggestionBacker.MoreExpanderFac
      * @return If the {@code count} is exact, the value of {@code count} is returned.
      *         Otherwise, a rounded valued followed by "+" is returned.
      */
-    private String getCountString(String appLabel, int count, int limit) {
+    private String getCountString(int count, int limit) {
         if (limit == 0 || count < limit) {
-            return mContext.getString(R.string.result_count_app_exact, appLabel, count);
+            return String.valueOf(count);
         } else {
             if (limit > 10) {
                 // round to nearest lower multiple of 10
                 count = 10 * ((limit - 1) / 10);
             }
-            return mContext.getString(R.string.result_count_app_at_least, appLabel, count);
+            return count + "+";
         }
     }
 

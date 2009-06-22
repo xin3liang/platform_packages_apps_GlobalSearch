@@ -86,14 +86,6 @@
         <item quantity="other">%d additional results</item>
     </plurals>
 
-    <!-- An exact source result count in the subtitle of the "More results..."
-         list item of global search. The final string might look like: "Contacts: 8". -->
-    <string name="result_count_app_exact">%1$s: %2$d</string>
-
-    <!-- A lower bound source result count in the subtitle of the "More results..."
-         list item of global search. The final string might look like: "Contacts: 20+". -->
-    <string name="result_count_app_at_least">%1$s: %2$d+</string>
-
     <!-- The separator character used for distinguishing different apps
          and their result counts in the "More results..." list item of global
          search. For example, if it's a comma (,), then the final string might look
