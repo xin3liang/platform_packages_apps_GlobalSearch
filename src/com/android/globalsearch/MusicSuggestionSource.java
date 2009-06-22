@@ -54,7 +54,7 @@ public class MusicSuggestionSource extends SearchableSuggestionSource {
     }
 
     @Override
-    protected String getDescription(Cursor cursor) {
+    protected String getDescription(ColumnCachingCursor cursor) {
         // TODO: Do this in a less hacky way. Probably better to have the MediaProvider return
         //       a type in the 'extra data' column to be read here.
         String contentUri = super.getIntentData(cursor);
@@ -70,7 +70,7 @@ public class MusicSuggestionSource extends SearchableSuggestionSource {
     }
 
     @Override
-    protected String getIcon1(Cursor cursor) {
+    protected String getIcon1(ColumnCachingCursor cursor) {
         // TODO: Do this in a less hacky way. Probably better to have the MediaProvider return
         //       a type in the 'extra data' column to be read here.
         String contentUri = super.getIntentData(cursor);

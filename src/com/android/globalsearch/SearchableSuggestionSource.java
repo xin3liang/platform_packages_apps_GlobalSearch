@@ -26,6 +26,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
 import android.database.Cursor;
+import android.database.CursorWrapper;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.server.search.SearchableInfo;
@@ -33,6 +34,8 @@ import android.util.Log;
 import android.view.KeyEvent;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 
 /**
  * Suggestion source that uses the {@link SearchableInfo} of a given component
@@ -63,7 +66,11 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     
     // An override value for the max number of results to provide.
     private int mMaxResultsOverride;
-    
+
+    // Action key info for KEYCODE_CALL
+    private String mCallActionMsg = null;
+    private String mCallActionMsgCol = null;
+
     // A private column the web search source uses to instruct us to pin a result
     // (like "Manage search history") to the bottom of the list when appropriate.
     private static final String SUGGEST_COLUMN_PIN_TO_BOTTOM = "suggest_pin_to_bottom";
@@ -83,6 +90,13 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         mLabel = findLabel();
         mIcon = findIcon();
         mMaxResultsOverride = 0;
+
+        SearchableInfo.ActionKeyInfo actionCall = mSearchable.findActionKey(KeyEvent.KEYCODE_CALL);
+        if (actionCall != null) {
+            mCallActionMsg = actionCall.getSuggestActionMsg();
+            mCallActionMsgCol = actionCall.getSuggestActionMsgColumn();
+        }
+
     }
     
     public SearchableSuggestionSource(Context context, SearchableInfo searchable,
@@ -138,18 +152,19 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
 
             maxResults = (mMaxResultsOverride > 0) ? mMaxResultsOverride : maxResults;
 
-            ArrayList<SuggestionData> suggestions
-                    = new ArrayList<SuggestionData>(cursor.getCount());
+            int count = cursor.getCount();
+            ColumnCachingCursor myCursor = new ColumnCachingCursor(cursor, mCallActionMsgCol);
+            ArrayList<SuggestionData> suggestions = new ArrayList<SuggestionData>(count);
             while (cursor.moveToNext() && suggestions.size() < maxResults) {
                 if (Thread.interrupted()) {
                     return mEmptyResult;
                 }
-                SuggestionData suggestion = makeSuggestion(cursor);
+                SuggestionData suggestion = makeSuggestion(myCursor);
                 if (suggestion != null) {
                     suggestions.add(suggestion);
                 }
             }
-            return new SuggestionResult(this, suggestions, cursor.getCount(), queryLimit);
+            return new SuggestionResult(this, suggestions, count, queryLimit);
         } finally {
             if (cursor != null) {
                 cursor.close();
@@ -219,6 +234,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     protected SuggestionData validateShortcut(String shortcutId) {
         Cursor cursor = getValidationCursor(shortcutId);
         if (cursor == null) return null;
+        
         try {
             int count = cursor.getCount();
             if (count == 0) return null;
@@ -226,7 +242,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
                 Log.w(LOG_TAG, "received " + count + " results for validation of a single shortcut");
             }
             cursor.moveToNext();
-            return makeSuggestion(cursor);
+            return makeSuggestion(new ColumnCachingCursor(cursor, mCallActionMsgCol));
         } finally {
           cursor.close();
         }
@@ -271,7 +287,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * @return A suggestion, or <code>null</code> if no suggestion can be made
      * from the current record.
      */
-    protected SuggestionData makeSuggestion(Cursor cursor) {
+    protected SuggestionData makeSuggestion(ColumnCachingCursor cursor) {
         String format = getFormat(cursor);
         String title = getTitle(cursor);
         String description = getDescription(cursor);
@@ -318,8 +334,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * @return The value of the optional {@link SearchManager#SUGGEST_COLUMN_FORMAT} column,
      *         or <code>null</code> if the cursor does not contain that column.
      */
-    protected String getFormat(Cursor cursor) {
-        return getColumnString(cursor, SearchManager.SUGGEST_COLUMN_FORMAT);
+    protected String getFormat(ColumnCachingCursor cursor) {
+        return cursor.getColumnString(ColumnCachingCursor.FORMAT);
     }
 
     /**
@@ -328,8 +344,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      *
      * @return The value of the required {@link SearchManager#SUGGEST_COLUMN_TEXT_1} column.
      */
-    protected String getTitle(Cursor cursor) {
-        return getColumnString(cursor, SearchManager.SUGGEST_COLUMN_TEXT_1);
+    protected String getTitle(ColumnCachingCursor cursor) {
+        return cursor.getColumnString(ColumnCachingCursor.TEXT_1);
     }
 
     /**
@@ -339,8 +355,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * @return The value of the {@link SearchManager#SUGGEST_COLUMN_TEXT_1} column.
      * or <code>null</code> if the cursor does not contain that column.
      */
-    protected String getDescription(Cursor cursor) {
-        return getColumnString(cursor, SearchManager.SUGGEST_COLUMN_TEXT_2);
+    protected String getDescription(ColumnCachingCursor cursor) {
+        return cursor.getColumnString(ColumnCachingCursor.TEXT_2);
     }
 
     /**
@@ -356,9 +372,9 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * @return The value of the {@link SearchManager#SUGGEST_COLUMN_ICON_1} column,
      * or the value of {@link #getIcon()} if the cursor does not contain that column.
      */
-    protected String getIcon1(Cursor cursor) {
+    protected String getIcon1(ColumnCachingCursor cursor) {
         // Get the icon provided in the cursor. If none, get the source's icon.
-        String icon = getIcon(cursor, SearchManager.SUGGEST_COLUMN_ICON_1);
+        String icon = getIcon(cursor, ColumnCachingCursor.ICON_1);
         if (icon == null) {
             icon = getIcon();  // the app's icon
         }
@@ -375,16 +391,16 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * @return The value of the {@link SearchManager#SUGGEST_COLUMN_ICON_2} column,
      * or <code>null</code> if the cursor does not contain that column.
      */
-    protected String getIcon2(Cursor cursor) {
-        return getIcon(cursor, SearchManager.SUGGEST_COLUMN_ICON_2);
+    protected String getIcon2(ColumnCachingCursor cursor) {
+        return getIcon(cursor, ColumnCachingCursor.ICON_2);
     }
 
     /**
      * Gets an icon URI from a cursor. If the cursor returns a resource ID,
      * this is converted into an android.resource:// URI.
      */
-    protected String getIcon(Cursor cursor, String columnName) {
-        String icon = getColumnString(cursor, columnName);
+    protected String getIcon(ColumnCachingCursor cursor, int key) {
+        String icon = cursor.getColumnString(key);
         if (icon == null || icon.length() == 0 || "0".equals(icon)) {
             // SearchManager specifies that null or zero can be returned to indicate
             // no icon. We also allow empty string.
@@ -399,8 +415,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     /**
      * Gets the intent action for the current entry.
      */
-    protected String getIntentAction(Cursor cursor) {
-        String intentAction = getColumnString(cursor, SearchManager.SUGGEST_COLUMN_INTENT_ACTION);
+    protected String getIntentAction(ColumnCachingCursor cursor) {
+        String intentAction = cursor.getColumnString(ColumnCachingCursor.INTENT_ACTION);
         if (intentAction == null) {
             intentAction = mSearchable.getSuggestIntentAction();
         }
@@ -411,15 +427,15 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * Gets the intent data for the current entry. This includes the value of
      * {@link SearchManager#SUGGEST_COLUMN_INTENT_DATA_ID}.
      */
-    protected String getIntentData(Cursor cursor) {
-        String intentData = getColumnString(cursor, SearchManager.SUGGEST_COLUMN_INTENT_DATA);
+    protected String getIntentData(ColumnCachingCursor cursor) {
+        String intentData = cursor.getColumnString(ColumnCachingCursor.INTENT_DATA);
         if (intentData == null) {
             intentData = mSearchable.getSuggestIntentData();
         }
         if (intentData == null) {
             return null;
         }
-        String intentDataId = getColumnString(cursor, SearchManager.SUGGEST_COLUMN_INTENT_DATA_ID);
+        String intentDataId = cursor.getColumnString(ColumnCachingCursor.INTENT_DATA_ID);
         return intentDataId == null ? intentData : intentData + "/" + Uri.encode(intentDataId);
     }
 
@@ -429,8 +445,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * @return The value of the {@link SearchManager#SUGGEST_COLUMN_INTENT_EXTRA_DATA} column,
      * or <code>null</code> if the cursor does not contain that column.
      */
-    protected String getIntentExtraData(Cursor cursor) {
-        return getColumnString(cursor, SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA);
+    protected String getIntentExtraData(ColumnCachingCursor cursor) {
+        return cursor.getColumnString(ColumnCachingCursor.INTENT_EXTRA_DATA);
     }
 
     /**
@@ -439,8 +455,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * @return The value of the {@link SearchManager#SUGGEST_COLUMN_QUERY} column,
      * or <code>null</code> if the cursor does not contain that column.
      */
-    protected String getQuery(Cursor cursor) {
-        return getColumnString(cursor, SearchManager.SUGGEST_COLUMN_QUERY);
+    protected String getQuery(ColumnCachingCursor cursor) {
+        return cursor.getColumnString(ColumnCachingCursor.QUERY);
     }
 
     /**
@@ -449,8 +465,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * @return The value of the {@link SearchManager#SUGGEST_COLUMN_SHORTCUT_ID} column,
      * or <code>null</code> if the cursor does not contain that column.
      */
-    protected String getShortcutId(Cursor cursor) {
-        return getColumnString(cursor, SearchManager.SUGGEST_COLUMN_SHORTCUT_ID);
+    protected String getShortcutId(ColumnCachingCursor cursor) {
+        return cursor.getColumnString(ColumnCachingCursor.SHORTCUT_ID);
     }
     
     /**
@@ -459,8 +475,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * @return The value of the {@link #SUGGEST_COLUMN_PIN_TO_BOTTOM} column, or
      * <code>false</code> if the cursor does not contain that column.
      */
-    protected boolean isPinToBottom(Cursor cursor) {
-        return "true".equals(getColumnString(cursor, SUGGEST_COLUMN_PIN_TO_BOTTOM));
+    protected boolean isPinToBottom(ColumnCachingCursor cursor) {
+        return "true".equals(cursor.getColumnString(ColumnCachingCursor.PIN_TO_BOTTOM));
     }
     
     /**
@@ -469,25 +485,19 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      * @return The value of the {@link SearchManager#SUGGEST_COLUMN_SPINNER_WHILE_REFRESHING}
      * column, or <code>false</code> if the cursor does not contain that column.
      */
-    protected boolean isSpinnerWhileRefreshing(Cursor cursor) {
-        return "true".equals(
-                getColumnString(cursor, SearchManager.SUGGEST_COLUMN_SPINNER_WHILE_REFRESHING));
+    protected boolean isSpinnerWhileRefreshing(ColumnCachingCursor cursor) {
+        return "true".equals(cursor.getColumnString(ColumnCachingCursor.SPINNER_WHILE_REFRESHING));
     }
 
     /**
      * Gets the action message for the CALL key for the current entry.
      */
-    protected String getActionMsgCall(Cursor cursor) {
-        SearchableInfo.ActionKeyInfo actionKey = mSearchable.findActionKey(KeyEvent.KEYCODE_CALL);
-        if (actionKey == null) {
-            return null;
+    protected String getActionMsgCall(ColumnCachingCursor cursor) {
+        String suggestActionMsg = cursor.getColumnString(ColumnCachingCursor.ACTION_MSG_CALL);
+        if (suggestActionMsg == null) {
+            suggestActionMsg = mCallActionMsg;
         }
-        String suggestActionMsg = null;
-        String suggestActionMsgCol = actionKey.getSuggestActionMsgColumn();
-        if (suggestActionMsgCol != null) {
-            suggestActionMsg = getColumnString(cursor, suggestActionMsgCol);
-        }
-        return suggestActionMsg != null ? suggestActionMsg : actionKey.getSuggestActionMsg();
+        return suggestActionMsg;
     }
 
     private String findLabel() {
@@ -528,22 +538,6 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     @Override
     public String toString() {
         return super.toString() + "{component=" + mFlattenedComponentName + "}";
-    }
-
-    /**
-     * Gets the value of a string column by name.
-     *
-     * @param cursor Cursor to read the value from.
-     * @param columnName The name of the column to read.
-     * @return The value of the given column, or <code>null</null>
-     * if the cursor does not contain the given column.
-     */
-    protected static String getColumnString(Cursor cursor, String columnName) {
-        int col = cursor.getColumnIndex(columnName);
-        if (col == -1) {
-            return null;
-        }
-        return cursor.getString(col);
     }
 
     /**
@@ -596,6 +590,92 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
      */
     public boolean queryAfterZeroResults() {
         return mSearchable.queryAfterZeroResults();
+    }
+
+    /**
+     * Wraps a cursor and caches column indexes.
+     */
+    public static class ColumnCachingCursor extends CursorWrapper {
+        // These index into mIndices.
+        public static final int FORMAT = 0;
+        public static final int TEXT_1 = FORMAT + 1;
+        public static final int TEXT_2 = TEXT_1 + 1;
+        public static final int ICON_1 = TEXT_2 + 1;
+        public static final int ICON_2 = ICON_1 + 1;
+        public static final int QUERY = ICON_2 + 1;
+        public static final int INTENT_ACTION = QUERY + 1;
+        public static final int INTENT_DATA = INTENT_ACTION + 1;
+        public static final int INTENT_DATA_ID = INTENT_DATA + 1;
+        public static final int INTENT_EXTRA_DATA = INTENT_DATA_ID + 1;
+        public static final int SHORTCUT_ID = INTENT_EXTRA_DATA + 1;
+        public static final int SPINNER_WHILE_REFRESHING = SHORTCUT_ID + 1;
+        public static final int PIN_TO_BOTTOM = SPINNER_WHILE_REFRESHING + 1;
+        public static final int ACTION_MSG_CALL = PIN_TO_BOTTOM + 1;
+        private static final int KEY_COUNT = ACTION_MSG_CALL + 1;
+
+        // Maps column names to the constants above
+        private static final HashMap<String,Integer> mKeys = buildKeys();
+
+        private static HashMap<String,Integer> buildKeys() {
+            HashMap<String,Integer> map = new HashMap<String,Integer>();
+            map.put(SearchManager.SUGGEST_COLUMN_FORMAT, FORMAT);
+            map.put(SearchManager.SUGGEST_COLUMN_TEXT_1, TEXT_1);
+            map.put(SearchManager.SUGGEST_COLUMN_TEXT_2, TEXT_2);
+            map.put(SearchManager.SUGGEST_COLUMN_ICON_1, ICON_1);
+            map.put(SearchManager.SUGGEST_COLUMN_ICON_2, ICON_2);
+            map.put(SearchManager.SUGGEST_COLUMN_QUERY, QUERY);
+            map.put(SearchManager.SUGGEST_COLUMN_INTENT_ACTION, INTENT_ACTION);
+            map.put(SearchManager.SUGGEST_COLUMN_INTENT_DATA, INTENT_DATA);
+            map.put(SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA, INTENT_EXTRA_DATA);
+            map.put(SearchManager.SUGGEST_COLUMN_SHORTCUT_ID, SHORTCUT_ID);
+            map.put(SearchManager.SUGGEST_COLUMN_SPINNER_WHILE_REFRESHING,
+                    SPINNER_WHILE_REFRESHING);
+            map.put(SUGGEST_COLUMN_PIN_TO_BOTTOM, PIN_TO_BOTTOM);
+            return map;
+        }
+
+        // For each column constant above, this contains the column index in the cursor, or -1.
+        private int[] mIndices;
+
+        /**
+         * Creates a column index cache.
+         *
+         * @param cursor A suggestion cursor.
+         * @param actionCallColumn The name of the KEYCODE_CALL action column, if any.
+         */
+        public ColumnCachingCursor(Cursor cursor, String actionCallColumn) {
+            super(cursor);
+            mIndices = new int[KEY_COUNT];
+            Arrays.fill(mIndices, -1);
+            String[] columns = cursor.getColumnNames();
+            int count = columns.length;
+            for (int i = 0; i < count; i++) {
+                String col = columns[i];
+                if (col == null) continue;
+                Integer key = mKeys.get(col);
+                if (key == null) {
+                    if (col.equals(actionCallColumn)) {
+                        mIndices[ACTION_MSG_CALL] = i;
+                    }
+                } else {
+                    mIndices[key] = i;
+                }
+            }
+        }
+
+        /**
+         * Gets a column by key.
+         *
+         * @param key One of the column keys declared in this class.
+         * @return A string, or {@code null} if the column is not present.
+         */
+        public String getColumnString(int key) {
+            int col = mIndices[key];
+            if (col == -1) {
+                return null;
+            }
+            return getString(col);
+        }
     }
 
 }
