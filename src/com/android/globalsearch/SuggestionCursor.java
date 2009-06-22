@@ -50,53 +50,41 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
 
     // the same as the string in suggestActionMsgColumn in res/xml/searchable.xml
     private static final String SUGGEST_COLUMN_ACTION_MSG_CALL = "suggest_action_msg_call";
+
+    private static final String[] COLUMNS = {
+            "_id",
+            SearchManager.SUGGEST_COLUMN_FORMAT,
+            SearchManager.SUGGEST_COLUMN_TEXT_1,
+            SearchManager.SUGGEST_COLUMN_TEXT_2,
+            SearchManager.SUGGEST_COLUMN_ICON_1,
+            SearchManager.SUGGEST_COLUMN_ICON_2,
+            SearchManager.SUGGEST_COLUMN_QUERY,
+            SearchManager.SUGGEST_COLUMN_INTENT_ACTION,
+            SearchManager.SUGGEST_COLUMN_INTENT_DATA,
+            SUGGEST_COLUMN_ACTION_MSG_CALL,
+            SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA,
+            SearchManager.SUGGEST_COLUMN_INTENT_COMPONENT_NAME,
+            SearchManager.SUGGEST_COLUMN_SHORTCUT_ID,
+            SearchManager.SUGGEST_COLUMN_BACKGROUND_COLOR
+            };
+
+    // Indices into COLUMNS
+    private static final int _ID = 0;
+    private static final int FORMAT = 1;
+    private static final int TEXT_1 = 2;
+    private static final int TEXT_2 = 3;
+    private static final int ICON_1 = 4;
+    private static final int ICON_2 = 5;
+    private static final int QUERY = 6;
+    private static final int INTENT_ACTION = 7;
+    private static final int INTENT_DATA = 8;
+    private static final int ACTION_MSG_CALL = 9;
+    private static final int INTENT_EXTRA_DATA = 10;
+    private static final int INTENT_COMPONENT_NAME = 11;
+    private static final int SHORTCUT_ID = 12;
+    private static final int BACKGROUND_COLOR = 13;
+
     private boolean mOnMoreCalled = false;
-
-    /**
-     * The columns of this cursor, and their associated properties
-     */
-    enum Column {
-        Id("_id"),
-        Format(SearchManager.SUGGEST_COLUMN_FORMAT),
-        Text1(SearchManager.SUGGEST_COLUMN_TEXT_1),
-        Text2(SearchManager.SUGGEST_COLUMN_TEXT_2),
-        Icon1(SearchManager.SUGGEST_COLUMN_ICON_1),
-        Icon2(SearchManager.SUGGEST_COLUMN_ICON_2),
-        Query(SearchManager.SUGGEST_COLUMN_QUERY),
-        IntentAction(SearchManager.SUGGEST_COLUMN_INTENT_ACTION),
-        IntentData(SearchManager.SUGGEST_COLUMN_INTENT_DATA),
-        ActionMsgCall(SUGGEST_COLUMN_ACTION_MSG_CALL),
-        IntentExtraData(SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA),
-        IntentComponentName(SearchManager.SUGGEST_COLUMN_INTENT_COMPONENT_NAME),
-        ShortcutId(SearchManager.SUGGEST_COLUMN_SHORTCUT_ID),
-        BackgroundColor(SearchManager.SUGGEST_COLUMN_BACKGROUND_COLOR);
-
-        public final String name;
-
-        Column(String name) {
-            this.name = name;
-        }
-
-        static String[] NAMES = initNames();
-
-        static String[] initNames() {
-            final Column[] columns = Column.values();
-            final String[] names = new String[columns.length];
-            for (int i = 0; i < columns.length; i++) {
-                names[i] = columns[i].name;
-            }
-            return names;
-        }
-    }
-
-    /**
-     * @return An empty cursor with the appropriate columns.
-     */
-    static Cursor makeEmptyCursor() {
-        // note: it is not safe to cache one single static cursor somewhere, that leads
-        // to memory leaks, as the cursor may end up holding onto pieces of the UI framework
-        return new ArrayListCursor(Column.NAMES, new ArrayList<ArrayList>());
-    }
 
     private final String mQuery;
     private final Handler mHandler;
@@ -168,7 +156,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
 
     @Override
     public String[] getColumnNames() {
-        return Column.NAMES;
+        return COLUMNS;
     }
 
     @Override
@@ -384,37 +372,24 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     }
 
     private Object getColumnValue(SuggestionData suggestion, int columnIndex) {
-        final Column column = getColumn(columnIndex);
-        switch(column) {
-            case Id: return String.valueOf(mPos);
-            case Format: return suggestion.getFormat();
-            case Text1: return suggestion.getTitle();
-            case Text2: return suggestion.getDescription();
-            case Icon1: return suggestion.getIcon1();
-            case Icon2: return suggestion.getIcon2();
-            case Query: return suggestion.getIntentQuery();
-            case IntentAction: return suggestion.getIntentAction();
-            case IntentData: return suggestion.getIntentData();
-            case ActionMsgCall: return suggestion.getActionMsgCall();
-            case IntentExtraData: return suggestion.getIntentExtraData();
-            case IntentComponentName: return suggestion.getIntentComponentName();
-            case ShortcutId: return suggestion.getShortcutId();
-            case BackgroundColor: return Integer.toString(suggestion.getBackgroundColor());
+        switch(columnIndex) {
+            case _ID: return Integer.toString(mPos);
+            case FORMAT: return suggestion.getFormat();
+            case TEXT_1: return suggestion.getTitle();
+            case TEXT_2: return suggestion.getDescription();
+            case ICON_1: return suggestion.getIcon1();
+            case ICON_2: return suggestion.getIcon2();
+            case QUERY: return suggestion.getIntentQuery();
+            case INTENT_ACTION: return suggestion.getIntentAction();
+            case INTENT_DATA: return suggestion.getIntentData();
+            case ACTION_MSG_CALL: return suggestion.getActionMsgCall();
+            case INTENT_EXTRA_DATA: return suggestion.getIntentExtraData();
+            case INTENT_COMPONENT_NAME: return suggestion.getIntentComponentName();
+            case SHORTCUT_ID: return suggestion.getShortcutId();
+            case BACKGROUND_COLOR: return Integer.toString(suggestion.getBackgroundColor());
             default:
                 throw new RuntimeException("we musta forgot about one of the columns :-/");
         }
-    }
-
-    private Column getColumn(int columnIndex) {
-        Column column = null;
-        final Column[] columns = Column.values();
-        try {
-            column = columns[columnIndex];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            throw new CursorIndexOutOfBoundsException("Requested column: "
-                    + column + ", # of columns: " +  columns.length);
-        }
-        return column;
     }
 
     @Override
