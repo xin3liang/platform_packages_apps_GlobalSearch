@@ -49,6 +49,9 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
 
     private ActivityInfo mActivityInfo;
 
+    // Flattend name of the searchable activity
+    private String mFlattenedComponentName;
+
     // Prefix for URIs for resources in the package of the searchable activity
     private String mPackageResourceUriPrefix;
 
@@ -69,6 +72,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         mContext = context;
         mSearchable = searchable;
         ComponentName componentName = mSearchable.getSearchActivity();
+        mFlattenedComponentName = componentName.flattenToShortString();
         try {
             mActivityInfo = context.getPackageManager()
                     .getActivityInfo(componentName, PackageManager.GET_META_DATA);
@@ -284,9 +288,6 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         String query = getQuery(cursor);
         String actionMsgCall = getActionMsgCall(cursor);
         String intentExtraData = getIntentExtraData(cursor);
-        // The following overwrites any value provided by the searchable since we only direct
-        // intents provided by third-party searchables to that searchable activity.
-        String intentComponentName = getComponentName().flattenToShortString();
         String shortcutId = getShortcutId(cursor);
         boolean pinToBottom = isPinToBottom(cursor);
         boolean spinnerWhileRefreshing = isSpinnerWhileRefreshing(cursor);
@@ -302,7 +303,9 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
                 .intentQuery(query)
                 .actionMsgCall(actionMsgCall)
                 .intentExtraData(intentExtraData)
-                .intentComponentName(intentComponentName)
+                // The following overwrites any value provided by the searchable since we only direct
+                // intents provided by third-party searchables to that searchable activity.
+                .intentComponentName(mFlattenedComponentName)
                 .shortcutId(shortcutId)
                 .pinToBottom(pinToBottom)
                 .spinnerWhileRefreshing(spinnerWhileRefreshing)
@@ -524,7 +527,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
 
     @Override
     public String toString() {
-        return super.toString() + "{component=" + getComponentName().flattenToShortString() + "}";
+        return super.toString() + "{component=" + mFlattenedComponentName + "}";
     }
 
     /**
