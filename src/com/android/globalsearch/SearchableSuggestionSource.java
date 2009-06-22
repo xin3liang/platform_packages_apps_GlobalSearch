@@ -49,6 +49,9 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
 
     private ActivityInfo mActivityInfo;
 
+    // Prefix for URIs for resources in the package of the searchable activity
+    private String mPackageResourceUriPrefix;
+
     // Cached label for the activity
     private String mLabel;
 
@@ -65,14 +68,14 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     public SearchableSuggestionSource(Context context, SearchableInfo searchable) {
         mContext = context;
         mSearchable = searchable;
-
+        ComponentName componentName = mSearchable.getSearchActivity();
         try {
             mActivityInfo = context.getPackageManager()
-                    .getActivityInfo(mSearchable.getSearchActivity(), PackageManager.GET_META_DATA);
+                    .getActivityInfo(componentName, PackageManager.GET_META_DATA);
         } catch (NameNotFoundException ex) {
-            throw new RuntimeException("Searchable activity " + mSearchable.getSearchActivity()
-                    + " not found.");
+            throw new RuntimeException("Searchable activity " + componentName + " not found.");
         }
+        mPackageResourceUriPrefix = "android.resource://" + componentName.getPackageName() + "/";
         mLabel = findLabel();
         mIcon = findIcon();
         mMaxResultsOverride = 0;
@@ -386,12 +389,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         } else if (!Character.isDigit(icon.charAt(0))){
             return icon;
         } else {
-            String packageName = getComponentName().getPackageName();
-            return new Uri.Builder()
-                    .scheme(ContentResolver.SCHEME_ANDROID_RESOURCE)
-                    .authority(packageName)
-                    .encodedPath(icon)
-                    .toString();
+            return new StringBuilder(mPackageResourceUriPrefix).append(icon).toString();
         }
     }
 
@@ -521,11 +519,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         if (iconId == 0) {
             iconId = android.R.drawable.sym_def_app_icon;
         }
-        return new Uri.Builder()
-                .scheme(ContentResolver.SCHEME_ANDROID_RESOURCE)
-                .authority(mSearchable.getSearchActivity().getPackageName())
-                .encodedPath(String.valueOf(iconId))
-                .toString();
+        return new StringBuilder(mPackageResourceUriPrefix).append(iconId).toString();
     }
 
     @Override
