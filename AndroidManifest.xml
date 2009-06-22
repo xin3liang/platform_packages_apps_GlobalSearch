@@ -27,6 +27,8 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.SET_PREFERRED_APPLICATIONS" />
     <uses-permission android:name="com.android.browser.permission.READ_HISTORY_BOOKMARKS" />
+    <uses-permission
+        android:name="com.google.android.providers.enhancedgooglesearch.GET_ENHANCED_SUGGESTIONS" />
 
     <!-- Only the system process (where the search dialog runs) is allowed to get suggestions,
          since they can come from content provider that require special permission to read. -->
