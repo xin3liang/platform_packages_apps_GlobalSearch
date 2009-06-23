@@ -54,6 +54,7 @@ public class SuggestionFactory implements SourceSuggestionBacker.MoreExpanderFac
             boolean expanded, List<SourceSuggestionBacker.SourceStat> sourceStats) {
         StringBuilder desc = new StringBuilder();
         String appSeparator = mContext.getString(R.string.result_count_app_separator);
+        String countSeparator = mContext.getString(R.string.result_count_count_separator);
         int sourceCount = sourceStats.size();
 
         // TODO: In the code below where we append an extra space after the appSeparator,
@@ -69,9 +70,9 @@ public class SuggestionFactory implements SourceSuggestionBacker.MoreExpanderFac
             int suggestionCount = sourceStat.getNumResults();
             if (suggestionCount > 0) {
                 if (desc.length() > 0) {
-                    desc.append(appSeparator).append(" ");
+                    desc.append(appSeparator);
                 }
-                desc.append(sourceStat.getLabel()).append(": ")
+                desc.append(sourceStat.getLabel()).append(countSeparator)
                         .append(getCountString(suggestionCount, sourceStat.getQueryLimit()));
 
             }
