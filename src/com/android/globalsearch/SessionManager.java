@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 
 /**
  * Holds onto the current {@link SuggestionSession} and manages its lifecycle.  When a session ends,
@@ -74,7 +76,6 @@ public class SessionManager implements SuggestionSession.SessionCallback {
     private final Handler mHandler;
     private SuggestionSession mSession;
 
-
     /**
      * Queries the current session for results.
      *
@@ -95,41 +96,53 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         mSession = null;
     }
 
-
     private SuggestionSession createSession() {
         if (DBG) Log.d(TAG, "createSession()");
         final SuggestionSource webSearchSource = mSources.getSelectedWebSearchSource();
         final ArrayList<SuggestionSource> enabledSources = orderSources(
                 mSources.getEnabledSources(),
                 webSearchSource == null ? null : webSearchSource.getComponentName(),
-                mShortcutRepo.getSourceRanking());
+                mShortcutRepo.getSourceRanking(),
+                SuggestionSession.NUM_PROMOTED_SOURCES);
         return new SuggestionSession(
                 mSources, enabledSources,
                 mShortcutRepo, mExecutor, mHandler, this);
     }
 
     /**
-     * Produces a list of sources that are ordered by source ranking.  Any sources that do not
-     * appear in the source ranking list are appended at the end.  The web search source will always
-     * be first.
+     * Produces a list of sources that are ordered by source ranking.  The ordering is as follows:
+     * - the web source is first regardless
+     * - the rest of the promoted sources are filled based on the ranking passed in
+     * - any unranked sources
+     * - the rest of the ranked sources
      *
-     * @param sources The sources.
+     * The idea is that unranked sources get a bump until they have enough data to be ranked like
+     * the rest, and at the same time, no source can be in the promoted list unless it has a high
+     * click through rate for a sustained amount of impressions.
+     *
+     * @param enabledSources The enabled sources.
      * @param webSearchSource The name of the web search source, or <code>null</code> otherwise.
-      *@param sourceRanking The order the sources should be in.
+     * @param sourceRanking The order the sources should be in.
+     * @param numPromoted  The number of promoted sources.
      * @return A list of sources that are ordered by the source ranking.
      */
-    private ArrayList<SuggestionSource> orderSources(
-            List<SuggestionSource> sources, ComponentName webSearchSource,
-            ArrayList<ComponentName> sourceRanking) {
+    static ArrayList<SuggestionSource> orderSources(
+            List<SuggestionSource> enabledSources,
+            ComponentName webSearchSource,
+            ArrayList<ComponentName> sourceRanking,
+            int numPromoted) {
 
-        // get any sources that are in sourceRanking in the order
-        final int numSources = sources.size();
+        // get any sources that are in the enabled sources in the order
+        final int numSources = enabledSources.size();
         HashMap<ComponentName, SuggestionSource> linkMap =
                 new LinkedHashMap<ComponentName, SuggestionSource>(numSources);
         for (int i = 0; i < numSources; i++) {
-            final SuggestionSource source = sources.get(i);
+            final SuggestionSource source = enabledSources.get(i);
             linkMap.put(source.getComponentName(), source);
         }
+
+        // gather set of ranked
+        final HashSet<ComponentName> allRanked = new HashSet<ComponentName>(sourceRanking);
 
         ArrayList<SuggestionSource> ordered = new ArrayList<SuggestionSource>(numSources);
 
@@ -138,16 +151,31 @@ public class SessionManager implements SuggestionSession.SessionCallback {
             ordered.add(linkMap.remove(webSearchSource));
         }
 
+        // add ranked for rest of promoted slots
         final int numRanked = sourceRanking.size();
-        for (int i = 0; i < numRanked; i++) {
-            final ComponentName name = sourceRanking.get(i);
-            final SuggestionSource source = linkMap.remove(name);
+        final int promotedLeft = webSearchSource == null ? numPromoted : numPromoted - 1;
+        final int limit = Math.min(numRanked, promotedLeft);
+        for (int i = 0; i < limit; i++) {
+            final ComponentName ranked = sourceRanking.get(i);
+            final SuggestionSource source = linkMap.remove(ranked);
             if (source != null) ordered.add(source);
         }
 
-        // add any remaining (in the order they were passed in)
-        for (SuggestionSource source : linkMap.values()) {
-            ordered.add(source);
+        // now add the unranked
+        final Iterator<SuggestionSource> sourceIterator = linkMap.values().iterator();
+        while (sourceIterator.hasNext()) {
+            SuggestionSource source = sourceIterator.next();
+            if (!allRanked.contains(source.getComponentName())) {
+                ordered.add(source);
+                sourceIterator.remove();
+            }
+        }
+
+        // finally, any remaining ranked
+        for (int i = promotedLeft - 1; i < numRanked; i++) {
+            final ComponentName ranked = sourceRanking.get(i);
+            final SuggestionSource source = linkMap.get(ranked);
+            if (source != null) ordered.add(source);
         }
         return ordered;
     }

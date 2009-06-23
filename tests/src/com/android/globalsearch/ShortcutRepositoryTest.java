@@ -45,6 +45,19 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
     static final ComponentName CONTACTS_COMPONENT =
         new ComponentName("com.android.contacts","com.android.contacts.Contacts");
 
+    static final ComponentName BOOKMARKS_COMPONENT =
+        new ComponentName("com.android.browser","com.android.browser.Bookmarks");
+
+    static final ComponentName HISTORY_COMPONENT =
+        new ComponentName("com.android.browser","com.android.browser.History");
+
+    static final ComponentName MUSIC_COMPONENT =
+        new ComponentName("com.android.music","com.android.music.Music");
+
+    static final ComponentName MARKET_COMPONENT =
+        new ComponentName("com.android.vending","com.android.vending.Market");
+
+
     protected ShortcutRepository mRepo;
     protected SuggestionData mApp1;
     protected SuggestionData mApp2;
@@ -134,7 +147,8 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
 
         mRepo.reportStats(new SessionStats("q", clicked), NOW);
 
-        assertContentsInOrder(mRepo.getShortcutsForQuery("q", NOW), clicked);        
+        assertContentsInOrder(mRepo.getShortcutsForQuery("q", NOW), clicked);
+        assertContentsInOrder(mRepo.getShortcutsForQuery("", NOW), clicked);
     }
 
     public void testPrefixesMatch() {
@@ -458,7 +472,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
                         Lists.newArrayList(APP_COMPONENT, CONTACTS_COMPONENT)), NOW);
 
         assertContentsInOrder("expecting apps to rank ahead of contacts (more clicks)",
-                mRepo.getSourceRanking(0, 0),
+                mRepo.getSourceRanking(0),
                 APP_COMPONENT, CONTACTS_COMPONENT);
 
         // 2 clicks on a contact, impression for both apps and contacts
@@ -472,7 +486,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
                         Lists.newArrayList(APP_COMPONENT, CONTACTS_COMPONENT)), NOW);
 
         assertContentsInOrder("expecting contacts to rank ahead of apps (more clicks)",
-                mRepo.getSourceRanking(0, 0),
+                mRepo.getSourceRanking(0),
                 CONTACTS_COMPONENT, APP_COMPONENT);
     }
 
@@ -491,7 +505,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
 
         assertContentsInOrder(
                 "apps (1 click / 2 impressions) should beat contacts (2 clicks / 5 impressions)",
-                mRepo.getSourceRanking(0, 0),
+                mRepo.getSourceRanking(0),
                 APP_COMPONENT, CONTACTS_COMPONENT);
 
         // contacts: up to 4 clicks in 7 impressions
@@ -500,36 +514,8 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
 
         assertContentsInOrder(
                 "contacts (4 click / 7 impressions) should beat apps (1 clicks / 2 impressions)",
-                mRepo.getSourceRanking(0, 0),
+                mRepo.getSourceRanking(0),
                 CONTACTS_COMPONENT, APP_COMPONENT);
-    }
-
-    /**
-     * We use priors to avoid a 1 / 1 CTR to beat out a more established but less than 100% CTR
-     */
-    public void testSourceRanking_CTRWithPriors() {
-
-        final int priorClicks = 20;
-        final int priorImpressions = 100;
-
-        // 40% CTR on 10 impressions for APPS
-        sourceImpressions(APP_COMPONENT, 4, 10);
-
-        // a 1 for 1 hit with contacts doesn't win since 21 / 101 < 24 / 110
-        sourceImpressions(CONTACTS_COMPONENT, 1, 1);
-
-        assertContentsInOrder(
-                "a 1 for 1 hit with contacts shouldn't beat a 4 for 10 ctr with apps with a " +
-                        "prior 20 clicks, 100 impresions, since 21 / 101 < 24 / 110",
-                mRepo.getSourceRanking(priorClicks, priorImpressions),
-                APP_COMPONENT, CONTACTS_COMPONENT);
-
-        // however, if contacts sustains the better CTR for more impressions, it will win
-        sourceImpressions(CONTACTS_COMPONENT, 3, 3);
-        assertContentsInOrder(
-                "contacts sustained the better CTR for enough to overcome the prior, it should win",
-                mRepo.getSourceRanking(0, 0),
-                CONTACTS_COMPONENT, APP_COMPONENT);        
     }
 
     public void testOldSourceStatsDontCount() {
@@ -550,8 +536,23 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
 
         assertContentsInOrder(
                 "old clicks for apps shouldn't count.",
-                mRepo.getSourceRanking(0, 0),
+                mRepo.getSourceRanking(0),
                 CONTACTS_COMPONENT, APP_COMPONENT);
+    }
+
+
+    public void testSourceRanking_filterSourcesWithInsufficientImpressions() {
+        sourceImpressions(APP_COMPONENT, 1, 5);
+        sourceImpressions(CONTACTS_COMPONENT, 1, 2);
+        sourceImpressions(BOOKMARKS_COMPONENT, 9, 10);
+        sourceImpressions(HISTORY_COMPONENT, 4, 4);
+        sourceImpressions(MUSIC_COMPONENT, 0, 1);
+        sourceImpressions(MARKET_COMPONENT, 4, 8);
+        
+        assertContentsInOrder(
+                "ordering should only include sources with at least 5 impressions.",
+                mRepo.getSourceRanking(5),
+                BOOKMARKS_COMPONENT, MARKET_COMPONENT, APP_COMPONENT);
     }
 
     protected void sourceImpressions(ComponentName source, int clicks, int impressions) {

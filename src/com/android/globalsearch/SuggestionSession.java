@@ -86,7 +86,11 @@ public class SuggestionSession {
 
     private HashSet<ComponentName> mSourceImpressions = new HashSet<ComponentName>();
 
-    private static final int NUM_PROMOTED_SOURCES = 4;
+    /**
+     * The number of sources that have a chance to show results above the "more results" entry
+     * in one of {@link #MAX_RESULTS_TO_DISPLAY} slots.
+     */
+    static final int NUM_PROMOTED_SOURCES = 4;
 
     /**
      * Maximum number of results to display in the list, not including any
