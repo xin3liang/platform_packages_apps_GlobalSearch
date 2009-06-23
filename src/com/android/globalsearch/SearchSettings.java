@@ -40,6 +40,7 @@ import android.preference.Preference.OnPreferenceClickListener;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.server.search.SearchableInfo;
+import android.server.search.Searchables;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -144,6 +145,23 @@ public class SearchSettings extends PreferenceActivity
         for (int i = 0; i < count; ++i) {
             SearchableInfo searchable = webSearchActivities.get(i);
             ComponentName component = searchable.getSearchActivity();
+            // If both GoogleSearch and EnhancedGoogleSearch are present, the former is hidden from
+            // our list because the latter is a superset of the former.
+            if (component.flattenToShortString().equals(Searchables.GOOGLE_SEARCH_COMPONENT_NAME)) {
+                try {
+                    ComponentName enhancedGoogleSearch = ComponentName.unflattenFromString(
+                            Searchables.ENHANCED_GOOGLE_SEARCH_COMPONENT_NAME);
+                    pm.getActivityInfo(enhancedGoogleSearch, 0);
+
+                    // Control comes here if EnhancedGoogleSearch is installed, in which case it
+                    // overrides the GoogleSearch package in the web source list.
+                    continue;
+                } catch (PackageManager.NameNotFoundException e) {
+                    // Nothing to do as EnhancedGoogleSearch is not installed. Continue below and
+                    // add this source to the list.
+                }
+            }
+
             try {
                 // Add the localised display name and index of the activity within our array as the
                 // label and value for each item. The index will be used to identify which item was
