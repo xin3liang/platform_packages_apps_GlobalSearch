@@ -626,6 +626,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
             map.put(SearchManager.SUGGEST_COLUMN_QUERY, QUERY);
             map.put(SearchManager.SUGGEST_COLUMN_INTENT_ACTION, INTENT_ACTION);
             map.put(SearchManager.SUGGEST_COLUMN_INTENT_DATA, INTENT_DATA);
+            map.put(SearchManager.SUGGEST_COLUMN_INTENT_DATA_ID, INTENT_DATA_ID);
             map.put(SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA, INTENT_EXTRA_DATA);
             map.put(SearchManager.SUGGEST_COLUMN_SHORTCUT_ID, SHORTCUT_ID);
             map.put(SearchManager.SUGGEST_COLUMN_SPINNER_WHILE_REFRESHING,
