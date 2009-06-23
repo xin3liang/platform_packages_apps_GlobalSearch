@@ -346,6 +346,12 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                 if (DBG) Log.d(TAG, "snapshot: adding 'search the web'");
                 dest.add(mSearchTheWebSuggestion);
             }
+            
+            // add a pin-to-bottom suggestion if one has been found to use
+            if (mPinToBottomSuggestion != null) {
+                if (DBG) Log.d(TAG, "snapshot: adding a pin-to-bottom suggestion");
+                dest.add(mPinToBottomSuggestion);
+            }
 
             // add "more results" if applicable
             int indexOfMore = dest.size();
@@ -364,12 +370,6 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                         }
                     }
                 }
-            }
-            
-            // add a pin-to-bottom suggestion if one has been found to use
-            if (mPinToBottomSuggestion != null) {
-                if (DBG) Log.d(TAG, "snapshot: adding a pin-to-bottom suggestion");
-                dest.add(mPinToBottomSuggestion);
             }
             
             return indexOfMore;
