@@ -438,11 +438,11 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
     }
 
     @Override
-    ArrayList<ComponentName> getSourceRanking(int priorClicks, int priorImpressions) {
+    ArrayList<ComponentName> getSourceRanking(int minImpressions) {
         SQLiteDatabase db = mOpenHelper.getReadableDatabase();
         final Cursor cursor = db.rawQuery(
                 SOURCE_RANKING_SQL,
-                buildSourceRankingQueryParams(priorClicks, priorImpressions));
+                new String[] { String.valueOf(minImpressions) });
         try {
             final ArrayList<ComponentName> sources =
                     new ArrayList<ComponentName>(cursor.getCount());
@@ -501,28 +501,23 @@ class ShortcutRepositoryImplLog extends ShortcutRepository {
                 false, tables, columns, where, groupBy, having, orderBy, limit);
     }
 
+    /**
+     * @return sql that ranks sources by click through rate, filtering out sources without enough
+     *         impressions.
+     */
     private static String buildSourceRankingSql() {
-        // construct ordering expression based on a click through rate with priors:
-        // "(total_clicks+$1)/(total_impressions+$2)"
-        final String totalClicksExpr = "(" + SourceStats.total_clicks.name() + " + ?1)";
-        final String totalImpressionsExpr =
-                "(" + SourceStats.total_impressions.name() + " + ?2)";
-        final String orderingExpr = "1000*" + totalClicksExpr + "/" + totalImpressionsExpr;
+        final String orderingExpr = "1000*" + SourceStats.total_clicks.name() +
+                "/" + SourceStats.total_impressions.name();
 
         final String tables = SourceStats.TABLE_NAME;
         final String[] columns = SourceStats.COLUMNS;
-        final String where = null;
+        final String where = SourceStats.total_impressions + " >= $1";
         final String groupBy = null;
         final String having = null;
         final String orderBy = orderingExpr + " DESC";
         final String limit = null;
-        final String sql = SQLiteQueryBuilder.buildQueryString(
+        return SQLiteQueryBuilder.buildQueryString(
                 false, tables, columns, where, groupBy, having, orderBy, limit);
-        return sql;
-    }
-
-    private static String[] buildSourceRankingQueryParams(int priorClicks, int priorImpressions) {
-        return new String[]{String.valueOf(priorClicks), String.valueOf(priorImpressions)};
     }
 
     private SuggestionData suggestionFromCursor(Cursor cursor) {

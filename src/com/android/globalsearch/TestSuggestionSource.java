@@ -92,6 +92,40 @@ class TestSuggestionSource extends AbstractSuggestionSource {
         return mQueryAfterZeroResults;
     }
 
+    @Override
+    public String toString() {
+        return mComponent.toShortString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        TestSuggestionSource that = (TestSuggestionSource) o;
+
+        if (mDelay != that.mDelay) return false;
+        if (mQueryAfterZeroResults != that.mQueryAfterZeroResults) return false;
+        if (mCannedResponses != null ?
+                !mCannedResponses.equals(that.mCannedResponses)
+                : that.mCannedResponses != null)
+            return false;
+        if (!mComponent.equals(that.mComponent)) return false;
+        if (mLabel != null ? !mLabel.equals(that.mLabel) : that.mLabel != null) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = mComponent.hashCode();
+        result = 31 * result + (int) (mDelay ^ (mDelay >>> 32));
+        result = 31 * result + (mCannedResponses != null ? mCannedResponses.hashCode() : 0);
+        result = 31 * result + (mQueryAfterZeroResults ? 1 : 0);
+        result = 31 * result + (mLabel != null ? mLabel.hashCode() : 0);
+        return result;
+    }
+
     /**
      * Makes a test source that will returned 1 canned result matching the given query.
      */

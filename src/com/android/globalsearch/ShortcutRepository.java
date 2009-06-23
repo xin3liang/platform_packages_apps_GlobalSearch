@@ -47,11 +47,10 @@ abstract class ShortcutRepository {
 
     static final long MAX_SOURCE_EVENT_AGE_MILLIS = 30 * DAY_MILLIS;
 
-    // these are the baseline to cushion fluctuations in the click through rate ranking of sources.
-    // it avoids the case of a new source with 1 click and 1 impression ranking first because it
-    // has a 100% CTR.
-    private static final int PRIOR_CLICKS = 3;
-    private static final int PRIOR_IMPRESSIONS = 30;
+    /**
+     * The mininum number of impressions to be considered for source ranking.
+     */
+    static final int MIN_IMPRESSIONS_FOR_SOURCE_RANKING = 5;
 
     /**
      * Create an instance of the default repository implementation.
@@ -120,10 +119,10 @@ abstract class ShortcutRepository {
      * @return A ranking of suggestion sources based on clicks and impressions.
      */
     ArrayList<ComponentName> getSourceRanking() {
-        return getSourceRanking(PRIOR_CLICKS, PRIOR_IMPRESSIONS);
+        return getSourceRanking(MIN_IMPRESSIONS_FOR_SOURCE_RANKING);
     }
 
-    abstract ArrayList<ComponentName> getSourceRanking(int priorClicks, int priorImpressions);
+    abstract ArrayList<ComponentName> getSourceRanking(int minImpressions);
 
     // Creates a string of the form source#intentData#intentAction for use as a unique
     // identifier of a suggestion.
