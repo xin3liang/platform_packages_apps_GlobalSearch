@@ -41,7 +41,7 @@ public final class SuggestionData {
     private final boolean mPinToBottom;
     private final boolean mSpinnerWhileRefreshing;
 
-    private SuggestionData(
+    SuggestionData(
             ComponentName source,
             String format,
             String title,

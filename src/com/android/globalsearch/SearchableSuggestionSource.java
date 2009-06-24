@@ -323,24 +323,27 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         boolean pinToBottom = isPinToBottom(cursor);
         boolean spinnerWhileRefreshing = isSpinnerWhileRefreshing(cursor);
 
-        return new SuggestionData.Builder(getComponentName())
-                .format(format)
-                .title(title)
-                .description(description)
-                .icon1(icon1)
-                .icon2(icon2)
-                .intentAction(intentAction)
-                .intentData(intentData)
-                .intentQuery(query)
-                .actionMsgCall(actionMsgCall)
-                .intentExtraData(intentExtraData)
+        // note: avoiding using SuggestionData.Builder in this case to avoid object allocation, and
+        // this is the location where suggestions are created the most.
+        return new SuggestionData(
+                getComponentName(),
+                format,
+                title,
+                description,
+                icon1,
+                icon2,
+                intentAction,
+                intentData,
+                query,
+                actionMsgCall,
+                intentExtraData,
                 // The following overwrites any value provided by the searchable since we only direct
                 // intents provided by third-party searchables to that searchable activity.
-                .intentComponentName(mFlattenedComponentName)
-                .shortcutId(shortcutId)
-                .pinToBottom(pinToBottom)
-                .spinnerWhileRefreshing(spinnerWhileRefreshing)
-                .build();
+                mFlattenedComponentName,
+                shortcutId,
+                0,  // background color
+                pinToBottom,
+                spinnerWhileRefreshing);
     }
 
     /**

@@ -243,12 +243,13 @@ public class SuggestionSession {
             public void onClose(List<SuggestionData> viewedSuggestions) {
                 asyncMux.cancel();
 
+                final int numViewed = viewedSuggestions.size();
                 if (DBG) {
                     Log.d(TAG, "onClose('" + query + "',  " +
-                            viewedSuggestions.size() + " displayed");
+                            numViewed + " displayed");
                 }
-                for (SuggestionData viewedSuggestion : viewedSuggestions) {
-                    mSourceImpressions.add(viewedSuggestion.getSource());
+                for (int i = 0; i < numViewed; i++) {
+                    mSourceImpressions.add(viewedSuggestions.get(i).getSource());
                 }
 
                 // when the cursor closes and there aren't any outstanding requests, it means
