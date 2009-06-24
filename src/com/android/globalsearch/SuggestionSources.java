@@ -7,8 +7,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.database.ContentObserver;
 import android.os.Handler;
 import android.provider.Settings;
@@ -19,13 +17,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
- * Maintains the list of all enabled suggestion sources. This class is optimized
- * to make {@link #getEnabledSources()} fast.
+ * Maintains the list of all suggestion sources.
  */
 public class SuggestionSources {
 
@@ -48,7 +43,7 @@ public class SuggestionSources {
 
     private Context mContext;
     private SearchManager mSearchManager;
-
+    private SharedPreferences mPreferences;
     private boolean mLoaded;
 
     // All available suggestion sources.
@@ -58,9 +53,8 @@ public class SuggestionSources {
     // or the default source if no source has been selected.
     private SuggestionSource mSelectedWebSearchSource;
 
-    // All enabled sources. This includes all enabled suggestion sources
-    // and the the selected web search source.
-    private ArrayList<SuggestionSource> mEnabledSources;
+    // All enabled suggestion sources. This does not include the web search source.
+    private ArrayList<SuggestionSource> mEnabledSuggestionSources;
     
     // Updates the inclusion of the web search provider.
     private ShowWebSuggestionsSettingChangeObserver mShowWebSuggestionsSettingChangeObserver;
@@ -72,6 +66,7 @@ public class SuggestionSources {
     public SuggestionSources(Context context) {
         mContext = context;
         mSearchManager = (SearchManager) context.getSystemService(Context.SEARCH_SERVICE);
+        mPreferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
         mLoaded = false;
     }
 
@@ -89,6 +84,9 @@ public class SuggestionSources {
         return mSuggestionSources.values();
     }
 
+    /**
+     * Gets a suggestion source (or the current web search source) by component name.
+     */
     public synchronized SuggestionSource getSourceByComponentName(ComponentName componentName) {
         SuggestionSource source = mSuggestionSources.get(componentName);
         
@@ -103,17 +101,17 @@ public class SuggestionSources {
     }
 
     /**
-     * Gets all sources that should be used to get suggestions.
+     * Gets all enabled suggestion sources.
      *
-     * @return All enabled suggestion sources and the selected web search source.
+     * @return All enabled suggestion sources (does not include the web search source).
      *         Callers must not modify the returned list.
      */
-    public synchronized List<SuggestionSource> getEnabledSources() {
+    public synchronized List<SuggestionSource> getEnabledSuggestionSources() {
         if (!mLoaded) {
-            Log.w(TAG, "getEnabledSources() called, but sources not loaded.");
+            Log.w(TAG, "getEnabledSuggestionSources() called, but sources not loaded.");
             return Collections.<SuggestionSource>emptyList();
         }
-        return mEnabledSources;
+        return mEnabledSuggestionSources;
     }
 
     /**
@@ -135,13 +133,6 @@ public class SuggestionSources {
             return null;
         }
         return mSelectedWebSearchSource;
-    }
-
-    /**
-     * Gets the search preferences.
-     */
-    private SharedPreferences getSharedPreferences() {
-        return mContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
     }
 
     /**
@@ -211,22 +202,23 @@ public class SuggestionSources {
 
         mSuggestionSources = null;
         mSelectedWebSearchSource = null;
-        mEnabledSources = null;
+        mEnabledSuggestionSources = null;
         mLoaded = false;
     }
 
     /**
-     * Loads the list of suggestion sources. This method is protected so that
+     * Loads the list of suggestion sources. This method is package private so that
      * it can be called efficiently from inner classes.
      */
-    protected synchronized void updateSources() {
+    /* package */ synchronized void updateSources() {
         mSuggestionSources = new SourceList();
         addExternalSources();
 
         // TODO: make final decision about music
         addSuggestionSource(MusicSuggestionSource.create(mContext));
 
-        updateEnabledSources();
+        mEnabledSuggestionSources = findEnabledSuggestionSources();
+        mSelectedWebSearchSource = findWebSearchSource();
     }
 
     private void addExternalSources()  {
@@ -245,42 +237,48 @@ public class SuggestionSources {
     }
 
     /**
-     * Updates the internal information about which sources are enabled. This must be called
-     * whenever the search preferences have been changed.
+     * Computes the list of enabled suggestion sources.
      */
-    private void updateEnabledSources() {
-        // non-web sources
-        SharedPreferences sharedPreferences = getSharedPreferences();
+    private ArrayList<SuggestionSource> findEnabledSuggestionSources() {
         ArrayList<SuggestionSource> enabledSources = new ArrayList<SuggestionSource>();
         for (SuggestionSource source : mSuggestionSources.values()) {
-            boolean defaultEnabled = isSourceDefaultEnabled(source);
-            String sourceEnabledPref = getSourceEnabledPreference(source);
-            if (sharedPreferences.getBoolean(sourceEnabledPref, defaultEnabled)) {
+            if (isSourceEnabled(source)) {
                 if (DBG) Log.d(TAG, "Adding enabled source " + source);
                 enabledSources.add(source);
             }
         }
+        return enabledSources;
+    }
 
-        // Preferred web source.
+    private boolean isSourceEnabled(SuggestionSource source) {
+        boolean defaultEnabled = isSourceDefaultEnabled(source);
+        if (mPreferences == null) {
+            Log.w(TAG, "Search preferences " + PREFERENCES_NAME + " not found.");
+            return true;
+        }
+        String sourceEnabledPref = getSourceEnabledPreference(source);
+        return mPreferences.getBoolean(sourceEnabledPref, defaultEnabled);
+    }
+
+    /**
+     * Finds the selected web search source.
+     */
+    private SuggestionSource findWebSearchSource() {
+        SuggestionSource webSearchSource = null;
         if (Settings.System.getInt(mContext.getContentResolver(),
                 Settings.System.SHOW_WEB_SUGGESTIONS,
                 1 /* default on until user actually changes it */) == 1) {
-            mSelectedWebSearchSource = null;
             SearchableInfo webSearchable = mSearchManager.getDefaultSearchableForWebSearch();
             if (webSearchable != null) {
                 if (DBG) Log.d(TAG, "Adding web source " + webSearchable.getSearchActivity());
                 // Construct a SearchableSuggestionSource around the web search source. Allow
                 // the web search source to provide a larger number of results with
                 // WEB_RESULTS_OVERRIDE_LIMIT.
-                mSelectedWebSearchSource = SearchableSuggestionSource.create(
+                webSearchSource = SearchableSuggestionSource.create(
                         mContext, webSearchable.getSearchActivity(), WEB_RESULTS_OVERRIDE_LIMIT);
-                if (mSelectedWebSearchSource != null) {
-                    enabledSources.add(mSelectedWebSearchSource);
-                }
             }
         }
-
-        mEnabledSources = enabledSources;
+        return webSearchSource;
     }
 
     /**

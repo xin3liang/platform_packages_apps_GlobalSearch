@@ -41,8 +41,8 @@ public class SuggestionSourcesTest extends AndroidTestCase {
         assertNotEmpty(mSources.getSuggestionSources());
     }
 
-    public void testEnabledSources() {
-        assertNotEmpty(mSources.getEnabledSources());
+    public void testEnabledSuggestionSources() {
+        assertNotEmpty(mSources.getEnabledSuggestionSources());
     }
 
     public void testHasSelectedWebSearchSource() {

@@ -51,15 +51,15 @@ public class SessionManagerTest extends TestCase {
             new ComponentName("com.example","com.example.F");
 
 
-    private List<SuggestionSource> mAllComponents;
+    private List<SuggestionSource> mAllSuggestionSources;
 
 
     @Override
     protected void setUp() throws Exception {
         super.setUp();
 
-        mAllComponents = Lists.newArrayList(
-                makeSource(WEB), makeSource(B), makeSource(C), makeSource(D),
+        mAllSuggestionSources = Lists.newArrayList(
+                makeSource(B), makeSource(C), makeSource(D),
                 makeSource(E), makeSource(F));
     }
 
@@ -71,8 +71,8 @@ public class SessionManagerTest extends TestCase {
         assertContentsInOrder(
                 "should only include enabled source, even if there if the ranking includes more.",
                 SessionManager.orderSources(
-                        Lists.newArrayList(makeSource(WEB), makeSource(B)),
-                        WEB,
+                        Lists.newArrayList(makeSource(B)),
+                        makeSource(WEB),
                         Lists.newArrayList(C, D, WEB), // ranking
                         3),
                 makeSource(WEB), makeSource(B));
@@ -80,8 +80,8 @@ public class SessionManagerTest extends TestCase {
         assertContentsInOrder(
                 "should only include enabled source, even if there if the ranking includes more.",
                 SessionManager.orderSources(
-                        Lists.newArrayList(makeSource(WEB), makeSource(B)),
-                        WEB,
+                        Lists.newArrayList(makeSource(B)),
+                        makeSource(WEB),
                         Lists.newArrayList(C, B, WEB), // ranking
                         3),
                 makeSource(WEB), makeSource(B));
@@ -92,8 +92,8 @@ public class SessionManagerTest extends TestCase {
         assertContentsInOrder(
                 "web source should be first even if its stats are worse.",
                 SessionManager.orderSources(
-                        mAllComponents,
-                        WEB,
+                        mAllSuggestionSources,
+                        makeSource(WEB),
                         Lists.newArrayList(C, D, WEB), // ranking
                         3),
                 // first the web
@@ -109,8 +109,8 @@ public class SessionManagerTest extends TestCase {
                 "unranked sources should be ordered after the ranked sources in the promoted " +
                         "slots.",
                 SessionManager.orderSources(
-                        mAllComponents,
-                        WEB,
+                        mAllSuggestionSources,
+                        makeSource(WEB),
                         Lists.newArrayList(C, D, WEB, B), // ranking
                         3),
                 // first the web

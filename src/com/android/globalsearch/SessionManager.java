@@ -100,8 +100,8 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         if (DBG) Log.d(TAG, "createSession()");
         final SuggestionSource webSearchSource = mSources.getSelectedWebSearchSource();
         final ArrayList<SuggestionSource> enabledSources = orderSources(
-                mSources.getEnabledSources(),
-                webSearchSource == null ? null : webSearchSource.getComponentName(),
+                mSources.getEnabledSuggestionSources(),
+                webSearchSource,
                 mShortcutRepo.getSourceRanking(),
                 SuggestionSession.NUM_PROMOTED_SOURCES);
         return new SuggestionSession(
@@ -128,7 +128,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
      */
     static ArrayList<SuggestionSource> orderSources(
             List<SuggestionSource> enabledSources,
-            ComponentName webSearchSource,
+            SuggestionSource webSearchSource,
             ArrayList<ComponentName> sourceRanking,
             int numPromoted) {
 
@@ -148,15 +148,15 @@ public class SessionManager implements SuggestionSession.SessionCallback {
 
         // start with the web source if it exists
         if (webSearchSource != null) {
-            ordered.add(linkMap.remove(webSearchSource));
+            if (DBG) Log.d(TAG, "Adding web search source: " + webSearchSource);
+            ordered.add(webSearchSource);
         }
 
         // add ranked for rest of promoted slots
         final int numRanked = sourceRanking.size();
-        final int promotedLeft = webSearchSource == null ? numPromoted : numPromoted - 1;
-        final int limit = Math.min(numRanked, promotedLeft);
-        for (int i = 0; i < limit; i++) {
-            final ComponentName ranked = sourceRanking.get(i);
+        int nextRanked = 0;
+        for (; nextRanked < numRanked && ordered.size() < numPromoted; nextRanked++) {
+            final ComponentName ranked = sourceRanking.get(nextRanked);
             final SuggestionSource source = linkMap.remove(ranked);
             if (source != null) ordered.add(source);
         }
@@ -172,7 +172,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         }
 
         // finally, any remaining ranked
-        for (int i = promotedLeft - 1; i < numRanked; i++) {
+        for (int i = nextRanked; i < numRanked; i++) {
             final ComponentName ranked = sourceRanking.get(i);
             final SuggestionSource source = linkMap.get(ranked);
             if (source != null) ordered.add(source);

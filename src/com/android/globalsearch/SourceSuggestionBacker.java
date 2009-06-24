@@ -427,6 +427,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
      * Compares the provided source to the selected web search source.
      */
     private boolean isWebSuggestionSource(SuggestionSource source) {
+        if (mSelectedWebSearchSource == null) return false;
         return source.getComponentName().equals(mSelectedWebSearchSource.getComponentName());
     }
 
