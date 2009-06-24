@@ -143,20 +143,31 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         Cursor cursor = getCursor(query, queryLimit);
         // Be resilient to non-existent suggestion providers, as the build this is running on
         // is not guaranteed to have anything in particular.
-        if (cursor == null) return mEmptyResult;
+        if (cursor == null) {
+            if (DBG) Log.d(LOG_TAG, getComponentName().flattenToShortString() + " returned null");
+            return mEmptyResult;
+        }
 
         try {
             // Return without touching the cursor if we have been interrupted. This avoids
             // filling cursor windows and triggering evaluation of lazy cursors.
-            if (Thread.interrupted()) return mEmptyResult;
+            if (Thread.interrupted()) {
+                if (DBG) Log.d(LOG_TAG, "Interrupted");
+                return mEmptyResult;
+            }
 
             maxResults = (mMaxResultsOverride > 0) ? mMaxResultsOverride : maxResults;
 
             int count = cursor.getCount();
+            if (DBG) {
+                Log.d(LOG_TAG, getComponentName().flattenToShortString()
+                        + " returned " + count + " suggestions");
+            }
             ColumnCachingCursor myCursor = new ColumnCachingCursor(cursor, mCallActionMsgCol);
             ArrayList<SuggestionData> suggestions = new ArrayList<SuggestionData>(count);
             while (cursor.moveToNext() && suggestions.size() < maxResults) {
                 if (Thread.interrupted()) {
+                    if (DBG) Log.d(LOG_TAG, "Interrupted");
                     return mEmptyResult;
                 }
                 SuggestionData suggestion = makeSuggestion(myCursor);
@@ -183,7 +194,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     }
 
     /**
-     * This is a copy of {@link SearchManager#getSuggestions(Context, SearchableInfo, String)}.
+     * This is a copy of {@link SearchManager#getSuggestions(SearchableInfo, String)}.
      * The only difference is that it adds "?limit={maxResults}".
      */
     private static Cursor getSuggestions(Context context, SearchableInfo searchable, String query,
@@ -227,6 +238,10 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
                 .build();
 
         // finally, make the query
+        if (DBG) {
+            Log.d(LOG_TAG, "query(" + uri + ",null," + selection + ","
+                    + Arrays.toString(selArgs) + ",null)");
+        }
         return context.getContentResolver().query(uri, null, selection, selArgs, null);
     }
 
@@ -280,7 +295,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
 
     /**
      * Builds a suggestion for the current entry in the cursor.
-     * The default implementation calls {@link #getTitle(Cursor)} and friends.
+     * The default implementation calls {@link #getTitle(ColumnCachingCursor)} and friends.
      * Subclasses may override this method if overriding the methods for
      * the individual fields is not enough.
      *

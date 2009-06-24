@@ -398,6 +398,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     @Override
     protected synchronized boolean addSourceResults(SuggestionResult suggestionResult) {
         final SuggestionSource source = suggestionResult.getSource();
+        if (DBG) Log.d(TAG, source + ": " + suggestionResult.getSuggestions().size() + " results");
 
         // If the source is the web search source and there is a pin-to-bottom suggestion at
         // the end of the list of suggestions, store it separately, remove it from the list,
@@ -458,6 +459,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
     @Override
     public synchronized boolean isResultsPending() {
+        if (DBG) Log.d(TAG, mReportedResults.size() + " < " + mPromotedSources.size());
         return mReportedResults.size() < mPromotedSources.size();
     }
 

@@ -16,7 +16,6 @@
 
 package com.android.globalsearch;
 
-import android.content.Intent;
 import android.content.ComponentName;
 
 import java.util.ArrayList;

@@ -158,6 +158,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         for (; nextRanked < numRanked && ordered.size() < numPromoted; nextRanked++) {
             final ComponentName ranked = sourceRanking.get(nextRanked);
             final SuggestionSource source = linkMap.remove(ranked);
+            if (DBG) Log.d(TAG, "Adding promoted ranked source: (" + ranked + ") " + source);
             if (source != null) ordered.add(source);
         }
 
@@ -166,6 +167,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         while (sourceIterator.hasNext()) {
             SuggestionSource source = sourceIterator.next();
             if (!allRanked.contains(source.getComponentName())) {
+                if (DBG) Log.d(TAG, "Adding unranked source: " + source);
                 ordered.add(source);
                 sourceIterator.remove();
             }
@@ -175,8 +177,11 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         for (int i = nextRanked; i < numRanked; i++) {
             final ComponentName ranked = sourceRanking.get(i);
             final SuggestionSource source = linkMap.get(ranked);
+            if (DBG) Log.d(TAG, "Adding unpromoted ranked source: (" + ranked + ") " + source);
             if (source != null) ordered.add(source);
         }
+
+        if (DBG) Log.d(TAG, "Ordered sources: " + ordered);
         return ordered;
     }
 }

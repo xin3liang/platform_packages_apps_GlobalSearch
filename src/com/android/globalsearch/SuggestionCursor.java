@@ -17,17 +17,13 @@
 package com.android.globalsearch;
 
 import android.app.SearchManager;
+import android.app.SearchManager.DialogCursorProtocol;
 import android.database.AbstractCursor;
-import android.database.Cursor;
 import android.database.CursorIndexOutOfBoundsException;
-import android.database.CursorWindow;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.util.Log;
-import com.android.internal.database.ArrayListCursor;
-
-import static android.app.SearchManager.DialogCursorProtocol;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -169,6 +165,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
      */
     @Override
     public Bundle respond(Bundle extras) {
+        if (DBG) Log.d(TAG, "respond(" + extras + ")");
 
         final int method = extras.getInt(SearchManager.DialogCursorProtocol.METHOD, -1);
 
@@ -334,8 +331,8 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
 
     @Override
     public boolean requery() {
-        if (DBG) Log.d(TAG, "requery()");
         mBacker.snapshotSuggestions(mData, mIncludeSources);
+        if (DBG) Log.d(TAG, "requery(), now " + mData.size() + " items");
         return super.requery();
     }
 

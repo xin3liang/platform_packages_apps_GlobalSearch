@@ -143,6 +143,10 @@ public class QueryMultiplexer implements Runnable {
                     return;
                 }
                 final SuggestionResult suggestionResult = get();
+                if (DBG) {
+                    Log.d(TAG, getTag() + " returned "
+                            + suggestionResult.getSuggestions().size() + " items");
+                }
                 mReceiver.onNewSuggestionResult(suggestionResult);
             } catch (CancellationException e) {
                 // The suggestion request was canceled, do nothing.

@@ -21,8 +21,6 @@ import android.app.SearchManager;
 import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Extending this class can make it easier to implement {@link SuggestionSource} in creating

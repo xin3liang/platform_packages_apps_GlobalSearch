@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SuggestionProvider extends ContentProvider {
 
     // set to true to enable the more verbose debug logging for this file
-    private static final boolean DBG = true;
+    private static final boolean DBG = false;
     private static final String TAG = "GlobalSearch";
 
     // the number of threads used for the asynchronous handling of suggestions

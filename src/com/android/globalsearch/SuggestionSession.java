@@ -654,7 +654,7 @@ public class SuggestionSession {
             final int numAdditional = mSourcesToQuery.size() - mPromotedSources.size();
 
             if (numAdditional <= 0) {
-                Log.w(TAG, "sendOffSendOffAdditionalSourcesQueries called when there are no " +
+                Log.w(TAG, "sendOffAdditionalSourcesQueries called when there are no " +
                         "non-promoted sources to query.");
                 return;
             }
