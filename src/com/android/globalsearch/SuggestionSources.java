@@ -349,7 +349,7 @@ public class SuggestionSources {
 
         @Override
         public void onChange(boolean selfChange) {
-            updateEnabledSources();
+            updateSources();
         }
     }
 }
