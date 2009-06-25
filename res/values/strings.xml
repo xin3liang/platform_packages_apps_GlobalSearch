@@ -110,36 +110,36 @@
     
     <!-- Title and summary for 'search engine' setting -->
     <string name="web_search_source">Search engine</string>
-    <string name="web_search_source_summary">Choose the default web search engine</string>
+    <string name="web_search_source_summary">Choose a web search engine</string>
     
     <!-- Title and summaries for 'search engine settings' link (if available for the chosen
          web search source) -->
     <string name="search_engine_settings">Search engine settings</string>
-    <string name="search_engine_settings_summary_enabled">Settings for search engine \'%1$s\'</string>
-    <string name="search_engine_settings_summary_disabled">No settings for search engine \'%1$s\'</string>
+    <string name="search_engine_settings_summary_enabled">Settings for web search engine \'%1$s\'</string>
+    <string name="search_engine_settings_summary_disabled">No settings for web search engine \'%1$s\'</string>
     
     <!-- Title and summaries for 'show web suggestions' check box setting -->
-    <string name="show_web_suggestions">Show web suggestions</string>
-    <string name="show_web_suggestions_summary">Display live suggestions as you type</string>
+    <string name="show_web_suggestions">Show suggestions</string>
+    <string name="show_web_suggestions_summary">Get suggestions from the web search engine as you type</string>
     
     <!-- Title for 'system search' category of search settings -->
-    <string name="system_search_category_title">System search</string>
+    <string name="system_search_category_title">Phone search</string>
     
     <!-- Title and summary for 'search sources' link for system search -->
-    <string name="search_sources">Search sources</string>
-    <string name="search_sources_summary">Choose sources for system search</string>
+    <string name="search_sources">Search targets</string>
+    <string name="search_sources_summary">Choose what to search on the phone</string>
     
     <!-- Summaries used for the check box settings for a given source within 'search sources' -->
-    <string name="search_source_enabled">Source enabled</string>
-    <string name="search_source_disabled">Source disabled</string>
+    <string name="search_source_enabled">Target enabled</string>
+    <string name="search_source_disabled">Target disabled</string>
 
     <!-- Title and summary used for the option to clear search shortcuts from the system
          search history -->
-    <string name="clear_shortcuts">Clear search shortcuts</string>
-    <string name="clear_shortcuts_summary">Reset all search shortcut information</string>
+    <string name="clear_shortcuts">Erase search shortcuts</string>
+    <string name="clear_shortcuts_summary">Erase shortcuts to recently chosen search results</string>
     
     <!-- Strings used in the dialog shown after choosing the 'clear search shortcuts' setting. -->
-    <string name="clear_shortcuts_prompt">This will clear all shortcut info.\n\nTo clear browser history, go to browser settings.</string>
+    <string name="clear_shortcuts_prompt">This will erase all shortcuts to recently chosen search results.\n\n(To clear your Browser history, use the Browser's settings.)</string>
     <string name="agree">OK</string>
     <string name="disagree">Cancel</string>
         
