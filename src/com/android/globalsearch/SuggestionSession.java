@@ -86,6 +86,9 @@ public class SuggestionSession {
 
     private HashSet<ComponentName> mSourceImpressions = new HashSet<ComponentName>();
 
+    // used to quickly lookup whether a source is enabled
+    private HashSet<ComponentName> mEnabledByName;
+
     // holds a ref the pending work that attaches the backer to the cursor so we can cancel it.
     private Runnable mFireOffRunnable;
 
@@ -152,6 +155,12 @@ public class SuggestionSession {
         mExecutor = executor;
         mHandler = handler;
         mListener = listener;
+
+        final int numEnabled = enabledSources.size();
+        mEnabledByName = new HashSet<ComponentName>(numEnabled);
+        for (int i = 0; i < numEnabled; i++) {
+            mEnabledByName.add(enabledSources.get(i).getComponentName());
+        }
     }
 
     /**
@@ -165,8 +174,6 @@ public class SuggestionSession {
      */
     public synchronized Cursor query(
             final Context context, final String query, boolean includeSources) {
-        mOutstandingQueryCount.incrementAndGet();
-
         // cancel any pending work
         if (mFireOffRunnable != null) {
             mHandler.removeCallbacks(mFireOffRunnable);
@@ -221,8 +228,11 @@ public class SuggestionSession {
      * @param query The query.
      */
     private void fireStuffOff(Context context, final SuggestionCursor cursor, final String query) {
+        mOutstandingQueryCount.incrementAndGet();
+
         // get shortcuts
-        final ArrayList<SuggestionData> shortcuts = mShortcutRepo.getShortcutsForQuery(query);
+        final ArrayList<SuggestionData> shortcuts =
+                filterOnlyEnabled(mShortcutRepo.getShortcutsForQuery(query));
 
         // filter out sources that aren't relevant to this query
         final ArrayList<SuggestionSource> sourcesToQuery =
@@ -331,6 +341,28 @@ public class SuggestionSession {
                 cursor.onNewResults();
             }
         }, PROMOTED_SOURCE_DEADLINE);
+    }
+
+    /**
+     * Filter the list of shortcuts to only include those come from enabled sources.
+     *
+     * @param shortcutsForQuery The shortcuts.
+     * @return A list including only shortcuts from sources that are enabled.
+     */
+    private ArrayList<SuggestionData> filterOnlyEnabled(
+            ArrayList<SuggestionData> shortcutsForQuery) {
+        final int numShortcuts = shortcutsForQuery.size();
+        if (numShortcuts == 0) return shortcutsForQuery;
+
+        final ArrayList<SuggestionData> result = new ArrayList<SuggestionData>(
+                shortcutsForQuery.size());
+        for (int i = 0; i < numShortcuts; i++) {
+            final SuggestionData shortcut = shortcutsForQuery.get(i);
+            if (mEnabledByName.contains(shortcut.getSource())) {
+                result.add(shortcut);
+            }
+        }
+        return result;
     }
 
     /**
