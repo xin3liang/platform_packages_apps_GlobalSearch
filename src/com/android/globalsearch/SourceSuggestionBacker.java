@@ -384,8 +384,10 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     private String makeSuggestionKey(SuggestionData suggestion) {
         // calculating accurate size of string builder avoids an allocation vs starting with
         // the default size and having to expand.
-        final String action = suggestion.getIntentAction();
-        final String intentData = suggestion.getIntentData();
+        final String action = suggestion.getIntentAction() == null ?
+                "none" : suggestion.getIntentAction();
+        final String intentData = suggestion.getIntentData() == null ?
+                "none" : suggestion.getIntentData();
         final int alloc = action.length() + 1 + intentData.length();
         return new StringBuilder(alloc)
                 .append(suggestion.getIntentAction())
