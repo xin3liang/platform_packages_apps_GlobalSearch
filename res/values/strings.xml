@@ -120,26 +120,26 @@
     
     <!-- Title and summaries for 'show web suggestions' check box setting -->
     <string name="show_web_suggestions">Show suggestions</string>
-    <string name="show_web_suggestions_summary">Get suggestions from the web search engine as you type</string>
+    <string name="show_web_suggestions_summary">Show suggestions from the web search engine as you type</string>
     
     <!-- Title for 'system search' category of search settings -->
     <string name="system_search_category_title">Phone search</string>
     
     <!-- Title and summary for 'search sources' link for system search -->
-    <string name="search_sources">Search targets</string>
+    <string name="search_sources">What to search</string>
     <string name="search_sources_summary">Choose what to search on the phone</string>
     
     <!-- Summaries used for the check box settings for a given source within 'search sources' -->
-    <string name="search_source_enabled">Target enabled</string>
-    <string name="search_source_disabled">Target disabled</string>
+    <string name="search_source_enabled">Search enabled</string>
+    <string name="search_source_disabled">Search disabled</string>
 
     <!-- Title and summary used for the option to clear search shortcuts from the system
          search history -->
-    <string name="clear_shortcuts">Erase search shortcuts</string>
-    <string name="clear_shortcuts_summary">Erase shortcuts to recently chosen search results</string>
+    <string name="clear_shortcuts">Clear search shortcuts</string>
+    <string name="clear_shortcuts_summary">Clear shortcuts to recently chosen search results</string>
     
     <!-- Strings used in the dialog shown after choosing the 'clear search shortcuts' setting. -->
-    <string name="clear_shortcuts_prompt">This will erase all shortcuts to recently chosen search results.\n\n(To clear your Browser history, use the Browser's settings.)</string>
+    <string name="clear_shortcuts_prompt">"This will clear all shortcuts to recently chosen search results."\n\n"(To clear your Browser history, use the Browser's settings.)"</string>
     <string name="agree">OK</string>
     <string name="disagree">Cancel</string>
         
