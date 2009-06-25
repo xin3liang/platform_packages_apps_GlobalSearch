@@ -86,6 +86,9 @@ public class SuggestionSession {
 
     private HashSet<ComponentName> mSourceImpressions = new HashSet<ComponentName>();
 
+    // holds a ref the pending work that attaches the backer to the cursor so we can cancel it.
+    private Runnable mFireOffRunnable;
+
     /**
      * The number of sources that have a chance to show results above the "more results" entry
      * in one of {@link #MAX_RESULTS_TO_DISPLAY} slots.
@@ -160,8 +163,15 @@ public class SuggestionSession {
      * @param includeSources Whether to include corpus selection suggestions.
      * @return A cursor.
      */
-    public synchronized Cursor query(Context context, final String query, boolean includeSources) {
+    public synchronized Cursor query(
+            final Context context, final String query, boolean includeSources) {
         mOutstandingQueryCount.incrementAndGet();
+
+        // cancel any pending work
+        if (mFireOffRunnable != null) {
+            mHandler.removeCallbacks(mFireOffRunnable);
+            mFireOffRunnable = null;
+        }
 
         // update typing speed
         long now = getNow();
@@ -169,6 +179,48 @@ public class SuggestionSession {
         mLastCharTime = now;
         if (DBG) Log.d(TAG, "sinceLast=" + sinceLast);
 
+        final SuggestionCursor cursor =
+                new SuggestionCursor(mHandler, query, includeSources);
+
+        // if the user is still typing, delay the work
+        final boolean doneTyping = sinceLast >= DONE_TYPING_REST;
+        if (doneTyping) {
+            fireStuffOff(context, cursor, query);
+        } else {
+            mFireOffRunnable = new Runnable() {
+                public void run() {
+                    fireStuffOff(context, cursor, query);
+                }
+            };
+            mHandler.postDelayed(mFireOffRunnable, DONE_TYPING_REST);
+        }
+
+        // if the cursor we are about to return is empty (no cache, no shortcuts),
+        // prefill it with the previous results until we hear back from a source
+        if (mPreviousCursor != null && cursor.getCount() == 0 && mPreviousCursor.getCount() > 0) {
+            cursor.prefill(mPreviousCursor);
+
+            // limit the amount of time we show prefilled results
+            mHandler.postDelayed(new Runnable() {
+                public void run() {
+                    cursor.onNewResults();
+                }
+            }, DONE_TYPING_REST);
+        }
+        mPreviousCursor = cursor;
+        return cursor;
+    }
+
+    /**
+     * Finishes the work necessary to report complete results back to the cursor.  This includes
+     * getting the shortcuts, refreshing them, determining which source should be queried, sending
+     * off the query to each of them, and setting up the callback from the cursor.
+     *
+     * @param context The context.
+     * @param cursor The cursor the results will be reported to.
+     * @param query The query.
+     */
+    private void fireStuffOff(Context context, final SuggestionCursor cursor, final String query) {
         // get shortcuts
         final ArrayList<SuggestionData> shortcuts = mShortcutRepo.getShortcutsForQuery(query);
 
@@ -232,9 +284,7 @@ public class SuggestionSession {
                 backer,
                 mShortcutRepo);
 
-        // create cursor
-        final SuggestionCursor cursor =
-                new SuggestionCursor(asyncMux, mHandler, query, includeSources);
+        cursor.attachBacker(asyncMux);
         asyncMux.setListener(cursor);
 
         cursor.setListener(new SuggestionCursor.CursorListener() {
@@ -271,37 +321,16 @@ public class SuggestionSession {
             }
         });
 
-        // Send off the promoted source queries and shorcut refresh tasks.
-        // if the user has slowed down typing, send off the tasks immediately, otherwise,
-        // schedule them to go after a delay.
-        final boolean doneTyping = sinceLast >= DONE_TYPING_REST;
-        if (doneTyping) {
-            sendOffPromotedSourceAndShortcutTasks(asyncMux, cursor);
-        } else {
-            // we also use DONE_TYPING_REST as the delay itself so that if we receive another
-            // character within this window, we will cancel the requests before they get sent
-            // (in the cursor close callback)
-            mHandler.postDelayed(new Runnable() {
-                public void run() {
-                    sendOffPromotedSourceAndShortcutTasks(asyncMux, cursor);
-                 }
-            }, DONE_TYPING_REST);
-        }
+        asyncMux.sendOffShortcutRefreshers(mSources);
+        asyncMux.sendOffPromotedSourceQueries();
 
-        // if the cursor we are about to return is empty (no cache, no shortcuts),
-        // prefill it with the previous results until we hear back from a source
-        if (mPreviousCursor != null && cursor.getCount() == 0 && mPreviousCursor.getCount() > 0) {
-            cursor.prefill(mPreviousCursor);
-
-            // limit the amount of time we show prefilled results
-            mHandler.postDelayed(new Runnable() {
-                public void run() {
-                    cursor.onNewResults();
-                }
-            }, DONE_TYPING_REST);
-        }
-        mPreviousCursor = cursor;
-        return cursor;
+        // refresh the backer after the deadline to force showing of "more results"
+        // even if all of the promoted sources haven't responded yet.
+        mHandler.postDelayed(new Runnable() {
+            public void run() {
+                cursor.onNewResults();
+            }
+        }, PROMOTED_SOURCE_DEADLINE);
     }
 
     /**
@@ -330,7 +359,8 @@ public class SuggestionSession {
      * @param enabledSources The full list of sources.
      * @return A list of sources that should be queried.
      */
-    private ArrayList<SuggestionSource> filterSourcesForQuery(String query, ArrayList<SuggestionSource> enabledSources) {
+    private ArrayList<SuggestionSource> filterSourcesForQuery(
+            String query, ArrayList<SuggestionSource> enabledSources) {
         final int queryLength = query.length();
         final int cutoff = Math.max(1, queryLength);
         final ArrayList<SuggestionSource> sourcesToQuery = new ArrayList<SuggestionSource>();
@@ -365,25 +395,6 @@ public class SuggestionSession {
             sourcesToQuery.add(enabledSource);
         }
         return sourcesToQuery;
-    }
-
-    /**
-     * Sends the tasks to query the promoted sources, and to refresh the shortcuts being shown.
-     *
-     * @param asyncMux Used to send off the tasks.
-     * @param cursor Refreshed after the promoted source deadeline.
-     */
-    private void sendOffPromotedSourceAndShortcutTasks(
-            final AsyncMux asyncMux, final SuggestionCursor cursor) {
-        asyncMux.sendOffShortcutRefreshers(mSources);
-        asyncMux.sendOffPromotedSourceQueries();
-
-        // refresh the backer after the deadline
-        mHandler.postDelayed(new Runnable() {
-            public void run() {
-                cursor.onNewResults();
-            }
-        }, PROMOTED_SOURCE_DEADLINE);
     }
 
     static private long getNow() {

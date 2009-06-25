@@ -32,6 +32,8 @@ import java.util.List;
  * This is the Cursor that we return from SuggestionProvider.  It relies on its
  * {@link SuggestionBacker} for results and notifications of changes to the results.
  *
+ * The backer is attached via {@link #attachBacker(SuggestionBacker)} once it is ready.
+ *
  * Important: a local consistent copy of the suggestions is stored in the cursor.  The only safe
  * place to update this copy is in {@link #requery}.
  */
@@ -87,7 +89,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     private boolean mIncludeSources;
     private CursorListener mListener;
 
-    private final SuggestionBacker mBacker;
+    private SuggestionBacker mBacker;
     private long mNextNotify = 0;
 
     // we keep a consistent snapshot locally
@@ -122,18 +124,25 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     }
 
     /**
-     * @param suggestionBacker Holds the incoming results
      * @param handler used to post messages.
      * @param query The query that was sent.
      * @param includeSources whether to include corpus selection suggestions.
      */
-    public SuggestionCursor(SuggestionBacker suggestionBacker, Handler handler, String query,
-            boolean includeSources) {
-        mBacker = suggestionBacker;
+    public SuggestionCursor(Handler handler, String query, boolean includeSources) {
         mQuery = query;
         mHandler = handler;
         mIncludeSources = includeSources;
-        suggestionBacker.snapshotSuggestions(mData, mIncludeSources);
+    }
+
+    /**
+     * Set the suggestion backer, triggering the initial snapshot.
+     *
+     * @param backer The backer.
+     */
+    public void attachBacker(SuggestionBacker backer) {
+        mBacker = backer;
+        mBacker.snapshotSuggestions(mData, mIncludeSources);
+        onNewResults();
     }
 
     /**
@@ -199,15 +208,30 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     private Bundle respondPostRefresh(Bundle request) {
         Bundle response = new Bundle(2);
         response.putBoolean(
-                DialogCursorProtocol.POST_REFRESH_RECEIVE_ISPENDING, mBacker.isResultsPending());
+                DialogCursorProtocol.POST_REFRESH_RECEIVE_ISPENDING, isResultsPending());
 
-        if (mBacker.isShowingMore() && !mOnMoreCalled) {
+        if (isShowingMore() && !mOnMoreCalled) {
             // tell the dialog we want to be notified when "more results" is first displayed
             response.putInt(
                     DialogCursorProtocol.POST_REFRESH_RECEIVE_DISPLAY_NOTIFY,
-                    mBacker.getMoreResultPosition());
+                    getMoreResultsPosition());
         }
         return response;
+    }
+
+    private boolean isResultsPending() {
+        // asssume results are pending until we get the backer
+        return mBacker == null ? true : mBacker.isResultsPending();
+    }
+
+    private boolean isShowingMore() {
+        return mBacker != null && mBacker.isShowingMore();
+    }
+
+    private int getMoreResultsPosition() {
+        return mBacker == null ?
+                mData.size() :
+                mBacker.getMoreResultPosition();
     }
 
     /**
@@ -247,7 +271,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
         if (mListener != null) mListener.onItemClicked(mData.get(pos));
 
         // if they click on the "more results item"
-        if (pos == mBacker.getMoreResultPosition()) {
+        if (pos == getMoreResultsPosition()) {
             // toggle the expansion of the addditional sources
             mIncludeSources = !mIncludeSources;
             onNewResults();
@@ -331,8 +355,10 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
 
     @Override
     public boolean requery() {
-        mBacker.snapshotSuggestions(mData, mIncludeSources);
-        if (DBG) Log.d(TAG, "requery(), now " + mData.size() + " items");
+        if (mBacker != null) {
+            mBacker.snapshotSuggestions(mData, mIncludeSources);
+            if (DBG) Log.d(TAG, "requery(), now " + mData.size() + " items");
+        }
         return super.requery();
     }
 
