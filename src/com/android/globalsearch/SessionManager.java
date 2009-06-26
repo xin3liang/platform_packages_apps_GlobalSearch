@@ -99,6 +99,20 @@ public class SessionManager implements SuggestionSession.SessionCallback {
     private SuggestionSession createSession() {
         if (DBG) Log.d(TAG, "createSession()");
         final SuggestionSource webSearchSource = mSources.getSelectedWebSearchSource();
+        
+        // Fire off a warm-up query to the web search source, which that source can use for
+        // whatever it sees fit. For example, EnhancedGoogleSearchProvider uses this to
+        // determine whether a opt-in needs to be shown for use of location.
+        mExecutor.execute(new Runnable() {
+            public void run() {
+                try {
+                    webSearchSource.getSuggestionTask("", 0, 0).call();
+                } catch (Exception e) {
+                    Log.e(TAG, "exception from web search warm-up query", e);
+                }
+            }
+        });
+        
         final ArrayList<SuggestionSource> enabledSources = orderSources(
                 mSources.getEnabledSuggestionSources(),
                 webSearchSource,
