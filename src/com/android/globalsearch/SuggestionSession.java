@@ -90,7 +90,7 @@ public class SuggestionSession {
     private HashSet<ComponentName> mEnabledByName;
 
     // holds a ref the pending work that attaches the backer to the cursor so we can cancel it.
-    private Runnable mFireOffRunnable;
+    private Cancellable mFireOffRunnable;
 
     /**
      * The number of sources that have a chance to show results above the "more results" entry
@@ -161,6 +161,7 @@ public class SuggestionSession {
         for (int i = 0; i < numEnabled; i++) {
             mEnabledByName.add(enabledSources.get(i).getComponentName());
         }
+        if (DBG) Log.d(TAG, "starting session");
     }
 
     /**
@@ -174,9 +175,15 @@ public class SuggestionSession {
      */
     public synchronized Cursor query(
             final Context context, final String query, boolean includeSources) {
+        mOutstandingQueryCount.incrementAndGet();
+
         // cancel any pending work
         if (mFireOffRunnable != null) {
-            mHandler.removeCallbacks(mFireOffRunnable);
+            if (mFireOffRunnable.cancel()) {
+                // if we succesfully cancelled the runnable, we need to decrement the count here;
+                // otherwise it will occur when the cursor is closed.
+                mOutstandingQueryCount.decrementAndGet();
+            }
             mFireOffRunnable = null;
         }
 
@@ -194,8 +201,8 @@ public class SuggestionSession {
         if (doneTyping) {
             fireStuffOff(context, cursor, query);
         } else {
-            mFireOffRunnable = new Runnable() {
-                public void run() {
+            mFireOffRunnable = new Cancellable() {
+                public void doRun() {
                     fireStuffOff(context, cursor, query);
                 }
             };
@@ -228,8 +235,6 @@ public class SuggestionSession {
      * @param query The query.
      */
     private void fireStuffOff(Context context, final SuggestionCursor cursor, final String query) {
-        mOutstandingQueryCount.incrementAndGet();
-
         // get shortcuts
         final ArrayList<SuggestionData> shortcuts =
                 filterOnlyEnabled(mShortcutRepo.getShortcutsForQuery(query));
@@ -316,6 +321,7 @@ public class SuggestionSession {
                 // the user has moved on (either clicked on something, dismissed the dialog, or
                 // pivoted into app specific search)
                 if (mOutstandingQueryCount.decrementAndGet() == 0) {
+                    if (DBG) Log.d(TAG, "closing session");
                     mListener.closeSession(new SessionStats(query, mClicked, mSourceImpressions));
                 }
             }
@@ -731,5 +737,30 @@ public class SuggestionSession {
                 mAdditionalSourcesQueryMux.cancel();
             }
         }
+    }
+
+    /**
+     * Simple wrapper of a Runnable to make it cancellable.
+     */
+    private static abstract class Cancellable implements Runnable {
+
+        private boolean mCancelled = false;
+        private boolean mHasRun = false;
+
+        /**
+         * @return Whether the cancellation was succesful in preventing this action from running.
+         */
+        public synchronized boolean cancel() {
+            mCancelled = true;
+            return !mHasRun;
+        }
+
+        public synchronized void run() {
+            if (mCancelled) return;
+            doRun();
+            mHasRun = true;
+        }
+
+        abstract void doRun();
     }
 }
