@@ -22,7 +22,7 @@ import java.util.List;
 /**
  * Maintains the list of all suggestion sources.
  */
-public class SuggestionSources {
+public class SuggestionSources implements SourceLookup {
 
     // set to true to enable the more verbose debug logging for this file
     private static final boolean DBG = false;
@@ -84,9 +84,7 @@ public class SuggestionSources {
         return mSuggestionSources.values();
     }
 
-    /**
-     * Gets a suggestion source (or the current web search source) by component name.
-     */
+    /** {@inheritDoc} */
     public synchronized SuggestionSource getSourceByComponentName(ComponentName componentName) {
         SuggestionSource source = mSuggestionSources.get(componentName);
         
@@ -121,12 +119,7 @@ public class SuggestionSources {
         return true;  // TODO: get from source?
     }
 
-    /**
-     * Returns the web search source set in the preferences, or the default source
-     * if no web search source has been selected.
-     *
-     * @return <code>null</code> only if there is no web search source available.
-     */
+    /** {@inheritDoc} */
     public synchronized SuggestionSource getSelectedWebSearchSource() {
         if (!mLoaded) {
             Log.w(TAG, "getSelectedWebSearchSource() called, but sources not loaded.");

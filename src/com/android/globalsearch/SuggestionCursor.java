@@ -85,7 +85,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     private boolean mOnMoreCalled = false;
 
     private final String mQuery;
-    private final Handler mHandler;
+    private final DelayedExecutor mDelayedExecutor;
     private boolean mIncludeSources;
     private CursorListener mListener;
 
@@ -124,14 +124,13 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     }
 
     /**
-     * @param handler used to post messages.
+     * @param delayedExecutor used to post messages.
      * @param query The query that was sent.
-     * @param includeSources whether to include corpus selection suggestions.
      */
-    public SuggestionCursor(Handler handler, String query, boolean includeSources) {
+    public SuggestionCursor(DelayedExecutor delayedExecutor, String query) {
         mQuery = query;
-        mHandler = handler;
-        mIncludeSources = includeSources;
+        mDelayedExecutor = delayedExecutor;
+        mIncludeSources = false;
     }
 
     /**
@@ -326,7 +325,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
             mNextNotify = now + CURSOR_NOTIFY_WINDOW_MS;
 
             if (DBG) Log.d(TAG, "-posting onChange(false)");
-            mHandler.postAtTime(mNotifier, mNextNotify);
+            mDelayedExecutor.postAtTime(mNotifier, mNextNotify);
         }
     }
 

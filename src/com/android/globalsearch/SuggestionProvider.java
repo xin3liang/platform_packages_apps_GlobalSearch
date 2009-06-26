@@ -102,7 +102,8 @@ public class SuggestionProvider extends ContentProvider {
         mExecutorService = Executors.newFixedThreadPool(ASYNC_THREAD_POOL_SIZE, sThreadFactory);
 
         mSessionManager = SessionManager.refreshSessionmanager(
-                mSources, ShortcutRepository.create(getContext()),
+                getContext(),
+                mSources, ShortcutRepositoryImplLog.create(getContext()),
                 mExecutorService, mNotifyHandler);
 
         return true;
@@ -137,7 +138,7 @@ public class SuggestionProvider extends ContentProvider {
 
         switch (sUriMatcher.match(uri)) {
             case SEARCH_SUGGEST:
-                return mSessionManager.query(getContext(), query, false);
+                return mSessionManager.query(getContext(), query);
             default:
                 throw new IllegalArgumentException("Unknown URI " + uri);
         }

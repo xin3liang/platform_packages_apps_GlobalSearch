@@ -32,7 +32,7 @@ public class StatsProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
-        mShortcutRepo = ShortcutRepository.create(getContext());
+        mShortcutRepo = ShortcutRepositoryImplLog.create(getContext());
         return true;
     }
 

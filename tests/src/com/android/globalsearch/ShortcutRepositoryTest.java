@@ -58,13 +58,13 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
         new ComponentName("com.android.vending","com.android.vending.Market");
 
 
-    protected ShortcutRepository mRepo;
+    protected ShortcutRepositoryImplLog mRepo;
     protected SuggestionData mApp1;
     protected SuggestionData mApp2;
     protected SuggestionData mContact1;
     protected SuggestionData mContact2;
 
-    protected ShortcutRepository createShortcutRepository() {
+    protected ShortcutRepositoryImplLog createShortcutRepository() {
         return new ShortcutRepositoryImplLog(getContext(), "test-shortcuts-log.db");
     }
     

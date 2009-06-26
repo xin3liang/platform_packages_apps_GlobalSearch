@@ -107,6 +107,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 .build();
 
         mBacker = new TestBacker(
+                "query",
                 Lists.newArrayList(mShortcut1),
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2), // promoted sources
@@ -138,7 +139,8 @@ public class SourceSuggestionBackerTest extends TestCase
     }
 
     /** {@inheritDoc} */
-    public SuggestionData getCorpusEntry(SourceSuggestionBacker.SourceStat sourceStat) {
+    public SuggestionData getCorpusEntry(
+            String query, SourceSuggestionBacker.SourceStat sourceStat) {
         return makeCorpusEntry(
                 sourceStat.getLabel(),
                 sourceStat.getResponseStatus(),
@@ -305,6 +307,7 @@ public class SourceSuggestionBackerTest extends TestCase
 
     public void testSourceReportsAfterDeadlineWithResults() {
         mBacker = new TestBacker(
+                "query",
                 Lists.<SuggestionData>newArrayList(),  // no shortcuts
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2, mName3), // all 3 are promoted sources
@@ -374,6 +377,7 @@ public class SourceSuggestionBackerTest extends TestCase
 
     public void testFillSpaceLargerThanChunkSizeAfterDeadline() {
         mBacker = new TestBacker(
+                "query",
                 Lists.<SuggestionData>newArrayList(),  // no shortcuts
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2, mName3), // all 3 are promoted sources
@@ -506,6 +510,7 @@ public class SourceSuggestionBackerTest extends TestCase
 
     public void testShortcutsOnly() {
         mBacker = new TestBacker(
+                "query",
                 Lists.newArrayList(mShortcut1),
                 Lists.<SuggestionSource>newArrayList(), // no sources
                 Sets.<ComponentName>newHashSet(),
@@ -532,6 +537,7 @@ public class SourceSuggestionBackerTest extends TestCase
 
     public void testAllSourcesPromotedResponded_resultsFitInPromotedSlots() {
         mBacker = new TestBacker(
+                "query",
                 Lists.newArrayList(mShortcut1),
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2),
                 Sets.<ComponentName>newHashSet(mName1, mName2), // every source is promoted
@@ -580,6 +586,7 @@ public class SourceSuggestionBackerTest extends TestCase
                         makeSourceResult(mName3, 1))));
 
         mBacker = new TestBacker(
+                "query",
                 Lists.newArrayList(mShortcut1),
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.<ComponentName>newHashSet(mName1, mName2), // promoted sources
@@ -610,6 +617,7 @@ public class SourceSuggestionBackerTest extends TestCase
         // Then check that the backer correctly shows the suggestion even when there are
         // lots of other results.
         mBacker = new TestBacker(
+                "query",
                 Lists.newArrayList(mShortcut1),
                 Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
                 Sets.newHashSet(mName1, mName2), // promoted sources
@@ -842,6 +850,7 @@ public class SourceSuggestionBackerTest extends TestCase
         long now = 0L;
 
         public TestBacker(
+                String query,
                 List<SuggestionData> shortcuts,
                 List<SuggestionSource> sources,
                 HashSet<ComponentName> promotedSources,
@@ -853,7 +862,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 long deadline,
                 MoreExpanderFactory moreFactory,
                 CorpusResultFactory corpusFactory) {
-            super(shortcuts, sources, promotedSources, selectedWebSearchSource, cachedResults,
+            super(query, shortcuts, sources, promotedSources, selectedWebSearchSource, cachedResults,
                     goToWebsite, searchTheWeb, maxPromotedSlots, deadline, moreFactory,
                     corpusFactory);
         }

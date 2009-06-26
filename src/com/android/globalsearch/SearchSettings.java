@@ -23,7 +23,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -86,7 +85,7 @@ public class SearchSettings extends PreferenceActivity
 
         mSources = new SuggestionSources(this);
         mSources.load();
-        mShortcuts = ShortcutRepository.create(this);
+        mShortcuts = ShortcutRepositoryImplLog.create(this);
         getPreferenceManager().setSharedPreferencesName(SuggestionSources.PREFERENCES_NAME);
 
         addPreferencesFromResource(R.xml.preferences);

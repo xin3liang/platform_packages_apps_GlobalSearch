@@ -40,6 +40,8 @@ public class SessionManager implements SuggestionSession.SessionCallback {
     private static final boolean DBG = false;
     private static SessionManager sInstance;
 
+    private final Context mContext;
+
     public static synchronized SessionManager getInstance() {
         return sInstance;
     }
@@ -53,17 +55,19 @@ public class SessionManager implements SuggestionSession.SessionCallback {
      * @param handler The handler passed along to the session.
      * @return The up to date session manager.
      */
-    public static synchronized SessionManager refreshSessionmanager(
+    public static synchronized SessionManager refreshSessionmanager(Context context,
             SuggestionSources sources, ShortcutRepository shortcutRepo, Executor executor,
             Handler handler) {
         if (DBG) Log.d(TAG, "refreshSessionmanager()");
 
-        sInstance = new SessionManager(sources, shortcutRepo, executor, handler);
+        sInstance = new SessionManager(context, sources, shortcutRepo, executor, handler);
         return sInstance;
     }
 
-    private SessionManager(SuggestionSources sources, ShortcutRepository shortcutRepo,
+    private SessionManager(Context context,
+            SuggestionSources sources, ShortcutRepository shortcutRepo,
             Executor executor, Handler handler) {
+        mContext = context;
         mSources = sources;
         mShortcutRepo = shortcutRepo;
         mExecutor = executor;
@@ -79,14 +83,14 @@ public class SessionManager implements SuggestionSession.SessionCallback {
     /**
      * Queries the current session for results.
      *
-     * @see SuggestionSession#query(android.content.Context, String, boolean)
+     * @see SuggestionSession#query(String)
      */
-    public Cursor query(Context context, String query, boolean includeSources) {
+    public Cursor query(Context context, String query) {
         if (mSession == null) {
             mSession = createSession();
         }
 
-        return mSession.query(context, query, includeSources);
+        return mSession.query(query);
     }
 
     /** {@inheritDoc} */
@@ -118,9 +122,22 @@ public class SessionManager implements SuggestionSession.SessionCallback {
                 webSearchSource,
                 mShortcutRepo.getSourceRanking(),
                 SuggestionSession.NUM_PROMOTED_SOURCES);
+
+        // implement the delayed executor using the handler
+        final DelayedExecutor delayedExecutor = new DelayedExecutor() {
+            public void postDelayed(Runnable runnable, long delayMillis) {
+                mHandler.postDelayed(runnable, delayMillis);
+            }
+
+            public void postAtTime(Runnable runnable, long uptimeMillis) {
+                mHandler.postAtTime(runnable, uptimeMillis);
+            }
+        };
+
         return new SuggestionSession(
                 mSources, enabledSources,
-                mShortcutRepo, mExecutor, mHandler, this);
+                mShortcutRepo, mExecutor,
+                delayedExecutor, new SuggestionFactoryImpl(mContext), this);
     }
 
     /**

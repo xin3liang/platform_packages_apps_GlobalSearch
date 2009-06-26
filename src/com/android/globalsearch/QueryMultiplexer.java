@@ -97,7 +97,7 @@ public class QueryMultiplexer implements Runnable {
     /**
      * Once a result of a suggestion task is complete, it will report the suggestions to the mixer.
      */
-    private class SuggestionRequest extends FutureTask<SuggestionResult> {
+    class SuggestionRequest extends FutureTask<SuggestionResult> {
 
         private final SuggestionSource mSuggestionSource;
 
@@ -107,6 +107,10 @@ public class QueryMultiplexer implements Runnable {
         SuggestionRequest(SuggestionSource suggestionSource) {
             super(suggestionSource.getSuggestionTask(mQuery, mMaxResultsPerSource, mQueryLimit));
             mSuggestionSource = suggestionSource;
+        }
+
+        public SuggestionSource getSuggestionSource() {
+            return mSuggestionSource;
         }
 
         @Override

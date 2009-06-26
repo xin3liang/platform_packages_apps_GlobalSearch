@@ -17,7 +17,6 @@
 package com.android.globalsearch;
 
 import android.content.ComponentName;
-import android.content.Context;
 import android.database.Cursor;
 import android.os.Handler;
 import android.util.Log;
@@ -64,11 +63,12 @@ public class SuggestionSession {
     private static final boolean SPEW = false;
     private static final String TAG = "GlobalSearch";
 
-    private final SuggestionSources mSources;
+    private final SourceLookup mSourceLookup;
     private final ArrayList<SuggestionSource> mEnabledSources;
     private final ShortcutRepository mShortcutRepo;
     private final Executor mExecutor;
-    private final Handler mHandler;
+    private final DelayedExecutor mDelayedExecutor;
+    private final SuggestionFactory mSuggestionFactory;
     private final SessionCallback mListener;
 
     // guarded by "this"
@@ -135,25 +135,29 @@ public class SuggestionSession {
     }
 
     /**
-     * @param sources The sources to query for results
-     * @param enabledSources The enabled sources, in the order that they should be queried.
+     * @param sourceLookup The sources to query for results
+     * @param enabledSources The enabled sources, in the order that they should be queried.  If the
+     *        web source is enabled, it will always be first.
      * @param shortcutRepo How to find shortcuts for a given query
      * @param executor Used to execute the asynchronous queriies (passed along to
-     *        {@link QueryMultiplexer}
-     * @param handler Used to post messages.
+     *        {@link com.android.globalsearch.QueryMultiplexer}
+     * @param delayedExecutor Used to post messages.
+     * @param suggestionFactory Used to create particular suggestions.
      * @param listener The listener.
      */
-    public SuggestionSession(SuggestionSources sources,
+    public SuggestionSession(SourceLookup sourceLookup,
             ArrayList<SuggestionSource> enabledSources,
             ShortcutRepository shortcutRepo,
             Executor executor,
-            Handler handler,
+            DelayedExecutor delayedExecutor,
+            SuggestionFactory suggestionFactory,
             SessionCallback listener) {
-        mSources = sources;
+        mSourceLookup = sourceLookup;
         mEnabledSources = enabledSources;
         mShortcutRepo = shortcutRepo;
         mExecutor = executor;
-        mHandler = handler;
+        mDelayedExecutor = delayedExecutor;
+        mSuggestionFactory = suggestionFactory;
         mListener = listener;
 
         final int numEnabled = enabledSources.size();
@@ -168,13 +172,10 @@ public class SuggestionSession {
      * Queries the current session for a resulting cursor.  The cursor will be backed by shortcut
      * and cached data from this session and then be notified of change as other results come in.
      *
-     * @param context Used to load resources.
      * @param query The query.
-     * @param includeSources Whether to include corpus selection suggestions.
      * @return A cursor.
      */
-    public synchronized Cursor query(
-            final Context context, final String query, boolean includeSources) {
+    public synchronized Cursor query(final String query) {
         mOutstandingQueryCount.incrementAndGet();
 
         // cancel any pending work
@@ -193,20 +194,19 @@ public class SuggestionSession {
         mLastCharTime = now;
         if (DBG) Log.d(TAG, "sinceLast=" + sinceLast);
 
-        final SuggestionCursor cursor =
-                new SuggestionCursor(mHandler, query, includeSources);
+        final SuggestionCursor cursor = new SuggestionCursor(mDelayedExecutor, query);
 
         // if the user is still typing, delay the work
         final boolean doneTyping = sinceLast >= DONE_TYPING_REST;
         if (doneTyping) {
-            fireStuffOff(context, cursor, query);
+            fireStuffOff(cursor, query);
         } else {
             mFireOffRunnable = new Cancellable() {
                 public void doRun() {
-                    fireStuffOff(context, cursor, query);
+                    fireStuffOff(cursor, query);
                 }
             };
-            mHandler.postDelayed(mFireOffRunnable, DONE_TYPING_REST);
+            mDelayedExecutor.postDelayed(mFireOffRunnable, DONE_TYPING_REST);
         }
 
         // if the cursor we are about to return is empty (no cache, no shortcuts),
@@ -215,7 +215,7 @@ public class SuggestionSession {
             cursor.prefill(mPreviousCursor);
 
             // limit the amount of time we show prefilled results
-            mHandler.postDelayed(new Runnable() {
+            mDelayedExecutor.postDelayed(new Runnable() {
                 public void run() {
                     cursor.onNewResults();
                 }
@@ -230,11 +230,10 @@ public class SuggestionSession {
      * getting the shortcuts, refreshing them, determining which source should be queried, sending
      * off the query to each of them, and setting up the callback from the cursor.
      *
-     * @param context The context.
      * @param cursor The cursor the results will be reported to.
      * @param query The query.
      */
-    private void fireStuffOff(Context context, final SuggestionCursor cursor, final String query) {
+    private void fireStuffOff(final SuggestionCursor cursor, final String query) {
         // get shortcuts
         final ArrayList<SuggestionData> shortcuts =
                 filterOnlyEnabled(mShortcutRepo.getShortcutsForQuery(query));
@@ -258,7 +257,6 @@ public class SuggestionSession {
         }
 
         // make the suggestion backer
-        final SuggestionFactory resultFactory = new SuggestionFactory(context, query);
         final HashSet<ComponentName> promoted = new HashSet<ComponentName>(sourcesToQuery.size());
         for (int i = 0; i < NUM_PROMOTED_SOURCES && i < sourcesToQuery.size(); i++) {
             promoted.add(sourcesToQuery.get(i).getComponentName());
@@ -266,19 +264,20 @@ public class SuggestionSession {
         // cached source results
         final QueryCacheResults queryCacheResults = mSessionCache.getSourceResults(query);
 
-        final SuggestionSource webSearchSource = mSources.getSelectedWebSearchSource();
+        final SuggestionSource webSearchSource = mSourceLookup.getSelectedWebSearchSource();
         final SourceSuggestionBacker backer = new SourceSuggestionBacker(
+                query,
                 shortcuts,
                 sourcesToQuery,
                 promoted,
                 webSearchSource,
                 queryCacheResults.getResults(),
-                resultFactory.createGoToWebsiteSuggestion(),
-                resultFactory.createSearchTheWebSuggestion(),
+                mSuggestionFactory.createGoToWebsiteSuggestion(query),
+                mSuggestionFactory.createSearchTheWebSuggestion(query),
                 MAX_RESULTS_TO_DISPLAY,
                 PROMOTED_SOURCE_DEADLINE,
-                resultFactory,
-                resultFactory);
+                mSuggestionFactory,
+                mSuggestionFactory);
 
         if (DBG) {
             Log.d(TAG, "starting off with " + queryCacheResults.getResults().size() + " cached "
@@ -337,12 +336,12 @@ public class SuggestionSession {
             }
         });
 
-        asyncMux.sendOffShortcutRefreshers(mSources);
+        asyncMux.sendOffShortcutRefreshers(mSourceLookup);
         asyncMux.sendOffPromotedSourceQueries();
 
         // refresh the backer after the deadline to force showing of "more results"
         // even if all of the promoted sources haven't responded yet.
-        mHandler.postDelayed(new Runnable() {
+        mDelayedExecutor.postDelayed(new Runnable() {
             public void run() {
                 cursor.onNewResults();
             }
@@ -660,13 +659,14 @@ public class SuggestionSession {
             return mBackerToReportTo.refreshShortcut(source, shortcutId, shortcut);
         }
 
-        void sendOffShortcutRefreshers(SuggestionSources sources) {
+        void sendOffShortcutRefreshers(SourceLookup sourceLookup) {
             if (mCanceled) return;
             if (mShortcutRefresher != null) {
                 throw new IllegalStateException("Already refreshed once");
             }
             mShortcutRefresher = new ShortcutRefresher(
-                    mExecutor, sources, mShortcutsToValidate, MAX_RESULTS_TO_DISPLAY, this, mRepo);
+                    mExecutor, sourceLookup, mShortcutsToValidate,
+                    MAX_RESULTS_TO_DISPLAY, this, mRepo);
             if (DBG) Log.d(TAG, "sending shortcut refresher tasks for " +
                     mShortcutsToValidate.size() + " shortcuts.");
             mShortcutRefresher.refresh();

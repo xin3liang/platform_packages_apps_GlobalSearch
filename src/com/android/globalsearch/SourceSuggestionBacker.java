@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Google Inc.
+ * Copyright (C) 2009 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,8 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     private int mIndexOfMore;
     private boolean mShowingMore;
 
+    private final String mQuery;
+
     interface MoreExpanderFactory {
 
         /**
@@ -68,10 +70,11 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         /**
          * Creates a result to be shown representing the results available for a corpus.
          *
+         * @param query The query
          * @param sourceStat Information about the source.
          * @return A result displaying this information.
          */
-        SuggestionData getCorpusEntry(SourceStat sourceStat);
+        SuggestionData getCorpusEntry(String query, SourceStat sourceStat);
     }
 
     private final List<SuggestionData> mShortcuts;
@@ -108,8 +111,9 @@ public class SourceSuggestionBacker extends SuggestionBacker {
             = new HashSet<ComponentName>();
 
     /**
+     * @param query
      * @param shortcuts To be shown at top.
-     * @param sources The sources that are either part of the cahced results, or that are expected
+     * @param sources The sources that are either part of the cached results, or that are expected
      *        to report.
      * @param promotedSources The promoted sources expecting to report
      * @param selectedWebSearchSource the currently selected web search source
@@ -123,6 +127,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
      * @param corpusFactory How to create results for each corpus
      */
     public SourceSuggestionBacker(
+            String query,
             List<SuggestionData> shortcuts,
             List<SuggestionSource> sources,
             HashSet<ComponentName> promotedSources,
@@ -140,6 +145,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                     "provided");
         }
 
+        mQuery = query;
         mShortcuts = shortcuts;
         mGoToWebsiteSuggestion = goToWebsiteSuggestion;
         mSearchTheWebSuggestion = searchTheWebSuggestion;
@@ -365,7 +371,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                                 || moreSource.getResponseStatus() != ResponseStatus.Finished
                                 || mViewedNonPromoted.contains(moreSource.getName())) {
                             if (DBG) Log.d(TAG, "snapshot: adding 'more' " + moreSource.getLabel());
-                            dest.add(mCorpusFactory.getCorpusEntry(moreSource));
+                            dest.add(mCorpusFactory.getCorpusEntry(mQuery, moreSource));
                             mViewedNonPromoted.add(moreSource.getName());
                         }
                     }

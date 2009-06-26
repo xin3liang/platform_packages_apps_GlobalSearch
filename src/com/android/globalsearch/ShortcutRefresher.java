@@ -35,7 +35,7 @@ public class ShortcutRefresher {
     static private final String TAG = "GlobalSearch";
 
     private final Executor mExecutor;
-    private final SuggestionSources mSources;
+    private final SourceLookup mSourceLookup;
     private final ArrayList<SuggestionData> mShortcuts;
     private final int mMaxToRefresh;
     private final SuggestionBacker mReceiver;
@@ -46,17 +46,17 @@ public class ShortcutRefresher {
 
     /**
      * @param executor Used to execute the tasks.
-     * @param sources Used to lookup suggestion sources by component name.
+     * @param sourceLookup Used to lookup suggestion sources by component name.
      * @param shortcuts The shortcuts to refresh.
      * @param maxToRefresh The maximum number of shortcuts to refresh.
      * @param receiver Who to report back to.
      * @param shortcutRepository The repo is also told about shortcut refreshes.
      */
-    public ShortcutRefresher(Executor executor, SuggestionSources sources,
+    public ShortcutRefresher(Executor executor, SourceLookup sourceLookup,
             ArrayList<SuggestionData> shortcuts, int maxToRefresh, SuggestionBacker receiver,
             ShortcutRepository shortcutRepository) {
         mExecutor = executor;
-        mSources = sources;
+        mSourceLookup = sourceLookup;
         mShortcuts = shortcuts;
         mMaxToRefresh = maxToRefresh;
         mReceiver = receiver;
@@ -73,7 +73,7 @@ public class ShortcutRefresher {
         for (int i = 0; i < size; i++) {
             final SuggestionData shortcut = mShortcuts.get(i);
             final ComponentName componentName = shortcut.getSource();
-            SuggestionSource source = mSources.getSourceByComponentName(componentName);
+            SuggestionSource source = mSourceLookup.getSourceByComponentName(componentName);
             
             // If we can't find the source then invalidate the shortcut. Otherwise, send off
             // the refresh task.
