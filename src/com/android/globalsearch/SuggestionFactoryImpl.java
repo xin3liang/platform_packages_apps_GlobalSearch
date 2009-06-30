@@ -26,7 +26,7 @@ import android.text.util.Regex;
 
 import java.util.List;
 
-import static com.android.globalsearch.SourceSuggestionBacker.SourceStat.ResponseStatus;
+import static com.android.globalsearch.SourceSuggestionBacker.SourceStat;
 
 /**
  * Implements {@link SuggestionFactory}.
@@ -74,7 +74,7 @@ public class SuggestionFactoryImpl implements SuggestionFactory {
         boolean anyPending = false;
         for (int i = 0; i < sourceCount; i++) {
             SourceSuggestionBacker.SourceStat sourceStat = sourceStats.get(i);
-            if (sourceStat.getResponseStatus() != ResponseStatus.Finished) {
+            if (sourceStat.getResponseStatus() != SourceStat.RESPONSE_FINISHED) {
                 anyPending = true;
             }
             int suggestionCount = sourceStat.getNumResults();
@@ -136,10 +136,9 @@ public class SuggestionFactoryImpl implements SuggestionFactory {
                 .backgroundColor(mCorpusItemBackgroundColor)
                 .intentQuery(query);
 
-        final SourceSuggestionBacker.SourceStat.ResponseStatus responseStatus
-                = sourceStat.getResponseStatus();
+        final int responseStatus = sourceStat.getResponseStatus();
 
-        if (responseStatus == ResponseStatus.Finished) {
+        if (responseStatus == SourceStat.RESPONSE_FINISHED) {
             final Resources resources = mContext.getResources();
             final String description = sourceStat.isShowingPromotedResults() ?
                     resources.getQuantityString(
@@ -149,7 +148,7 @@ public class SuggestionFactoryImpl implements SuggestionFactory {
             builder.description(description);
         }
 
-        if (responseStatus == ResponseStatus.InProgress) {
+        if (responseStatus == SourceStat.RESPONSE_IN_PROGRESS) {
             builder.icon2(com.android.internal.R.drawable.search_spinner);
         }
 

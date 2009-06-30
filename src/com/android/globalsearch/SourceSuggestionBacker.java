@@ -27,8 +27,6 @@ import java.util.Iterator;
 import java.util.HashMap;
 import java.util.Collection;
 
-import static com.android.globalsearch.SourceSuggestionBacker.SourceStat.ResponseStatus;
-
 /**
  * Source suggestion backer shows (that is, snapshots) the results in the following order:
  * - shortcuts
@@ -296,10 +294,10 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
                 if (!reported) {
                     // sources that haven't reported yet
-                    SourceStat.ResponseStatus responseStatus =
+                    final int responseStatus =
                             mPendingSources.contains(source.getComponentName()) ?
-                                    ResponseStatus.InProgress :
-                                    ResponseStatus.NotStarted;
+                                    SourceStat.RESPONSE_IN_PROGRESS :
+                                    SourceStat.RESPONSE_NOT_STARTED;
                     moreSources.add(new SourceStat(
                             source.getComponentName(), promoted, source.getLabel(),
                             source.getIcon(), responseStatus, 0, 0));
@@ -327,7 +325,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                                         promoted,
                                         source.getLabel(),
                                         source.getIcon(),
-                                        ResponseStatus.Finished,
+                                        SourceStat.RESPONSE_FINISHED,
                                         numResultsRemaining,
                                         queryLimit));
                     }
@@ -341,7 +339,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                                     false,
                                     source.getLabel(),
                                     source.getIcon(),
-                                    ResponseStatus.Finished,
+                                    SourceStat.RESPONSE_FINISHED,
                                     sourceResult.getCount(),
                                     sourceResult.getQueryLimit()));
                 }
@@ -368,7 +366,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                 if (expandAdditional) {
                     for (SourceStat moreSource : moreSources) {
                         if (moreSource.getNumResults() > 0
-                                || moreSource.getResponseStatus() != ResponseStatus.Finished
+                                || moreSource.getResponseStatus() != SourceStat.RESPONSE_FINISHED
                                 || mViewedNonPromoted.contains(moreSource.getName())) {
                             if (DBG) Log.d(TAG, "snapshot: adding 'more' " + moreSource.getLabel());
                             dest.add(mCorpusFactory.getCorpusEntry(mQuery, moreSource));
@@ -492,17 +490,15 @@ public class SourceSuggestionBacker extends SuggestionBacker {
      * "more results" entries.
      */
     static class SourceStat {
-        enum ResponseStatus {
-            NotStarted,
-            InProgress,
-            Finished
-        }
+        static final int RESPONSE_NOT_STARTED = 77;
+        static final int RESPONSE_IN_PROGRESS = 78;
+        static final int RESPONSE_FINISHED = 79;
 
         private final ComponentName mName;
         private final boolean mShowingPromotedResults;
         private final String mLabel;
         private final String mIcon;
-        private final ResponseStatus mResponseStatus;
+        private final int mResponseStatus;
         private final int mNumResults;
         private final int mQueryLimit;
 
@@ -517,7 +513,16 @@ public class SourceSuggestionBacker extends SuggestionBacker {
          * @param queryLimit The number of results requested from the source.
          */
         SourceStat(ComponentName name, boolean showingPromotedResults, String label, String icon,
-                   ResponseStatus responseStatus, int numResults, int queryLimit) {
+                   int responseStatus, int numResults, int queryLimit) {
+            switch (responseStatus) {
+                case RESPONSE_NOT_STARTED:
+                case RESPONSE_IN_PROGRESS:
+                case RESPONSE_FINISHED:
+                    break;
+                default:
+                    throw new IllegalArgumentException("invalid response status");
+            }
+
             this.mName = name;
             mShowingPromotedResults = showingPromotedResults;
             this.mLabel = label;
@@ -543,7 +548,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
             return mIcon;
         }
 
-        public ResponseStatus getResponseStatus() {
+        public int getResponseStatus() {
             return mResponseStatus;
         }
 

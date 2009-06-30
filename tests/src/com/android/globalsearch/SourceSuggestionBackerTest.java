@@ -23,7 +23,7 @@ import android.test.MoreAsserts;
 import com.google.android.collect.Sets;
 import com.google.android.collect.Lists;
 
-import static com.android.globalsearch.SourceSuggestionBacker.SourceStat.ResponseStatus;
+import static com.android.globalsearch.SourceSuggestionBacker.SourceStat;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -175,9 +175,9 @@ public class SourceSuggestionBackerTest extends TestCase
                 mShortcut1,
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE1_LABEL, ResponseStatus.NotStarted, 0),
-                makeCorpusEntry(SOURCE2_LABEL, ResponseStatus.NotStarted, 0),
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.NotStarted, 0));
+                makeCorpusEntry(SOURCE1_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0),
+                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0),
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0));
     }
 
     public void testSomeResultsReported() {
@@ -215,8 +215,8 @@ public class SourceSuggestionBackerTest extends TestCase
                 mSearchTheWeb,
                 mMoreExpanded,
                 // no "more" result for source 1 since we've displayed all of its entries now
-                makeCorpusEntry(SOURCE2_LABEL, ResponseStatus.NotStarted, 0),
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.InProgress, 0));
+                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0),
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_IN_PROGRESS, 0));
     }
 
     public void testPromotedSourceRespondsAfterDeadline() {
@@ -236,8 +236,8 @@ public class SourceSuggestionBackerTest extends TestCase
                 mSearchTheWeb,
                 mMoreExpanded,
                 // source 2 hasn't responded yet
-                makeCorpusEntry(SOURCE2_LABEL, ResponseStatus.NotStarted, 0),
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.NotStarted, 0));
+                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0),
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0));
 
         mBacker.addSourceResults(
                 new SuggestionResult(mSource2, Lists.newArrayList(
@@ -252,8 +252,8 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName1, 1),                
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE2_LABEL, ResponseStatus.Finished, 2),
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.NotStarted, 0));
+                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_FINISHED, 2),
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0));
     }
 
     public void testZeroReportingSources() {
@@ -274,8 +274,8 @@ public class SourceSuggestionBackerTest extends TestCase
                 mShortcut1,
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE2_LABEL, ResponseStatus.NotStarted, 0),
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.NotStarted, 0));
+                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0),
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0));
 
         // source 2 reports after deadline
         assertTrue("reporting zero results after being shown should require updating.",
@@ -287,8 +287,8 @@ public class SourceSuggestionBackerTest extends TestCase
                 mShortcut1,
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE2_LABEL, ResponseStatus.Finished, 0),
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.NotStarted, 0));
+                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_FINISHED, 0),
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0));
 
         mBacker.addSourceResults(
                 new SuggestionResult(mSource3, Lists.newArrayList(
@@ -301,8 +301,8 @@ public class SourceSuggestionBackerTest extends TestCase
                 mShortcut1,
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE2_LABEL, ResponseStatus.Finished, 0),
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.Finished, 2));
+                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_FINISHED, 0),
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_FINISHED, 2));
     }
 
     public void testSourceReportsAfterDeadlineWithResults() {
@@ -348,7 +348,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName2, 2),
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.NotStarted, 0)
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0)
         );
 
         mBacker.addSourceResults(
@@ -371,7 +371,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName2, 2),
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.Finished, 3)
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_FINISHED, 3)
         );
     }
 
@@ -432,8 +432,8 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName1, 4),
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE1_LABEL, ResponseStatus.Finished, 1),   // 1 remaining result
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.Finished, 6));  // reported after deadline
+                makeCorpusEntry(SOURCE1_LABEL, SourceStat.RESPONSE_FINISHED, 1),   // 1 remaining result
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_FINISHED, 6));  // reported after deadline
     }
 
     public void testAllResultsReported() {
@@ -484,9 +484,9 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName1, 2),
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE1_LABEL, ResponseStatus.Finished, 1),  // 1 remaining
-                makeCorpusEntry(SOURCE2_LABEL, ResponseStatus.Finished, 2),  // 2 remaining
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.Finished, 4));
+                makeCorpusEntry(SOURCE1_LABEL, SourceStat.RESPONSE_FINISHED, 1),  // 1 remaining
+                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_FINISHED, 2),  // 2 remaining
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_FINISHED, 4));
     }
 
     public void testDuplicateRemoval() {
@@ -609,7 +609,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName2, 1),
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.Finished, 2));
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_FINISHED, 2));
     }
 
     public void testGoToWebsiteSuggestion() {
@@ -717,9 +717,9 @@ public class SourceSuggestionBackerTest extends TestCase
                 mSearchTheWeb,
                 makePinToBottomSourceResult(mName1, 4),
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE1_LABEL, ResponseStatus.Finished, 1),  // 1 remaining
-                makeCorpusEntry(SOURCE2_LABEL, ResponseStatus.Finished, 2),  // 2 remaining
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.Finished, 4));
+                makeCorpusEntry(SOURCE1_LABEL, SourceStat.RESPONSE_FINISHED, 1),  // 1 remaining
+                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_FINISHED, 2),  // 2 remaining
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_FINISHED, 4));
     }
 
     /**
@@ -792,7 +792,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName2, 1),
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.NotStarted, 0));
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0));
 
         // non-promoted source 3
         mBacker.addSourceResults(new SuggestionResult(mSource3));
@@ -807,7 +807,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName2, 1),
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE3_LABEL, ResponseStatus.Finished, 0));
+                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_FINISHED, 0));
     }
 
     List<SuggestionData> getSnapshotFromBacker(boolean expandAdditional) {
@@ -817,12 +817,25 @@ public class SourceSuggestionBackerTest extends TestCase
     }
 
     private SuggestionData makeCorpusEntry(
-            String label, ResponseStatus responseStatus, int numResultsUndisplayed) {
+            String label, int responseStatus, int numResultsUndisplayed) {
         final SuggestionData.Builder builder = new SuggestionData.Builder(mName1);
-        builder.title("more_" + label + " " + responseStatus
+        builder.title("more_" + label + " " + getResponseStatusString(responseStatus)
                 + ", numleft: " + numResultsUndisplayed);
         return builder
                 .build();
+    }
+
+    private String getResponseStatusString(int responseStatus) {
+        switch (responseStatus) {
+            case SourceStat.RESPONSE_NOT_STARTED:
+                return "RESPONSE_NOT_STARTED";
+            case SourceStat.RESPONSE_IN_PROGRESS:
+                return "RESPONSE_IN_PROGRESS";
+            case SourceStat.RESPONSE_FINISHED:
+                return "RESPONSE_FINISHED";
+            default:
+                throw new IllegalArgumentException("unknown status " + responseStatus);
+        }
     }
 
     private SuggestionData makeSourceResult(ComponentName name, int index) {
