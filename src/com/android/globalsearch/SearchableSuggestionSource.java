@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ProviderInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -57,6 +58,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
 
     // Prefix for URIs for resources in the package of the searchable activity
     private String mPackageResourceUriPrefix;
+    // Prefix for URIs for resources in the package of the suggestion provider.
+    private String mProviderResourceUriPrefix;
 
     // Cached label for the activity
     private String mLabel;
@@ -87,6 +90,19 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
             throw new RuntimeException("Searchable activity " + componentName + " not found.");
         }
         mPackageResourceUriPrefix = "android.resource://" + componentName.getPackageName() + "/";
+
+        // The suggestions may come from a provider different than the activity which contains the
+        // searchable (e.g. Music app pointing to the system provided media provider). So find out
+        // the provider package and form a resource URI out of it for suggestion icons.
+        String suggestProviderPackage = componentName.getPackageName();
+        String suggestAuthority = mSearchable.getSuggestAuthority();
+        if (suggestAuthority != null) {
+            ProviderInfo pi = mContext.getPackageManager().resolveContentProvider(
+                    suggestAuthority, 0);
+            if (pi != null) suggestProviderPackage = pi.packageName;
+        }
+        mProviderResourceUriPrefix = "android.resource://" + suggestProviderPackage + "/";
+
         mLabel = findLabel();
         mIcon = findIcon();
         mMaxResultsOverride = 0;
@@ -337,8 +353,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
                 query,
                 actionMsgCall,
                 intentExtraData,
-                // The following overwrites any value provided by the searchable since we only direct
-                // intents provided by third-party searchables to that searchable activity.
+                // The following overwrites any value provided by the searchable since we only
+                // direct intents provided by third-party searchables to that searchable activity.
                 mFlattenedComponentName,
                 shortcutId,
                 0,  // background color
@@ -426,7 +442,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         } else if (!Character.isDigit(icon.charAt(0))){
             return icon;
         } else {
-            return new StringBuilder(mPackageResourceUriPrefix).append(icon).toString();
+            return new StringBuilder(mProviderResourceUriPrefix).append(icon).toString();
         }
     }
 

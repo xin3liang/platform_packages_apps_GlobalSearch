@@ -207,9 +207,6 @@ public class SuggestionSources implements SourceLookup {
         mSuggestionSources = new SourceList();
         addExternalSources();
 
-        // TODO: make final decision about music
-        addSuggestionSource(MusicSuggestionSource.create(mContext));
-
         mEnabledSuggestionSources = findEnabledSuggestionSources();
         mSelectedWebSearchSource = findWebSearchSource();
     }

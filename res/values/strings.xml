@@ -143,15 +143,4 @@
     <string name="agree">OK</string>
     <string name="disagree">Cancel</string>
         
-    <!-- Music source stuff. TODO: This should be removed once we fix the music source. -->
-    
-    <!-- The description of a music track suggestion. -->
-    <string name="music_track">Track</string>
-    
-    <!-- The description of a music album suggestion. -->
-    <string name="music_album">Album</string>
-    
-    <!-- The description of a music artist suggestion. -->
-    <string name="music_artist">Artist</string>
-
 </resources>
