@@ -119,19 +119,16 @@
     <string name="search_engine_settings_summary_disabled">No settings for web search engine \'%1$s\'</string>
     
     <!-- Title and summaries for 'show web suggestions' check box setting -->
-    <string name="show_web_suggestions">Show suggestions</string>
-    <string name="show_web_suggestions_summary">Show suggestions from the web search engine as you type</string>
+    <string name="show_web_suggestions">Show web suggestions</string>
+    <string name="show_web_suggestions_summary_enabled">Show suggestions from the web search engine as you type</string>
+    <string name="show_web_suggestions_summary_disabled">Don\'t show suggestions from the web search engine as you type</string>
     
     <!-- Title for 'system search' category of search settings -->
     <string name="system_search_category_title">Phone search</string>
     
     <!-- Title and summary for 'search sources' link for system search -->
-    <string name="search_sources">What to search</string>
+    <string name="search_sources">Searchable items</string>
     <string name="search_sources_summary">Choose what to search on the phone</string>
-    
-    <!-- Summaries used for the check box settings for a given source within 'search sources' -->
-    <string name="search_source_enabled">Search enabled</string>
-    <string name="search_source_disabled">Search disabled</string>
 
     <!-- Title and summary used for the option to clear search shortcuts from the system
          search history -->
