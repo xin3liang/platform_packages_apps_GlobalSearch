@@ -23,10 +23,45 @@ import java.util.List;
  * Holds the data returned by a suggestion source for a single query.
  */
 public class SuggestionResult {
+
+    /**
+     * The {@link #getResultCode} for when the source succesfully returned results.
+     */
+    public static final int RESULT_OK = 29;
+
+    /**
+     * The {@link #getResultCode} for when the source encountered an error while producign the
+     * results.
+     */
+    public static final int RESULT_ERROR = 30;
+
+    /**
+     * The {@link #getResultCode} for when the source was canceled, either due to timeout, or from
+     * the user typing another key before it had a chance to return its results.
+     */
+    public static final int RESULT_CANCELED = 31;
+
     private final SuggestionSource mSource;
     private final List<SuggestionData> mSuggestions;
     private final int mCount;
     private final int mQueryLimit;
+    private final int mResultCode;
+
+    public static SuggestionResult createErrorResult(SuggestionSource source) {
+        return new SuggestionResult(source, RESULT_ERROR);
+    }
+
+    public static SuggestionResult createCancelled(SuggestionSource source) {
+        return new SuggestionResult(source, RESULT_CANCELED);
+    }
+
+    private SuggestionResult(SuggestionSource source, int resultCode) {
+        mSource = source;
+        mSuggestions = Collections.emptyList();
+        mCount = 0;
+        mQueryLimit = 0;
+        mResultCode = resultCode;
+    }
 
     /**
      * @param source The source that the suggestions come from.
@@ -36,7 +71,6 @@ public class SuggestionResult {
      * @param queryLimit The number of results that the source was asked for. If {@code count}
      *        is greater than or equal to {@code queryLimit}, {@code count} is only
      *        a lower bound, not an exact number.
-     *
      */
     public SuggestionResult(SuggestionSource source, List<SuggestionData> suggestions, int count,
             int queryLimit) {
@@ -44,6 +78,7 @@ public class SuggestionResult {
         mSuggestions = suggestions;
         mCount = count;
         mQueryLimit = queryLimit;
+        mResultCode = RESULT_OK;
     }
 
     /**
@@ -77,5 +112,12 @@ public class SuggestionResult {
 
     public int getQueryLimit() {
         return mQueryLimit;
+    }
+
+    /**
+     * @return one of {@link #RESULT_OK}, {@link #RESULT_CANCELED} or {@link #RESULT_ERROR}.
+     */
+    public int getResultCode() {
+        return mResultCode;
     }
 }

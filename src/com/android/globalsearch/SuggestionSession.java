@@ -648,7 +648,9 @@ public class SuggestionSession {
 
         @Override
         protected boolean addSourceResults(SuggestionResult suggestionResult) {
-            mSessionCache.reportSourceResult(mQuery, suggestionResult);
+            if (suggestionResult.getResultCode() == SuggestionResult.RESULT_OK) {
+                mSessionCache.reportSourceResult(mQuery, suggestionResult);
+            }
             return mBackerToReportTo.addSourceResults(suggestionResult);
         }
 
