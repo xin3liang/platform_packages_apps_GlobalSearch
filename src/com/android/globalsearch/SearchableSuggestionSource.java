@@ -146,6 +146,13 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     public String getIcon() {
         return mIcon;
     }
+    
+    /**
+     * Gets the description to use for this source in system search settings.
+     */
+    public String getSettingsDescription() {
+        return mSearchable.getSettingsDescription();
+    }
 
     /**
      * Gets the name of the activity that this source is for.

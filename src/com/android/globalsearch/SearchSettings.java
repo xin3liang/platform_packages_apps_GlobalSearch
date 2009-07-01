@@ -348,8 +348,8 @@ public class SearchSettings extends PreferenceActivity
         sourcePref.setOnPreferenceChangeListener(this);
         String label = source.getLabel();
         sourcePref.setTitle(label);
-        sourcePref.setSummaryOn(R.string.search_source_enabled);
-        sourcePref.setSummaryOff(R.string.search_source_disabled);
+        sourcePref.setSummaryOn(source.getSettingsDescription());
+        sourcePref.setSummaryOff(source.getSettingsDescription());
         return sourcePref;
     }
 

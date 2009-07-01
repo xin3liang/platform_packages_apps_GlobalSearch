@@ -58,6 +58,10 @@ class TestSuggestionSource extends AbstractSuggestionSource {
     public String getLabel() {
         return mLabel;
     }
+    
+    public String getSettingsDescription() {
+        return "settings description";
+    }
 
     @Override
     protected SuggestionResult getSuggestions(String query, int maxResults, int queryLimit) {

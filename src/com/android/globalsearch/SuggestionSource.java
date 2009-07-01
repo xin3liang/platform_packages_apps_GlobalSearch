@@ -43,6 +43,11 @@ public interface SuggestionSource {
      * Gets the icon for this suggestion source as an android.resource: URI.
      */
     String getIcon();
+    
+    /**
+     * Gets the description to use for this source in system search settings.
+     */
+    String getSettingsDescription();
 
     /**
      *
