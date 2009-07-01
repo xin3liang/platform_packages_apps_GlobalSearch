@@ -476,8 +476,8 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
                 + SourceLog.component.name());
     }
 
-    // Creates a string of the form source#intentData#intentAction for use as a unique
-    // identifier of a suggestion.
+    // Creates a string of the form source#intentData#intentAction#intentQuery 
+    // for use as a unique identifier of a suggestion.
     private static String makeIntentKey(SuggestionData suggestion) {
         ComponentName source = suggestion.getSource();
         String intentAction = suggestion.getIntentAction();
@@ -490,6 +490,10 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
         key.append("#");
         if (intentAction != null) {
             key.append(intentAction);
+        }
+        key.append("#");
+        if (suggestion.getIntentQuery() != null) {
+            key.append(suggestion.getIntentQuery());
         }
         return key.toString();
     }

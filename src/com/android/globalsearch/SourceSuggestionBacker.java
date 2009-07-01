@@ -97,7 +97,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     private final HashSet<ComponentName> mReportedBeforeDeadline
             = new HashSet<ComponentName>();
 
-    private final HashSet<String> mShortcutIntentKeys = new HashSet<String>();
+    private final HashSet<String> mSuggestionKeys = new HashSet<String>();
 
     private final HashSet<ComponentName> mPendingSources
             = new HashSet<ComponentName>();
@@ -157,8 +157,10 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
         mPromotedQueryStartTime = getNow();
 
-        for (SuggestionData shortcut : shortcuts) {
-            mShortcutIntentKeys.add(makeSuggestionKey(shortcut));
+        final int numShortcuts = shortcuts.size();
+        for (int i = 0; i < numShortcuts; i++) {
+            final SuggestionData shortcut = shortcuts.get(i);
+            mSuggestionKeys.add(makeSuggestionKey(shortcut));
         }
 
         for (SuggestionResult cachedResult : cachedResults) {
@@ -232,7 +234,6 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         for (Iterator<SuggestionData> reportedResult : reportedResults) {
             for (int i = 0; i < chunkSize && reportedResult.hasNext(); i++) {
                 final SuggestionData suggestionData = reportedResult.next();
-                if (isDupeOfShortcut(suggestionData)) continue;
                 dest.add(suggestionData);
                 final Integer displayed = sourceToNumDisplayed.get(suggestionData.getSource());
                 sourceToNumDisplayed.put(
@@ -270,14 +271,12 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                 for (int i = 0; i < newChunk && slotsRemaining > 0; i++) {
                     if (reportedResult.hasNext()) {
                         final SuggestionData suggestionData = reportedResult.next();
-                        if (!isDupeOfShortcut(suggestionData)) {
-                            dest.add(suggestionData);
-                            final Integer displayed =
-                                    sourceToNumDisplayed.get(suggestionData.getSource());
-                            sourceToNumDisplayed.put(
-                            suggestionData.getSource(), displayed == null ? 1 : displayed + 1);
-                            slotsRemaining--;
-                        }
+                        dest.add(suggestionData);
+                        final Integer displayed =
+                                sourceToNumDisplayed.get(suggestionData.getSource());
+                        sourceToNumDisplayed.put(
+                        suggestionData.getSource(), displayed == null ? 1 : displayed + 1);
+                        slotsRemaining--;
                     } else {
                         break;
                     }
@@ -286,6 +285,8 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
             // gather stats about sources so we can properly construct "more" ui
             ArrayList<SourceStat> moreSources = new ArrayList<SourceStat>();
+            final boolean showingPinToBottom = (mPinToBottomSuggestion != null)
+                    && mReportedBeforeDeadline.contains(mPinToBottomSuggestion.getSource());
             for (SuggestionSource source : mSources) {
                 final boolean promoted = mPromotedSources.contains(source.getComponentName());
                 final boolean reported = mReportedResults.containsKey(source.getComponentName());
@@ -311,10 +312,11 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
                     if (numDisplayed < sourceResult.getSuggestions().size()) {
                         // Decrement the number of results remaining by one if one of them
-                        // is a pin-to-bottom suggestion from the web search source.
+                        // is a pin-to-bottom suggestion from the web search source (since the
+                        // pin to bottom will always be from the web source)
                         int numResultsRemaining = sourceResult.getCount() - numDisplayed;
                         int queryLimit = sourceResult.getQueryLimit() - numDisplayed;
-                        if (mPinToBottomSuggestion != null && isWebSuggestionSource(source)) {
+                        if (showingPinToBottom && isWebSuggestionSource(source)) {
                             numResultsRemaining--;
                             queryLimit--;
                         }
@@ -351,8 +353,9 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                 dest.add(mSearchTheWebSuggestion);
             }
             
-            // add a pin-to-bottom suggestion if one has been found to use
-            if (mPinToBottomSuggestion != null) {
+            // add a pin-to-bottom suggestion if one has been found to use and its source reported
+            // before the deadline
+            if (showingPinToBottom) {
                 if (DBG) Log.d(TAG, "snapshot: adding a pin-to-bottom suggestion");
                 dest.add(mPinToBottomSuggestion);
             }
@@ -381,10 +384,6 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         return dest.size();
     }
 
-    private boolean isDupeOfShortcut(SuggestionData suggestion) {
-        return mShortcutIntentKeys.contains(makeSuggestionKey(suggestion));
-    }
-
     private String makeSuggestionKey(SuggestionData suggestion) {
         // calculating accurate size of string builder avoids an allocation vs starting with
         // the default size and having to expand.
@@ -392,11 +391,15 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                 "none" : suggestion.getIntentAction();
         final String intentData = suggestion.getIntentData() == null ?
                 "none" : suggestion.getIntentData();
-        final int alloc = action.length() + 1 + intentData.length();
+        final String intentQuery = suggestion.getIntentQuery() == null ?
+                "" : suggestion.getIntentQuery();
+        final int alloc = action.length() + 2 + intentData.length() + intentQuery.length();
         return new StringBuilder(alloc)
                 .append(suggestion.getIntentAction())
                 .append('#')
                 .append(suggestion.getIntentData())
+                .append('#')
+                .append(suggestion.getIntentQuery())
                 .toString();
     }
 
@@ -418,8 +421,8 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         // the end of the list of suggestions, store it separately, remove it from the list,
         // and keep going. The stored suggestion will be added to the very bottom of the list
         // in snapshotSuggestions.
+        final List<SuggestionData> suggestions = suggestionResult.getSuggestions();
         if (isWebSuggestionSource(source)) {
-            List<SuggestionData> suggestions = suggestionResult.getSuggestions();
             if (!suggestions.isEmpty()) {
                 int lastPosition = suggestions.size() - 1;
                 SuggestionData lastSuggestion = suggestions.get(lastPosition);
@@ -429,7 +432,21 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                 }
             }
         }
+        // no longer pending
         mPendingSources.remove(source.getComponentName());
+
+        // prune down dupes if necessary
+        final Iterator<SuggestionData> it = suggestions.iterator();
+        while (it.hasNext()) {
+            SuggestionData s = it.next();
+            final String key = makeSuggestionKey(s);
+            if (mSuggestionKeys.contains(key)) {
+                it.remove();
+            } else {
+                mSuggestionKeys.add(key);
+            }
+        }
+
         mReportedResults.put(source.getComponentName(), suggestionResult);
         final boolean pastDeadline = isPastDeadline();
         if (!pastDeadline) {

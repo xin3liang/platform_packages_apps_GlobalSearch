@@ -92,6 +92,8 @@ public class SourceSuggestionBackerTest extends TestCase
                 .title("shortcut")
                 .description("description")
                 .shortcutId("shortcutid")
+                .intentAction("action.VIEW")
+                .intentData("shorctut1")
                 .build();
 
         // Normally we pass null in for this value; we only use this value to
@@ -489,7 +491,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_FINISHED, 4));
     }
 
-    public void testDuplicateRemoval() {
+    public void testDuplicatesOfShortcut() {
 
         // four results from source 1, the first of which is a dupe of the shortcut
         mBacker.addSourceResults(
@@ -505,7 +507,86 @@ public class SourceSuggestionBackerTest extends TestCase
                 "expecting duplicate to be removed.",
                 getSnapshotFromBacker(false),
                 mShortcut1,
-                makeSourceResult(mName1, 1));
+                makeSourceResult(mName1, 1),
+                makeSourceResult(mName1, 2));
+    }
+
+    public void testDuplicatesBetweenSources() {
+        // two different suggestions for facebook with the same intent action and intent data
+        final SuggestionData facebook1 = new SuggestionData.Builder(mName1)
+                .title("facebook")
+                .intentAction("action.VIEW")
+                .intentData("http://www.facebook.com")
+                .build();
+        final SuggestionData facebook2 = new SuggestionData.Builder(mName2)
+                .title("facebook home")
+                .intentAction("action.VIEW")
+                .intentData("http://www.facebook.com")
+                .build();
+
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource1, Lists.newArrayList(
+                        facebook1
+                )));
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource2, Lists.newArrayList(
+                        facebook2
+                )));
+
+        assertContentsInOrder(
+                "expecting duplicate to be removed.",
+                getSnapshotFromBacker(false),
+                mShortcut1,
+                facebook1,
+                mSearchTheWeb,
+                mMoreNotExpanded);
+    }
+
+    /**
+     * When there are duplicates removed, we still want to fill the valuable slots with more
+     * information.
+     */
+    public void testDuplicatesRemovedSlotsStillFilled() {
+        // two different suggestions for facebook with the same intent action and intent data
+        final SuggestionData facebook1 = new SuggestionData.Builder(mName1)
+                .title("facebook")
+                .intentAction("action.VIEW")
+                .intentData("http://www.facebook.com")
+                .build();
+        final SuggestionData facebook2 = new SuggestionData.Builder(mName2)
+                .title("facebook home")
+                .intentAction("action.VIEW")
+                .intentData("http://www.facebook.com")
+                .build();
+
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource1, Lists.newArrayList(
+                        facebook1,
+                        makeSourceResult(mName1, 1),
+                        makeSourceResult(mName1, 2)
+                )));
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource2, Lists.newArrayList(
+                        facebook2,
+                        makeSourceResult(mName2, 1),
+                        makeSourceResult(mName2, 2),
+                        makeSourceResult(mName2, 3)
+                )));
+
+        assertContentsInOrder(
+                "after duplicate is removed, expecting all 6 promoted slots to still be filled.",
+                getSnapshotFromBacker(false),
+                mShortcut1,
+                // chunk 1
+                facebook1,
+                makeSourceResult(mName1, 1),
+                // chunk 2
+                makeSourceResult(mName2, 1),
+                makeSourceResult(mName2, 2),
+                // remainder
+                makeSourceResult(mName1, 2),
+                mSearchTheWeb,
+                mMoreNotExpanded);
     }
 
     public void testShortcutsOnly() {
@@ -720,6 +801,46 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeCorpusEntry(SOURCE1_LABEL, SourceStat.RESPONSE_FINISHED, 1),  // 1 remaining
                 makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_FINISHED, 2),  // 2 remaining
                 makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_FINISHED, 4));
+    }
+
+    public void testPinToBottomNotShownIfSourceNotInPromotedList() {
+        // a couple source return before deadline
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource2, Lists.newArrayList(
+                        makeSourceResult(mName2, 0),
+                        makeSourceResult(mName2, 1),
+                        makeSourceResult(mName2, 2),
+                        makeSourceResult(mName2, 3)
+                )));
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource3, Lists.newArrayList(
+                        makeSourceResult(mName3, 0),
+                        makeSourceResult(mName3, 1),
+                        makeSourceResult(mName3, 2),
+                        makeSourceResult(mName3, 3)
+                )));
+
+        // another returns after the deadline with a pin to bottom
+        mBacker.setNow(NOW + DEADLINE);
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource1, Lists.newArrayList(
+                        makeSourceResult(mName1, 0),
+                        makeSourceResult(mName1, 1),
+                        makeSourceResult(mName1, 2),
+                        makeSourceResult(mName1, 3),
+                        makePinToBottomSourceResult(mName1, 4)
+                )));
+
+        assertContentsInOrder(
+                "pin to bottom shouldn't be shown if its source responded after deadline.",
+                getSnapshotFromBacker(false),
+                mShortcut1,
+                makeSourceResult(mName2, 0),
+                makeSourceResult(mName2, 1),
+                makeSourceResult(mName2, 2),
+                makeSourceResult(mName2, 3),
+                mSearchTheWeb,
+                mMoreNotExpanded);
     }
 
     /**

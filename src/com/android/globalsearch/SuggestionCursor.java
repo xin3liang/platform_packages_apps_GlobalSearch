@@ -44,6 +44,9 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     // set to true along with DBG to be even more verbose
     private static final boolean SPEW = false;
 
+    // set to true to dump a full list of the suggestions each time the cursor is requeried
+    private static final boolean DUMP_SUGGESTIONS = false;
+
     private static final String TAG = SuggestionCursor.class.getSimpleName();
 
     // the same as the string in suggestActionMsgColumn in res/xml/searchable.xml
@@ -358,6 +361,23 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
             mBacker.snapshotSuggestions(mData, mIncludeSources);
             if (DBG) Log.d(TAG, "requery(), now " + mData.size() + " items");
         }
+
+        if (DUMP_SUGGESTIONS) {
+            Log.d(TAG, "");
+            Log.d(TAG, "");
+            final int num = mData.size();
+            for (int i = 0; i < num; i++) {
+                final SuggestionData s = mData.get(i);
+                Log.d(TAG, "/" + i + "---------\\");
+                Log.d(TAG, "- " + s.getSource().getShortClassName());
+                Log.d(TAG, "- " + s.getTitle());
+                Log.d(TAG, "- " + s.getDescription());
+                Log.d(TAG, "- " + s.getIntentAction());
+                Log.d(TAG, "- " + s.getIntentData());
+                Log.d(TAG, "\\---------/");
+            }
+        }
+
         return super.requery();
     }
 

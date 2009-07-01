@@ -84,7 +84,11 @@ public class SuggestionSessionTest extends TestCase
     }
 
     SuggestionData makeSimple(ComponentName component, String title) {
-        return new SuggestionData.Builder(component).title(title).build();
+        return new SuggestionData.Builder(component)
+                .title(title)
+                .intentAction("view")
+                .intentData(title)
+                .build();
     }
 
 // --------------------- Interface ShortcutRepository ---------------------
