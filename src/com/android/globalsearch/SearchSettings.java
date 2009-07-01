@@ -170,7 +170,7 @@ public class SearchSettings extends PreferenceActivity
                 int labelRes = (activityInfo.labelRes != 0)
                         ? activityInfo.labelRes : activityInfo.applicationInfo.labelRes;
                 String name = res.getString(labelRes);
-                String value = component.flattenToString();
+                String value = component.flattenToShortString();
                 labels.add(name);
                 values.add(value);
                 if (DBG) Log.d(TAG, "Listing web search source: " + name);
@@ -186,6 +186,18 @@ public class SearchSettings extends PreferenceActivity
             } catch (Resources.NotFoundException exception) {
                 Log.e(TAG, "Error loading web search source from activity "
                         + component, exception);
+            }
+        }
+
+        // Check if EnhancedGoogleSearch or GoogleSearch are available, and if so insert it at the
+        // first position.
+        for (int i = 1; i < values.size(); ++i) {
+            String value = values.get(i);
+            if (value.equals(Searchables.GOOGLE_SEARCH_COMPONENT_NAME) ||
+                    value.equals(Searchables.ENHANCED_GOOGLE_SEARCH_COMPONENT_NAME)) {
+                values.add(0, values.remove(i));
+                labels.add(0, labels.remove(i));
+                break;
             }
         }
 
