@@ -144,36 +144,44 @@ public class QueryMultiplexer implements Runnable {
             try {
                 if (isCancelled()) {
                     if (DBG) Log.d(TAG, getTag() + " was cancelled");
+                    mReceiver.onNewSuggestionResult(
+                            SuggestionResult.createCancelled(mSuggestionSource));
                     return;
                 }
                 final SuggestionResult suggestionResult = get();
-                if (DBG) {
-                    Log.d(TAG, getTag() + " returned "
-                            + suggestionResult.getSuggestions().size() + " items");
+                if (suggestionResult == null) {
+                    mReceiver.onNewSuggestionResult(
+                            SuggestionResult.createErrorResult(mSuggestionSource));
+                } else {
+                    if (DBG) {
+                        Log.d(TAG, getTag() + " returned "
+                                + suggestionResult.getSuggestions().size() + " items");
+                    }
+                    mReceiver.onNewSuggestionResult(suggestionResult);
                 }
-                mReceiver.onNewSuggestionResult(suggestionResult);
             } catch (CancellationException e) {
                 // The suggestion request was canceled, do nothing.
                 // This can happen when the Cursor is closed before
                 // the suggestion source returns, but without
                 // interrupting any waits.
                 if (DBG) Log.d(TAG, getTag() + " threw CancellationException.");
-                // Since we were canceled, we don't need to return any results.
+                mReceiver.onNewSuggestionResult(
+                        SuggestionResult.createCancelled(mSuggestionSource));
             } catch (InterruptedException e) {
                 // The suggestion request was interrupted, do nothing.
                 // This can happen when the Cursor is closed before
                 // the suggestion source returns, by interrupting
                 // a wait somewhere.
                 if (DBG) Log.d(TAG, getTag() + " threw InterruptedException.");
-                // Since we were canceled, we don't need to return any results.
+                mReceiver.onNewSuggestionResult(
+                        SuggestionResult.createCancelled(mSuggestionSource));
             } catch (ExecutionException e) {
                 // The suggestion source threw an exception. We just catch and log it,
                 // since we don't want to crash the suggestion provider just
                 // because of a buggy suggestion source.
                 Log.e(TAG, getTag() + " failed.", e.getCause());
-                // return empty results, so that the mixer knows that this source is finished
-                SuggestionResult suggestionResult = new SuggestionResult(mSuggestionSource);
-                mReceiver.onNewSuggestionResult(suggestionResult);
+                mReceiver.onNewSuggestionResult(
+                        SuggestionResult.createErrorResult(mSuggestionSource));
             }
         }
     }

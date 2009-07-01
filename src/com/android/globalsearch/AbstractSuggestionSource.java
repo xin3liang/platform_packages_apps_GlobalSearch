@@ -70,7 +70,7 @@ public abstract class AbstractSuggestionSource implements SuggestionSource {
                     // The suggestion request was canceled before it had time to start.
                     // Since the request has been canceled, nobody will look at the results,
                     // so we don't need to return any.
-                    return mEmptyResult;
+                    return SuggestionResult.createCancelled(AbstractSuggestionSource.this);
                 }
                 return getSuggestions(query, maxResults, queryLimit);
             }

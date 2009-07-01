@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Arrays;
+import java.util.HashSet;
 
 /**
  * For testing, delivers a canned set of suggestions after fixed delay.
@@ -31,6 +32,7 @@ class TestSuggestionSource extends AbstractSuggestionSource {
     private final ComponentName mComponent;
     private final long mDelay;
     private final Map<String, List<SuggestionData>> mCannedResponses;
+    private final HashSet<String> mErrorQueries;
     private final boolean mQueryAfterZeroResults;
     private final String mLabel;
 
@@ -38,10 +40,11 @@ class TestSuggestionSource extends AbstractSuggestionSource {
             ComponentName component,
             long delay,
             Map<String, List<SuggestionData>> cannedResponses,
-            boolean queryAfterZeroResults, String label) {
+            HashSet<String> errorQueries, boolean queryAfterZeroResults, String label) {
         mComponent = component;
         mDelay = delay;
         mCannedResponses = cannedResponses;
+        mErrorQueries = errorQueries;
         mQueryAfterZeroResults = queryAfterZeroResults;
         mLabel = label;
     }
@@ -72,6 +75,10 @@ class TestSuggestionSource extends AbstractSuggestionSource {
                 Thread.currentThread().interrupt();
                 return mEmptyResult;
             }
+        }
+
+        if (mErrorQueries.contains(query)) {
+            return SuggestionResult.createErrorResult(this);
         }
 
         final List<SuggestionData> result = mCannedResponses.get(query);
@@ -155,6 +162,7 @@ class TestSuggestionSource extends AbstractSuggestionSource {
         private long mDelay = 0;
         private Map<String, List<SuggestionData>> mCannedResponses =
                 new HashMap<String, List<SuggestionData>>();
+        private HashSet<String> mErrorQueries = new HashSet<String>();
         private boolean mQueryAfterZeroResults = false;
         private String mLabel = "TestSuggestionSource";
 
@@ -196,9 +204,18 @@ class TestSuggestionSource extends AbstractSuggestionSource {
             return this;
         }
 
+        /**
+         * Makes it so the source will return a <code>null</code> result for this query.
+         */
+        public Builder addErrorResponse(String query) {
+            mErrorQueries.add(query);
+            return this;
+        }
+
         public TestSuggestionSource create() {
             return new TestSuggestionSource(
-                    mComponent, mDelay, mCannedResponses, mQueryAfterZeroResults, mLabel);
+                    mComponent, mDelay, mCannedResponses, mErrorQueries,
+                    mQueryAfterZeroResults, mLabel);
         }
     }
 }

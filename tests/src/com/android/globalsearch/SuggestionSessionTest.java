@@ -69,22 +69,18 @@ public class SuggestionSessionTest extends TestCase
                 .addCannedResponse("a", mSuggestionFromA)
                 .create();
 
-        SourceLookup sourceLookup = new SourceLookup() {
-            public SuggestionSource getSourceByComponentName(ComponentName componentName) {
-                return mSourceA;
-            }
-
-            public SuggestionSource getSelectedWebSearchSource() {
-                return mWebSource;
-            }
-        };
-
         ArrayList<SuggestionSource> enabledSources = Lists.newArrayList(mWebSource, mSourceA);
+        mSession = initSession(enabledSources, mWebSource);
+    }
 
+    private SuggestionSession initSession(
+            ArrayList<SuggestionSource> enabledSources,
+            SuggestionSource webSource) {
+        final SimpleSourceLookup sourceLookup = new SimpleSourceLookup(enabledSources, webSource);
         mEngine = new QueryEngine();
-
-        mSession = new SuggestionSession(sourceLookup, enabledSources,
+        SuggestionSession session = new SuggestionSession(sourceLookup, enabledSources,
                 this, mEngine, mEngine, this, mEngine);
+        return session;
     }
 
     SuggestionData makeSimple(ComponentName component, String title) {
@@ -194,6 +190,43 @@ public class SuggestionSessionTest extends TestCase
 
         MoreAsserts.assertEmpty("should be no sources in progress when results are cached.",
                 mEngine.getPendingSources());
+    }
+
+    public void testErrorResultNotCached() {
+
+        final TestSuggestionSource aWithError = new TestSuggestionSource.Builder()
+                .addErrorResponse("a")
+                .setLabel("A")
+                .setComponent(mComponentA)
+                .create();
+
+        mSession = initSession(Lists.newArrayList(mWebSource, aWithError), mWebSource);
+
+        {
+            final Cursor cursor = mSession.query("a");
+            mEngine.onSourceRespond(mWebComponent);
+            mEngine.onSourceRespond(mComponentA);
+            cursor.requery();
+
+            final Snapshot snapshot = getSnapshot(cursor);
+            MoreAsserts.assertContentsInOrder(
+                snapshot.suggetionTitles,
+                mWebSuggestion.getTitle());
+        }
+
+        {
+            final Cursor cursor = mSession.query("a");
+            cursor.requery();
+
+            final Snapshot snapshot = getSnapshot(cursor);
+            MoreAsserts.assertContentsInOrder(
+                snapshot.suggetionTitles,
+                mWebSuggestion.getTitle());
+            MoreAsserts.assertContentsInOrder("expecting source a to be pending (not cached) " +
+                    "since it returned an error the first time.",
+                    mEngine.getPendingSources(),
+                    mComponentA);
+        }        
     }
 
 // --------------------- Utility methods ---------------------
@@ -306,6 +339,29 @@ public class SuggestionSessionTest extends TestCase
 
         public void closeSession(SessionStats stats) {
             mSessionStats = stats;
+        }
+    }
+
+    static class SimpleSourceLookup implements SourceLookup {
+        private final ArrayList<SuggestionSource> mSources;
+        private final SuggestionSource mWebSource;
+
+        public SimpleSourceLookup(ArrayList<SuggestionSource> sources, SuggestionSource webSource) {
+            mSources = sources;
+            mWebSource = webSource;
+        }
+
+        public SuggestionSource getSourceByComponentName(ComponentName componentName) {
+            for (SuggestionSource source : mSources) {
+                if (componentName.equals(source.getComponentName())) {
+                    return source;
+                }
+            }
+            return null;
+        }
+
+        public SuggestionSource getSelectedWebSearchSource() {
+            return mWebSource;
         }
     }
 }

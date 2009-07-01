@@ -168,7 +168,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         // is not guaranteed to have anything in particular.
         if (cursor == null) {
             if (DBG) Log.d(LOG_TAG, getComponentName().flattenToShortString() + " returned null");
-            return mEmptyResult;
+            return SuggestionResult.createErrorResult(this);
         }
 
         try {
@@ -176,7 +176,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
             // filling cursor windows and triggering evaluation of lazy cursors.
             if (Thread.interrupted()) {
                 if (DBG) Log.d(LOG_TAG, "Interrupted");
-                return mEmptyResult;
+                return SuggestionResult.createCancelled(this);
             }
 
             maxResults = (mMaxResultsOverride > 0) ? mMaxResultsOverride : maxResults;
@@ -191,7 +191,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
             while (cursor.moveToNext() && suggestions.size() < maxResults) {
                 if (Thread.interrupted()) {
                     if (DBG) Log.d(LOG_TAG, "Interrupted");
-                    return mEmptyResult;
+                    return SuggestionResult.createCancelled(this);
                 }
                 SuggestionData suggestion = makeSuggestion(myCursor);
                 if (suggestion != null) {
