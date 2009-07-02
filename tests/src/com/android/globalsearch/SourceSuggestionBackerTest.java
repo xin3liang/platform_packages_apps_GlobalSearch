@@ -491,6 +491,38 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_FINISHED, 4));
     }
 
+    public void testNoWebSource() {
+        mBacker = new TestBacker(
+                "query",
+                Lists.newArrayList(mShortcut1),
+                Lists.<SuggestionSource>newArrayList(mSource1, mSource2, mSource3),
+                Sets.newHashSet(mName1, mName2), // promoted sources
+                null,             // NO WEB SOURCE
+                Lists.<SuggestionResult>newArrayList(),
+                null,                 // no "go to website" suggestion
+                mSearchTheWeb,        // the "search the web" suggestion
+                MAX_PROMOTED_SHOWING,
+                DEADLINE,
+                this,        /** more factory points to {@link #getMoreEntry} */
+                this);       /** corpus factory points to {@link #getCorpusEntry} */
+
+
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource1, Lists.newArrayList(
+                        makeSourceResult(mName1, 0),
+                        makeSourceResult(mName1, 1),
+                        makeSourceResult(mName1, 2),
+                        makeSourceResult(mName1, 3)
+                )));
+
+        assertContentsInOrder(
+                "expecting business as usual even though there is no web source enabled.",
+                getSnapshotFromBacker(false),
+                mShortcut1,
+                makeSourceResult(mName1, 0),
+                makeSourceResult(mName1, 1));
+    }
+
     public void testDuplicatesOfShortcut() {
 
         // four results from source 1, the first of which is a dupe of the shortcut
