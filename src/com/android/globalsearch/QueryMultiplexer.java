@@ -35,8 +35,8 @@ public class QueryMultiplexer implements Runnable {
     private static final boolean DBG = false;
     private static final String TAG = "GlobalSearch";
 
-
     private final Executor mExecutor;
+    private final DelayedExecutor mDelayedExecutor;
     private final List<SuggestionSource> mSources;
     private final SuggestionBacker mReceiver;
     private final String mQuery;
@@ -51,18 +51,21 @@ public class QueryMultiplexer implements Runnable {
      * @param maxResultsPerSource The maximum number of results each source should respond with,
      *        passsed along to each source as part of the query.
      * @param queryLimit An advisory maximum number that each source should return
-     *        in {@link SuggestionResult#getCount()}.
+     *        in {@link com.android.globalsearch.SuggestionResult#getCount()}.
      * @param receiver The receiver of results.
      * @param executor Used to execute each source's {@link SuggestionSource#getSuggestionTask}
+     * @param delayedExecutor Used to enforce a timeout on each query.
      */
     public QueryMultiplexer(String query, List<SuggestionSource> sources, int maxResultsPerSource,
-            int queryLimit, SuggestionBacker receiver, Executor executor) {
+                            int queryLimit, SuggestionBacker receiver, Executor executor,
+                            DelayedExecutor delayedExecutor) {
         mExecutor = executor;
         mQuery = query;
         mSources = sources;
         mReceiver = receiver;
         mMaxResultsPerSource = maxResultsPerSource;
         mQueryLimit = queryLimit;
+        mDelayedExecutor = delayedExecutor;
         mSentRequests = new ArrayList<SuggestionRequest>(mSources.size());
     }
 
@@ -116,6 +119,17 @@ public class QueryMultiplexer implements Runnable {
         @Override
         public void run() {
             mReceiver.onSourceQueryStart(mSuggestionSource.getComponentName());
+
+            // note to self: stop running if we're still at it after timeout deadline
+            mDelayedExecutor.postDelayed(new Runnable() {
+                public void run() {
+                    if (!isDone()) {
+                        Log.d(TAG, "timing out query for " + mSuggestionSource.getLabel());
+                        cancel(true);
+                    }
+                }
+            }, SuggestionSession.SOURCE_TIMEOUT_MILLIS);
+            if (DBG) Log.d(TAG, "starting query for " + mSuggestionSource.getLabel());
             super.run();
         }
 
@@ -180,6 +194,11 @@ public class QueryMultiplexer implements Runnable {
                 // since we don't want to crash the suggestion provider just
                 // because of a buggy suggestion source.
                 Log.e(TAG, getTag() + " failed.", e.getCause());
+                mReceiver.onNewSuggestionResult(
+                        SuggestionResult.createErrorResult(mSuggestionSource));
+            } catch (Throwable t) {
+                // in case we blew it some how in the above post-processing of the result
+                Log.e(TAG, getTag() + " failed: this is our fault!!", t);
                 mReceiver.onNewSuggestionResult(
                         SuggestionResult.createErrorResult(mSuggestionSource));
             }

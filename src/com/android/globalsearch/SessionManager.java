@@ -107,16 +107,10 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         // Fire off a warm-up query to the web search source, which that source can use for
         // whatever it sees fit. For example, EnhancedGoogleSearchProvider uses this to
         // determine whether a opt-in needs to be shown for use of location.
-        mExecutor.execute(new Runnable() {
-            public void run() {
-                try {
-                    webSearchSource.getSuggestionTask("", 0, 0).call();
-                } catch (Exception e) {
-                    Log.e(TAG, "exception from web search warm-up query", e);
-                }
-            }
-        });
-        
+        if (webSearchSource != null) {
+            warmUpWebSource(webSearchSource);
+        }
+
         final ArrayList<SuggestionSource> enabledSources = orderSources(
                 mSources.getEnabledSuggestionSources(),
                 webSearchSource,
@@ -138,6 +132,18 @@ public class SessionManager implements SuggestionSession.SessionCallback {
                 mSources, enabledSources,
                 mShortcutRepo, mExecutor,
                 delayedExecutor, new SuggestionFactoryImpl(mContext), this);
+    }
+
+    private void warmUpWebSource(final SuggestionSource webSearchSource) {
+        mExecutor.execute(new Runnable() {
+            public void run() {
+                try {
+                    webSearchSource.getSuggestionTask("", 0, 0).call();
+                } catch (Exception e) {
+                    Log.e(TAG, "exception from web search warm-up query", e);
+                }
+            }
+        });
     }
 
     /**

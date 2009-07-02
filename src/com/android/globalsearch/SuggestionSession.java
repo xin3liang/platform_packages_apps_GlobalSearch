@@ -18,7 +18,6 @@ package com.android.globalsearch;
 
 import android.content.ComponentName;
 import android.database.Cursor;
-import android.os.Handler;
 import android.util.Log;
 
 import java.lang.ref.SoftReference;
@@ -113,13 +112,18 @@ public class SuggestionSession {
      * The number of millis the user must stop typing before we consider them to be 'at rest', that
      * is, we think they are done typing.  See top class level javadoc for more details.
      */
-    private static final long DONE_TYPING_REST = 500L;
+    static final long DONE_TYPING_REST = 500L;
 
     /**
      * How long the promoted source have to respond before the "search the web" and "more results"
      * entries are added to the end of the list, in millis.
      */
     private static final long PROMOTED_SOURCE_DEADLINE = 3500;
+
+    /**
+     * How long an individual source has to respond before they will be cancelled.
+     */
+    static final long SOURCE_TIMEOUT_MILLIS = 10000L;
 
     /**
      * Interface for receiving notifications from session.
@@ -290,6 +294,7 @@ public class SuggestionSession {
         // fire off queries / refreshers
         final AsyncMux asyncMux = new AsyncMux(
                 mExecutor,
+                mDelayedExecutor,
                 mSessionCache,
                 query,
                 shortcutsToRefresh,
@@ -573,6 +578,7 @@ public class SuggestionSession {
     static class AsyncMux extends SuggestionBacker {
 
         private final Executor mExecutor;
+        private final DelayedExecutor mDelayedExecutor;
         private final SessionCache mSessionCache;
         private final String mQuery;
         private final ArrayList<SuggestionData> mShortcutsToValidate;
@@ -592,7 +598,8 @@ public class SuggestionSession {
          * perhaps just the number of promoted sources) once we automatically choose promoted
          * sources based on a ranking returned by the shortcut repo.
          *
-         * @param executor used to create the shortcut refresher and request muliplexors
+         * @param executor required by the query multiplexers.
+         * @param delayedExecutor required by the query multiplexers.
          * @param sessionCache results are repoted to the cache as they come in
          * @param query the query the tasks pertain to
          * @param shortcutsToValidate the shortcuts that need to be validated
@@ -603,7 +610,7 @@ public class SuggestionSession {
          */
         AsyncMux(
                 Executor executor,
-                SessionCache sessionCache,
+                DelayedExecutor delayedExecutor, SessionCache sessionCache,
                 String query,
                 ArrayList<SuggestionData> shortcutsToValidate,
                 ArrayList<SuggestionSource> sourcesToQuery,
@@ -611,6 +618,7 @@ public class SuggestionSession {
                 SourceSuggestionBacker backerToReportTo,
                 ShortcutRepository repo) {
             mExecutor = executor;
+            mDelayedExecutor = delayedExecutor;
             mSessionCache = sessionCache;
             mQuery = query;
             mShortcutsToValidate = shortcutsToValidate;
@@ -690,7 +698,7 @@ public class SuggestionSession {
             }
             mPromotedSourcesQueryMux = new QueryMultiplexer(
                     mQuery, promotedSources, MAX_RESULTS_PER_SOURCE, MAX_RESULTS_PER_SOURCE,
-                    this, mExecutor);
+                    this, mExecutor, mDelayedExecutor);
             if (DBG) Log.d(TAG, "sending '" + mQuery + "' off to " + promotedSources.size() +
                     " promoted sources");
             mBackerToReportTo.reportPromotedQueryStartTime();
@@ -718,7 +726,7 @@ public class SuggestionSession {
 
             mAdditionalSourcesQueryMux = new QueryMultiplexer(
                     mQuery, additional, MAX_RESULTS_TO_DISPLAY, MAX_RESULTS_PER_SOURCE,
-                    this, mExecutor);
+                    this, mExecutor, mDelayedExecutor);
             if (DBG) Log.d(TAG, "sending queries off to " + additional.size() + " promoted " +
                     "sources");
             mAdditionalSourcesQueryMux.sendQuery();

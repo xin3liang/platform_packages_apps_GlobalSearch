@@ -145,6 +145,8 @@ class TestSuggestionSource extends AbstractSuggestionSource {
 
         final SuggestionData suggestion = new SuggestionData.Builder(name)
                 .title(s)
+                .intentAction("view")
+                .intentData(s)
                 .build();
 
         return new TestSuggestionSource.Builder()

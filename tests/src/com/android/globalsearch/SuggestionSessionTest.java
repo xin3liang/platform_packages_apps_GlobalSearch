@@ -29,6 +29,8 @@ import android.test.MoreAsserts;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
 
@@ -59,6 +61,7 @@ public class SuggestionSessionTest extends TestCase
                 .setComponent(mWebComponent)
                 .setLabel("web")
                 .addCannedResponse("a", mWebSuggestion)
+                .addCannedResponse("b", mWebSuggestion)
                 .create();
 
         mComponentA = new ComponentName("com.android.test", "com.android.test.A");
@@ -67,6 +70,7 @@ public class SuggestionSessionTest extends TestCase
                 .setComponent(mComponentA)
                 .setLabel("A")
                 .addCannedResponse("a", mSuggestionFromA)
+                .addCannedResponse("b", mSuggestionFromA)
                 .create();
 
         ArrayList<SuggestionSource> enabledSources = Lists.newArrayList(mWebSource, mSourceA);
@@ -175,6 +179,32 @@ public class SuggestionSessionTest extends TestCase
         }
     }
 
+    public void testAvoidWorkWhileUserTypesFast() {
+        {
+            final Cursor cursor = mSession.query("a");
+            final Snapshot snapshot = getSnapshot(cursor);
+            assertTrue("isPending.", snapshot.isPending);
+        }
+        mEngine.finishAllSourceTasks();
+        {
+            final Cursor cursor = mSession.query("b");
+            Snapshot snapshot = getSnapshot(cursor);
+            assertTrue("should report pending until delayed work is started.",
+                    snapshot.isPending);
+            MoreAsserts.assertEmpty("no sources should be pending.",
+                    mEngine.getPendingSources());
+
+            // now move time forward, this should fire the tasks off
+            mEngine.moveTimeForward(SuggestionSession.DONE_TYPING_REST);
+            cursor.requery();
+            snapshot = getSnapshot(cursor);
+            assertTrue("isPending.", snapshot.isPending);
+            MoreAsserts.assertContentsInOrder("sources in progress",
+                    mEngine.getPendingSources(),
+                    mWebComponent, mComponentA);
+        }
+    }
+
     public void testCaching() {
         // results for query
         final Cursor cursor1 = mSession.query("a");
@@ -183,6 +213,7 @@ public class SuggestionSessionTest extends TestCase
 
         // same query again
         final Cursor cursor2 = mSession.query("a");
+        mEngine.moveTimeForward(SuggestionSession.DONE_TYPING_REST);
         cursor2.requery();
         final Snapshot snapshot = getSnapshot(cursor2);
         assertFalse("should not be pending when results are cached.", snapshot.isPending);
@@ -220,6 +251,7 @@ public class SuggestionSessionTest extends TestCase
 
         {
             final Cursor cursor = mSession.query("a");
+            mEngine.moveTimeForward(SuggestionSession.DONE_TYPING_REST);
             cursor.requery();
 
             final Snapshot snapshot = getSnapshot(cursor);
@@ -263,7 +295,6 @@ public class SuggestionSessionTest extends TestCase
                         NONE));
     }
 
-
     static class Snapshot {
         final ArrayList<String> suggetionTitles;
         final boolean isPending;
@@ -286,8 +317,27 @@ public class SuggestionSessionTest extends TestCase
     static class QueryEngine implements Executor, DelayedExecutor,
             SuggestionSession.SessionCallback{
 
+        private long mNow = 1239841162000L; // millis since epoch. some time in 2009
+
         private final LinkedHashMap<ComponentName, FutureTask<SuggestionResult>> mPending
                 = new LinkedHashMap<ComponentName, FutureTask<SuggestionResult>>();
+
+        private LinkedList<Delayed> mDelayed = new LinkedList<Delayed>();
+
+        /**
+         * book keeping for delayed runnables for emulating delayed execution.
+         */
+        private static class Delayed {
+            final long start;
+            final long delay;
+            final Runnable runnable;
+
+            Delayed(long start, long delay, Runnable runnable) {
+                this.start = start;
+                this.delay = delay;
+                this.runnable = runnable;
+            }
+        }
 
         private SessionStats mSessionStats;
 
@@ -303,13 +353,55 @@ public class SuggestionSessionTest extends TestCase
          * Simulate a source responding.
          *
          * @param source The source to have respond.
+         * @return The result of the response for further inspection.
          */
-        public void onSourceRespond(ComponentName source) {
+        public SuggestionResult onSourceRespond(ComponentName source) {
             final FutureTask<SuggestionResult> task = mPending.remove(source);
             if (task == null) {
-                throw new IllegalArgumentException(source + " never responded");
+                throw new IllegalArgumentException(source + " never started");
             }
             task.run();
+            try {
+                return task.get();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        /**
+         * Runs all pending source tasks.  This can be useful when starting a new
+         * query, to get to a consistent state before more assertions.
+         */
+        public void finishAllSourceTasks() {
+            for (FutureTask<SuggestionResult> task : mPending.values()) {
+                task.run();
+            }
+            mPending.clear();
+        }
+
+        /**
+         * Moves time forward the specified number of milliseconds, executing any tasks
+         * that were posted to {@link #postDelayed(Runnable, long)} as appropriate.
+         *
+         * @param millis
+         */
+        public void moveTimeForward(long millis) {
+            mNow += millis;
+            List<Runnable> toRun = new ArrayList<Runnable>();
+            final Iterator<Delayed> it = mDelayed.iterator();
+            while (it.hasNext()) {
+                Delayed delayed = it.next();
+                if (delayed.start + delayed.delay >= mNow) {
+                    it.remove();
+                    toRun.add(delayed.runnable);
+                }
+            }
+
+            // do this in a separate pass to avoid concurrent modification of list,
+            // since these runnables might add more to the queue
+            for (Runnable runnable : toRun) {
+                runnable.run();
+            }
         }
 
         /**
@@ -333,9 +425,12 @@ public class SuggestionSessionTest extends TestCase
             }
         }
 
-        // DelayedExecutor TODO: keep track of what was delayed for testing
+        // DelayedExecutor
 
-        public void postDelayed(Runnable runnable, long delayMillis) {runnable.run();}
+        public void postDelayed(Runnable runnable, long delayMillis) {
+            mDelayed.add(new Delayed(mNow, delayMillis, runnable));
+        }
+
         public void postAtTime(Runnable runnable, long uptimeMillis) {runnable.run();}
 
 
