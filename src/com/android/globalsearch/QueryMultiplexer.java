@@ -33,6 +33,7 @@ public class QueryMultiplexer implements Runnable {
 
     // set to true to enable the more verbose debug logging for this file
     private static final boolean DBG = false;
+    private static final boolean DBG_LTNCY = true;
     private static final String TAG = "GlobalSearch";
 
     private final Executor mExecutor;
@@ -95,6 +96,12 @@ public class QueryMultiplexer implements Runnable {
             sentRequest.cancel(true);
         }
     }
+    /**
+     * Converts nanoseconds to milliseconds.
+     */
+    private static int ms(long ns) {
+        return (int) (ns / 1000000);
+    }
 
 
     /**
@@ -103,6 +110,7 @@ public class QueryMultiplexer implements Runnable {
     class SuggestionRequest extends FutureTask<SuggestionResult> {
 
         private final SuggestionSource mSuggestionSource;
+        private long mStartTime = -1;
 
         /**
          * @param suggestionSource The suggestion source that this request is for.
@@ -118,6 +126,7 @@ public class QueryMultiplexer implements Runnable {
 
         @Override
         public void run() {
+            mStartTime = System.nanoTime();
             mReceiver.onSourceQueryStart(mSuggestionSource.getComponentName());
 
             // note to self: stop running if we're still at it after timeout deadline
@@ -155,8 +164,19 @@ public class QueryMultiplexer implements Runnable {
 
         @Override
         protected void done() {
+            final boolean cancelled = isCancelled();
+            if (DBG_LTNCY) {
+                long durationMillis = ms(System.nanoTime() - mStartTime);
+                final String latencyStr = !cancelled ?
+                        "took " + durationMillis + " ms" :
+                        mStartTime == -1 ?
+                                "(cancelled before ever running)" :
+                                "(cancelled after " + durationMillis + " ms)";
+                Log.d(TAG,
+                        mSuggestionSource.getLabel() + " " + latencyStr + " for '" + mQuery + "'");
+            }
             try {
-                if (isCancelled()) {
+                if (cancelled) {
                     if (DBG) Log.d(TAG, getTag() + " was cancelled");
                     mReceiver.onNewSuggestionResult(
                             SuggestionResult.createCancelled(mSuggestionSource));
