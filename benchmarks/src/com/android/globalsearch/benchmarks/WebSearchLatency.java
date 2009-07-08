@@ -26,11 +26,11 @@ mmm packages/apps/GlobalSearch/benchmarks \
 && adb -e install -r $OUT/system/app/GlobalSearchBenchmarks.apk \
 && sleep 10 \
 && adb -e shell am start -a android.intent.action.MAIN \
-        -n com.android.globalsearch.benchmarks/.EnhancedGoogleSearchLatency \
+        -n com.android.globalsearch.benchmarks/.WebSearchLatency \
 && adb -e logcat
 
  */
-public class EnhancedGoogleSearchLatency extends SourceLatency {
+public class WebSearchLatency extends SourceLatency {
 
     private static final String[] queries = {
         "", "a", "s", "e", "r", "pub", "taxi", "kilt hire", "pizza",
@@ -40,19 +40,18 @@ public class EnhancedGoogleSearchLatency extends SourceLatency {
              "sanxjkashasrxae"
     };
 
-    private static ComponentName EGS_COMPONENT =
-            new ComponentName("com.google.android.providers.enhancedgooglesearch",
-                    "com.google.android.providers.enhancedgooglesearch.Launcher");
+    private static ComponentName WEB_COMPONENT =
+            new ComponentName("com.android.websearch","com.android.websearch.Search.1");
 
     @Override
     protected void onResume() {
         super.onResume();
-        testEnhancedGoogleSearch();
+        testWebSearch();
         finish();
     }
 
-    private void testEnhancedGoogleSearch() {
-        checkSource("EGS", EGS_COMPONENT, queries);
+    private void testWebSearch() {
+        checkSource("WEB", WEB_COMPONENT, queries);
     }
 
 }
