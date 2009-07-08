@@ -22,6 +22,7 @@
     android:hint="@string/search_hint"
     android:voiceSearchMode="showVoiceSearchButton|launchWebSearch"
     android:searchSuggestAuthority="com.android.globalsearch.SuggestionProvider"
+    android:autoUrlDetect="true"
     >
     
    <actionkey
