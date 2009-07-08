@@ -195,7 +195,7 @@ public class SuggestionSessionTest extends TestCase
                     mEngine.getPendingSources());
 
             // now move time forward, this should fire the tasks off
-            mEngine.moveTimeForward(SuggestionSession.DONE_TYPING_REST);
+            mEngine.moveTimeForward(SuggestionSession.TYPING_DELAY_LAST_THREE);
             cursor.requery();
             snapshot = getSnapshot(cursor);
             assertTrue("isPending.", snapshot.isPending);
@@ -213,7 +213,7 @@ public class SuggestionSessionTest extends TestCase
 
         // same query again
         final Cursor cursor2 = mSession.query("a");
-        mEngine.moveTimeForward(SuggestionSession.DONE_TYPING_REST);
+        mEngine.moveTimeForward(SuggestionSession.TYPING_DELAY_LAST_THREE);
         cursor2.requery();
         final Snapshot snapshot = getSnapshot(cursor2);
         assertFalse("should not be pending when results are cached.", snapshot.isPending);
@@ -251,7 +251,7 @@ public class SuggestionSessionTest extends TestCase
 
         {
             final Cursor cursor = mSession.query("a");
-            mEngine.moveTimeForward(SuggestionSession.DONE_TYPING_REST);
+            mEngine.moveTimeForward(SuggestionSession.TYPING_DELAY_LAST_THREE);
             cursor.requery();
 
             final Snapshot snapshot = getSnapshot(cursor);
@@ -317,7 +317,7 @@ public class SuggestionSessionTest extends TestCase
     static class QueryEngine implements Executor, DelayedExecutor,
             SuggestionSession.SessionCallback{
 
-        private long mNow = 1239841162000L; // millis since epoch. some time in 2009
+        private long mNow = 0L;
 
         private final LinkedHashMap<ComponentName, FutureTask<SuggestionResult>> mPending
                 = new LinkedHashMap<ComponentName, FutureTask<SuggestionResult>>();
@@ -391,7 +391,7 @@ public class SuggestionSessionTest extends TestCase
             final Iterator<Delayed> it = mDelayed.iterator();
             while (it.hasNext()) {
                 Delayed delayed = it.next();
-                if (delayed.start + delayed.delay >= mNow) {
+                if (mNow >= delayed.start + delayed.delay) {
                     it.remove();
                     toRun.add(delayed.runnable);
                 }

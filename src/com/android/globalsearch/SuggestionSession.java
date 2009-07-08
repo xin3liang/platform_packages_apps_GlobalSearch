@@ -43,12 +43,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <code>queryAfterZeroResults</code> property to <code>true</code> in searchable.xml
  *
  * If there are no shortcuts or cached entries for a given query, we prefill with the results from
- * the previous query for up to {@link #DONE_TYPING_REST} millis until the first result comes back.
+ * the previous query for up to {@link #PREFILL_MILLIS} millis until the first result comes back.
  * This results in a smoother experience with less flickering of zero results.
  *
- * If we think the user is typing, and will continue to type (they haven't stopped typing for at
- * least {@link #DONE_TYPING_REST} millis), we delay the sending of the queries to the sources so
- * we can cancel them when the next query comes in.
+ * If we think the user is typing, and will continue to type we delay the sending of the queries to
+ * the sources so we can cancel them when the next query comes in.
+ * See {@link #getRecommendedDelay}.
  *
  * This class is thread safe, guarded by "this", to protect against the fact that {@link #query}
  * and the callbacks via {@link com.android.globalsearch.SuggestionCursor.CursorListener} may be
@@ -73,9 +73,6 @@ public class SuggestionSession {
     // guarded by "this"
 
     private SessionCache mSessionCache = new SessionCache();
-
-    // the last time the user typed a character during this session.
-    private long mLastCharTime = 0;
 
     // the cursor from the last character typed, if any
     private SuggestionCursor mPreviousCursor = null;
@@ -109,12 +106,6 @@ public class SuggestionSession {
     private static final int MAX_RESULTS_PER_SOURCE = 51 + MAX_RESULTS_TO_DISPLAY;
 
     /**
-     * The number of millis the user must stop typing before we consider them to be 'at rest', that
-     * is, we think they are done typing.  See top class level javadoc for more details.
-     */
-    static final long DONE_TYPING_REST = 500L;
-
-    /**
      * How long the promoted source have to respond before the "search the web" and "more results"
      * entries are added to the end of the list, in millis.
      */
@@ -124,6 +115,12 @@ public class SuggestionSession {
      * How long an individual source has to respond before they will be cancelled.
      */
     static final long SOURCE_TIMEOUT_MILLIS = 10000L;
+
+    static final long PREFILL_MILLIS = 400L;
+
+    // constants for the typing delay heuristic.  see getRecommendedDelay
+    static final long TYPING_DELAY_LAST_THREE = 800L;
+    static final long TYPING_DELAY_LAST_TWO = 500L;
 
     /**
      * Interface for receiving notifications from session.
@@ -192,17 +189,12 @@ public class SuggestionSession {
             mFireOffRunnable = null;
         }
 
-        // update typing speed
-        long now = getNow();
-        long sinceLast = now - mLastCharTime;
-        mLastCharTime = now;
-        if (DBG) Log.d(TAG, "sinceLast=" + sinceLast);
-
         final SuggestionCursor cursor = new SuggestionCursor(mDelayedExecutor, query);
 
         // if the user is still typing, delay the work
-        final boolean doneTyping = sinceLast >= DONE_TYPING_REST;
-        if (doneTyping) {
+        final long recommendedDelay = getRecommendedDelay(getNow());
+        if (DBG) Log.d(TAG, "recDelay = " + recommendedDelay);
+        if (recommendedDelay == 0) {
             fireStuffOff(cursor, query);
         } else {
             mFireOffRunnable = new Cancellable() {
@@ -210,7 +202,7 @@ public class SuggestionSession {
                     fireStuffOff(cursor, query);
                 }
             };
-            mDelayedExecutor.postDelayed(mFireOffRunnable, DONE_TYPING_REST);
+            mDelayedExecutor.postDelayed(mFireOffRunnable, recommendedDelay);
         }
 
         // if the cursor we are about to return is empty (no cache, no shortcuts),
@@ -223,10 +215,38 @@ public class SuggestionSession {
                 public void run() {
                     cursor.onNewResults();
                 }
-            }, DONE_TYPING_REST);
+            }, PREFILL_MILLIS);
         }
         mPreviousCursor = cursor;
         return cursor;
+    }
+
+
+    // the last two key presses
+    long mLastLastKey = 0;
+    long mLastKey = 0;
+
+    /**
+     * The heuristic for deciding how long to delay work in hopese that we might avoid having to do
+     * it if we think the user is still typing.
+     *
+     * @param keyTime The current time.
+     * @return The recommended millis to delay work.
+     */
+    long getRecommendedDelay(long keyTime) {
+        final long delta1 = keyTime - mLastKey;
+        final long delta2 = mLastKey - mLastLastKey;
+        final long avg = (delta2 + delta1) / 2;
+
+        if (DBG) Log.d(TAG, "delta1=" + delta1 + ", delta2=" + delta2 + ", avg=" + avg);
+
+        mLastLastKey = mLastKey;
+        mLastKey = keyTime;
+
+        if (avg < TYPING_DELAY_LAST_THREE) return TYPING_DELAY_LAST_THREE;
+        if (delta1 < TYPING_DELAY_LAST_TWO) return TYPING_DELAY_LAST_TWO;
+
+        return 0;
     }
 
     /**
@@ -238,6 +258,8 @@ public class SuggestionSession {
      * @param query The query.
      */
     private void fireStuffOff(final SuggestionCursor cursor, final String query) {
+        if (DBG) Log.d(TAG, "**************firing of work for '" + query + "'");
+
         // get shortcuts
         final ArrayList<SuggestionData> shortcuts =
                 filterOnlyEnabled(mShortcutRepo.getShortcutsForQuery(query));
