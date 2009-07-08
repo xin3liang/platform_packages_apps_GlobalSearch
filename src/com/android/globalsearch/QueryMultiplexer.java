@@ -33,7 +33,7 @@ public class QueryMultiplexer implements Runnable {
 
     // set to true to enable the more verbose debug logging for this file
     private static final boolean DBG = false;
-    private static final boolean DBG_LTNCY = true;
+    private static final boolean DBG_LTNCY = false;
     private static final String TAG = "GlobalSearch";
 
     private final Executor mExecutor;
