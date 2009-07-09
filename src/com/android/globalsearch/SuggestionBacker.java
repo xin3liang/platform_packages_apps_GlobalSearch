@@ -124,6 +124,14 @@ public abstract class SuggestionBacker {
     protected abstract boolean reportSourceStarted(ComponentName source);
 
     /**
+     * Returns whether a source has begun retrieving its results yet.
+     *
+     * @param source The name of the source.
+     * @return Whether the source has begun retrieving its results yet.
+     */
+    public abstract boolean hasSourceStarted(ComponentName source);
+
+    /**
      * Add the results from a source.
      *
      * @param suggestionResult The results from a source.

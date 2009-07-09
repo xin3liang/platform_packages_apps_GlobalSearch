@@ -43,7 +43,7 @@ import com.google.android.collect.Lists;
 public class SuggestionSessionTest extends TestCase
         implements SuggestionFactory, ShortcutRepository  {
 
-    private SuggestionSession mSession;
+    private TestSuggestionSession mSession;
     private QueryEngine mEngine;
     private ComponentName mComponentA;
     private SuggestionSource mSourceA;
@@ -74,17 +74,16 @@ public class SuggestionSessionTest extends TestCase
                 .create();
 
         ArrayList<SuggestionSource> enabledSources = Lists.newArrayList(mWebSource, mSourceA);
-        mSession = initSession(enabledSources, mWebSource);
+        mSession = initSession(enabledSources, mWebSource, 4);
     }
 
-    private SuggestionSession initSession(
+    private TestSuggestionSession initSession(
             ArrayList<SuggestionSource> enabledSources,
-            SuggestionSource webSource) {
+            SuggestionSource webSource, int numPromotedSources) {
         final SimpleSourceLookup sourceLookup = new SimpleSourceLookup(enabledSources, webSource);
         mEngine = new QueryEngine();
-        SuggestionSession session = new SuggestionSession(sourceLookup, enabledSources,
-                this, mEngine, mEngine, this, mEngine);
-        return session;
+        return new TestSuggestionSession(
+                sourceLookup, enabledSources, this, mEngine, numPromotedSources);
     }
 
     SuggestionData makeSimple(ComponentName component, String title) {
@@ -130,8 +129,15 @@ public class SuggestionSessionTest extends TestCase
 
     public SuggestionData getCorpusEntry(
             String query, SourceSuggestionBacker.SourceStat sourceStat) {
+        final ComponentName name = sourceStat.getName();
+        return makeCorpusEntry(name);
+    }
+
+    private SuggestionData makeCorpusEntry(ComponentName name) {
         return new SuggestionData.Builder(BUILT_IN)
-                .title("corpus " + sourceStat.getLabel()).build();
+                .intentAction(SearchManager.INTENT_ACTION_CHANGE_SEARCH_SOURCE)
+                .intentData(name.flattenToShortString())
+                .title("corpus " + name).build();
     }
 
 // --------------------- Tests ---------------------
@@ -143,7 +149,7 @@ public class SuggestionSessionTest extends TestCase
             final Snapshot snapshot = getSnapshot(cursor);
             assertTrue("isPending.", snapshot.isPending);
             assertEquals("displayNotify", NONE, snapshot.displayNotify);
-            MoreAsserts.assertEmpty("suggestions", snapshot.suggetionTitles);
+            MoreAsserts.assertEmpty("suggestions", snapshot.suggestionTitles);
 
             MoreAsserts.assertContentsInOrder("sources in progress",
                     mEngine.getPendingSources(),
@@ -157,7 +163,7 @@ public class SuggestionSessionTest extends TestCase
             assertTrue(snapshot.isPending);
             assertEquals(NONE, snapshot.displayNotify);
             MoreAsserts.assertContentsInOrder("suggestions",
-                    snapshot.suggetionTitles,
+                    snapshot.suggestionTitles,
                     mWebSuggestion.getTitle());
 
             MoreAsserts.assertContentsInOrder("sources in progress",
@@ -171,7 +177,7 @@ public class SuggestionSessionTest extends TestCase
             assertFalse(snapshot.isPending);
 //            assertEquals(NONE, snapshot.displayNotify);   // <--- failing
             MoreAsserts.assertContentsInOrder("suggestions",
-                    snapshot.suggetionTitles,
+                    snapshot.suggestionTitles,
                     mWebSuggestion.getTitle(),
                     mSuggestionFromA.getTitle());
 
@@ -186,8 +192,10 @@ public class SuggestionSessionTest extends TestCase
             assertTrue("isPending.", snapshot.isPending);
         }
         mEngine.finishAllSourceTasks();
+        mSession.setWorkDelay(800);
         {
             final Cursor cursor = mSession.query("b");
+
             Snapshot snapshot = getSnapshot(cursor);
             assertTrue("should report pending until delayed work is started.",
                     snapshot.isPending);
@@ -195,7 +203,7 @@ public class SuggestionSessionTest extends TestCase
                     mEngine.getPendingSources());
 
             // now move time forward, this should fire the tasks off
-            mEngine.moveTimeForward(SuggestionSession.TYPING_DELAY_LAST_THREE);
+            mEngine.moveTimeForward(800);
             cursor.requery();
             snapshot = getSnapshot(cursor);
             assertTrue("isPending.", snapshot.isPending);
@@ -213,13 +221,12 @@ public class SuggestionSessionTest extends TestCase
 
         // same query again
         final Cursor cursor2 = mSession.query("a");
-        mEngine.moveTimeForward(SuggestionSession.TYPING_DELAY_LAST_THREE);
         cursor2.requery();
         final Snapshot snapshot = getSnapshot(cursor2);
         assertFalse("should not be pending when results are cached.", snapshot.isPending);
 //        assertEquals(NONE, snapshot.displayNotify);
         MoreAsserts.assertContentsInOrder("suggestions",
-                snapshot.suggetionTitles,
+                snapshot.suggestionTitles,
                 mWebSuggestion.getTitle(),
                 mSuggestionFromA.getTitle());
 
@@ -235,7 +242,7 @@ public class SuggestionSessionTest extends TestCase
                 .setComponent(mComponentA)
                 .create();
 
-        mSession = initSession(Lists.newArrayList(mWebSource, aWithError), mWebSource);
+        mSession = initSession(Lists.newArrayList(mWebSource, aWithError), mWebSource, 4);
 
         {
             final Cursor cursor = mSession.query("a");
@@ -245,18 +252,17 @@ public class SuggestionSessionTest extends TestCase
 
             final Snapshot snapshot = getSnapshot(cursor);
             MoreAsserts.assertContentsInOrder(
-                snapshot.suggetionTitles,
+                snapshot.suggestionTitles,
                 mWebSuggestion.getTitle());
         }
 
         {
             final Cursor cursor = mSession.query("a");
-            mEngine.moveTimeForward(SuggestionSession.TYPING_DELAY_LAST_THREE);
             cursor.requery();
 
             final Snapshot snapshot = getSnapshot(cursor);
             MoreAsserts.assertContentsInOrder(
-                snapshot.suggetionTitles,
+                snapshot.suggestionTitles,
                 mWebSuggestion.getTitle());
             MoreAsserts.assertContentsInOrder("expecting source a to be pending (not cached) " +
                     "since it returned an error the first time.",
@@ -265,7 +271,216 @@ public class SuggestionSessionTest extends TestCase
         }        
     }
 
+    public void testSessionClosing_noWorkCancelling() {
+        // first query fired off
+        final Cursor cursor1 = mSession.query("a");
+        assertNull("session shouldn't be closed.", mEngine.getSessionStats());
+
+        // second query starts
+        final Cursor cursor2 = mSession.query("b");
+        // first cursor closes (which is how it works from search dialog)
+        sendPreClose(cursor1);
+        assertNull("session shouldn't be closed after first cursor closes.",
+                mEngine.getSessionStats());
+        assertNull("session shouldn't be closed.", mEngine.getSessionStats());
+
+        sendPreClose(cursor2);
+        assertNotNull(
+                "session should be closed after both cursors closed.", mEngine.getSessionStats());
+    }
+
+    public void testSessionClosing_evenWhenWorkCancelled() {
+        mSession.setWorkDelay(800);
+        final Cursor cursor1 = mSession.query("a");
+        final Cursor cursor2 = mSession.query("b");
+
+        // after the delay, query2 is executed
+        mEngine.moveTimeForward(800);
+        assertNull("session shouldn't be closed.", mEngine.getSessionStats());
+        sendPreClose(cursor2);
+        assertNotNull(
+                "session should be closed after first query is cancelled, and second cursor "
+                        + "is closed", mEngine.getSessionStats());
+    }
+
+
+    public void testSessionStats_noClick() {
+        final Cursor cursor = mSession.query("a");
+        sendPreClose(cursor);
+        final SessionStats stats = mEngine.getSessionStats();
+        assertNotNull("session stats.", stats);
+        assertNull("clicked.", stats.getClicked());
+        MoreAsserts.assertEmpty("source impressions.", stats.getSourceImpressions());
+    }
+
+    public void testSessionStats_click() {
+        final Cursor cursor = mSession.query("a");
+        mEngine.onSourceRespond(mWebComponent);
+        mEngine.onSourceRespond(mComponentA);
+        cursor.requery();
+        final Snapshot snapshot = getSnapshot(cursor);
+        MoreAsserts.assertContentsInOrder("suggestions.", snapshot.suggestionTitles,
+                mWebSuggestion.getTitle(), mSuggestionFromA.getTitle());
+
+        sendClick(cursor, 0);
+        sendPreClose(cursor);
+        final SessionStats stats = mEngine.getSessionStats();
+        assertNotNull("session stats.", stats);
+        assertEquals("clicked.", mWebSuggestion, stats.getClicked());
+    }
+
+    public void testSessionStats_allSourcesViewed() {
+        final Cursor cursor = mSession.query("a");
+        mEngine.onSourceRespond(mWebComponent);
+        mEngine.onSourceRespond(mComponentA);
+        cursor.requery();
+
+        sendPreClose(cursor, 1);
+        final SessionStats stats = mEngine.getSessionStats();
+        assertNotNull("session stats.", stats);
+        assertNull("clicked.", stats.getClicked());
+        MoreAsserts.assertContentsInAnyOrder("sources viewed.", stats.getSourceImpressions(),
+                mWebComponent, mComponentA);
+    }
+
+    public void testSessionStats_oneSourceViewed() {
+        final Cursor cursor = mSession.query("a");
+        mEngine.onSourceRespond(mWebComponent);
+        mEngine.onSourceRespond(mComponentA);
+        cursor.requery();
+
+        sendPreClose(cursor, 0);
+        final SessionStats stats = mEngine.getSessionStats();
+        assertNotNull("session stats.", stats);
+        assertNull("clicked.", stats.getClicked());
+        MoreAsserts.assertContentsInOrder(
+                "sources viewed.", stats.getSourceImpressions(), mWebComponent);
+    }
+
+    public void testSessionStats_impressionsWithMoreNotExpanded() {
+        final int numPromotedSources = 1;
+        mSession = initSession(
+                Lists.newArrayList(mWebSource, mSourceA),
+                mWebSource,
+                numPromotedSources);
+
+        final Cursor cursor = mSession.query("a");
+        mEngine.onSourceRespond(mWebComponent);
+        cursor.requery();
+        final Snapshot snapshot = getSnapshot(cursor);
+        MoreAsserts.assertContentsInOrder("suggestions.", snapshot.suggestionTitles,
+                mWebSuggestion.getTitle(), MORE.getTitle());
+        assertEquals("should want notification of display of index of 'more'",
+                1, snapshot.displayNotify);
+
+        sendPreClose(cursor, 1);
+        final SessionStats stats = mEngine.getSessionStats();
+        assertNotNull("session stats.", stats);
+        assertNull("clicked.", stats.getClicked());
+        MoreAsserts.assertContentsInAnyOrder(
+                "sources viewed (should not include component of 'more results' suggestion.",
+                stats.getSourceImpressions(), mWebComponent);
+    }
+
+    /**
+     * When the user views a corpus entry under "more results" that hasn't even had a chance to
+     * start running yet, it isn't fair to count an impression with no click against it.
+     */
+    public void testSessionStats_impressionsWithMoreExpanded_beforeSourceResponds() {
+        final int numPromotedSources = 1;
+        mSession = initSession(
+                Lists.newArrayList(mWebSource, mSourceA),
+                mWebSource,
+                numPromotedSources);
+
+        final Cursor cursor = mSession.query("a");
+        mEngine.onSourceRespond(mWebComponent);
+        cursor.requery();
+        {
+            final Snapshot snapshot = getSnapshot(cursor);
+            MoreAsserts.assertContentsInOrder("suggestions.", snapshot.suggestionTitles,
+                    mWebSuggestion.getTitle(), MORE.getTitle());
+        }
+
+        // click on "more"
+        final int selectedPosition = sendClick(cursor, 1);
+        assertEquals("selected position should be index of 'more' after we click on 'more'",
+                1, selectedPosition);
+        cursor.requery();
+        {
+            final Snapshot snapshot = getSnapshot(cursor);
+            MoreAsserts.assertContentsInOrder("suggestions.",
+                    snapshot.suggestionTitles,
+                    mWebSuggestion.getTitle(),
+                    MORE.getTitle(),
+                    makeCorpusEntry(mComponentA).getTitle());
+            assertFalse("isPending should be false once 'more results' are mixed in.",
+                    snapshot.isPending);
+        }
+
+        sendPreClose(cursor, 2);
+        final SessionStats stats = mEngine.getSessionStats();
+        assertNotNull("session stats.", stats);
+        MoreAsserts.assertContentsInAnyOrder(
+                "sources viewed (should not include source that was viewed, but hasn't " +
+                        "started retrieving results yet.)",
+                stats.getSourceImpressions(), mWebComponent);
+    }
+
+    public void testSessionStats_impressionsWithMoreExpanded_afterSourceResponds() {
+        final int numPromotedSources = 1;
+        mSession = initSession(
+                Lists.newArrayList(mWebSource, mSourceA),
+                mWebSource,
+                numPromotedSources);
+
+        final Cursor cursor = mSession.query("a");
+        mEngine.onSourceRespond(mWebComponent);
+        cursor.requery();
+
+        // click on "more"
+        final int selectedPosition = sendClick(cursor, 1);
+        assertEquals("selected position should be index of 'more' after we click on 'more'",
+                1, selectedPosition);
+        cursor.requery();
+
+        // viewing that index should kick start the second component
+        final Bundle b = new Bundle();
+        b.putInt(DialogCursorProtocol.METHOD, DialogCursorProtocol.THRESH_HIT);
+        cursor.respond(b);
+
+        sendPreClose(cursor, 2);
+        final SessionStats stats = mEngine.getSessionStats();
+        assertNotNull("session stats.", stats);
+        MoreAsserts.assertContentsInAnyOrder(
+                "sources viewed.",
+                stats.getSourceImpressions(), mWebComponent, mComponentA);
+    }
+
 // --------------------- Utility methods ---------------------
+
+    private void sendPreClose(Cursor cursor) {
+        final Bundle b = new Bundle();
+        b.putInt(DialogCursorProtocol.METHOD, DialogCursorProtocol.PRE_CLOSE);
+        cursor.respond(b);
+    }
+
+    private void sendPreClose(Cursor cursor, int maxDisplayedPosition) {
+        final Bundle b = new Bundle();
+        b.putInt(DialogCursorProtocol.METHOD, DialogCursorProtocol.PRE_CLOSE);
+        b.putInt(DialogCursorProtocol.PRE_CLOSE_SEND_MAX_DISPLAY_POS, maxDisplayedPosition);
+        cursor.respond(b);
+    }
+
+
+    private int sendClick(Cursor cursor, int position) {
+        final Bundle b = new Bundle();
+        b.putInt(DialogCursorProtocol.METHOD, DialogCursorProtocol.CLICK);
+        b.putInt(DialogCursorProtocol.CLICK_SEND_POSITION, position);
+        final Bundle response = cursor.respond(b);
+        return response.getInt(DialogCursorProtocol.CLICK_RECEIVE_SELECTED_POS, -1);
+    }
+
 
     /**
      * @param cursor A cursor
@@ -296,12 +511,12 @@ public class SuggestionSessionTest extends TestCase
     }
 
     static class Snapshot {
-        final ArrayList<String> suggetionTitles;
+        final ArrayList<String> suggestionTitles;
         final boolean isPending;
         final int displayNotify;
 
-        Snapshot(ArrayList<String> suggetionTitles, boolean pending, int displayNotify) {
-            this.suggetionTitles = suggetionTitles;
+        Snapshot(ArrayList<String> suggestionTitles, boolean pending, int displayNotify) {
+            this.suggestionTitles = suggestionTitles;
             isPending = pending;
             this.displayNotify = displayNotify;
         }
@@ -461,6 +676,33 @@ public class SuggestionSessionTest extends TestCase
 
         public SuggestionSource getSelectedWebSearchSource() {
             return mWebSource;
+        }
+    }
+
+    static class TestSuggestionSession extends SuggestionSession {
+        private long mWorkDelay = 0L;
+        private final QueryEngine mEngine;
+
+        public TestSuggestionSession(SourceLookup sourceLookup,
+                ArrayList<SuggestionSource> enabledSources, SuggestionSessionTest test,
+                QueryEngine engine, int numPromotedSources) {
+            super(sourceLookup, enabledSources,
+                test, engine, engine, test, engine, numPromotedSources);
+            mEngine = engine;
+        }
+
+        public void setWorkDelay(long workDelay) {
+            mWorkDelay = workDelay;
+        }
+
+        @Override
+        long getRecommendedDelay(long keyTime) {
+            return mWorkDelay;
+        }
+
+        @Override
+        long getNow() {
+            return mEngine.mNow;
         }
     }
 }

@@ -131,7 +131,8 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         return new SuggestionSession(
                 mSources, enabledSources,
                 mShortcutRepo, mExecutor,
-                delayedExecutor, new SuggestionFactoryImpl(mContext), this);
+                delayedExecutor, new SuggestionFactoryImpl(mContext), this,
+                SuggestionSession.NUM_PROMOTED_SOURCES);
     }
 
     private void warmUpWebSource(final SuggestionSource webSearchSource) {
