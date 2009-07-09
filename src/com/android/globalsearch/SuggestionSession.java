@@ -19,6 +19,7 @@ package com.android.globalsearch;
 import android.content.ComponentName;
 import android.database.Cursor;
 import android.util.Log;
+import android.app.SearchManager;
 
 import java.lang.ref.SoftReference;
 import java.util.ArrayList;
@@ -69,6 +70,7 @@ public class SuggestionSession {
     private final DelayedExecutor mDelayedExecutor;
     private final SuggestionFactory mSuggestionFactory;
     private final SessionCallback mListener;
+    private final int mNumPromotedSources;
 
     // guarded by "this"
 
@@ -145,6 +147,7 @@ public class SuggestionSession {
      * @param delayedExecutor Used to post messages.
      * @param suggestionFactory Used to create particular suggestions.
      * @param listener The listener.
+     * @param numPromotedSources The number of sources to query first for the promoted list.
      */
     public SuggestionSession(SourceLookup sourceLookup,
             ArrayList<SuggestionSource> enabledSources,
@@ -152,7 +155,8 @@ public class SuggestionSession {
             Executor executor,
             DelayedExecutor delayedExecutor,
             SuggestionFactory suggestionFactory,
-            SessionCallback listener) {
+            SessionCallback listener,
+            int numPromotedSources) {
         mSourceLookup = sourceLookup;
         mEnabledSources = enabledSources;
         mShortcutRepo = shortcutRepo;
@@ -160,6 +164,7 @@ public class SuggestionSession {
         mDelayedExecutor = delayedExecutor;
         mSuggestionFactory = suggestionFactory;
         mListener = listener;
+        mNumPromotedSources = numPromotedSources;
 
         final int numEnabled = enabledSources.size();
         mEnabledByName = new HashSet<ComponentName>(numEnabled);
@@ -284,7 +289,7 @@ public class SuggestionSession {
 
         // make the suggestion backer
         final HashSet<ComponentName> promoted = new HashSet<ComponentName>(sourcesToQuery.size());
-        for (int i = 0; i < NUM_PROMOTED_SOURCES && i < sourcesToQuery.size(); i++) {
+        for (int i = 0; i < mNumPromotedSources && i < sourcesToQuery.size(); i++) {
             promoted.add(sourcesToQuery.get(i).getComponentName());
         }
         // cached source results
@@ -340,7 +345,23 @@ public class SuggestionSession {
                             numViewed + " displayed");
                 }
                 for (int i = 0; i < numViewed; i++) {
-                    mSourceImpressions.add(viewedSuggestions.get(i).getSource());
+                    final SuggestionData viewed = viewedSuggestions.get(i);
+                    final ComponentName sourceName = viewed.getSource();
+                    // only add it if it is from a source we know of (e.g, not a built in one
+                    // used for special suggestions like "more results").
+                    if (mSourceLookup.getSourceByComponentName(sourceName) != null) {
+                        mSourceImpressions.add(sourceName);
+                    } else if (SearchManager.INTENT_ACTION_CHANGE_SEARCH_SOURCE.equals(
+                            viewed.getIntentAction())) {
+                        // a corpus result under "more results"; unpack the component
+                        final ComponentName corpusName =
+                                ComponentName.unflattenFromString(viewed.getIntentData());
+                        if (corpusName != null && asyncMux.hasSourceStarted(corpusName)) {
+                            // we only count an impression if the source has at least begun
+                            // retrieving its results.
+                            mSourceImpressions.add(corpusName);
+                        }
+                    }
                 }
 
                 // when the cursor closes and there aren't any outstanding requests, it means
@@ -461,7 +482,7 @@ public class SuggestionSession {
         return sourcesToQuery;
     }
 
-    static private long getNow() {
+    long getNow() {
         return System.currentTimeMillis();
     }
 
@@ -674,6 +695,11 @@ public class SuggestionSession {
         @Override
         public boolean reportSourceStarted(ComponentName source) {
             return mBackerToReportTo.reportSourceStarted(source);
+        }
+
+        @Override
+        public boolean hasSourceStarted(ComponentName source) {
+            return mBackerToReportTo.hasSourceStarted(source);
         }
 
         @Override

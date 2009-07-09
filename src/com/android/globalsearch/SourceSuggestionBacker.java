@@ -414,6 +414,11 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     }
 
     @Override
+    public boolean hasSourceStarted(ComponentName source) {
+        return mReportedResults.containsKey(source);
+    }
+
+    @Override
     protected synchronized boolean addSourceResults(SuggestionResult suggestionResult) {
         final SuggestionSource source = suggestionResult.getSource();
 
