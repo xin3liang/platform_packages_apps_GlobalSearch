@@ -877,7 +877,10 @@ public class SourceSuggestionBackerTest extends TestCase
 
     /**
      * If non promoted sources report zero results before the user has expanded "more", then
-     * we don't bother showing "source X reported 0 results" upon expansion
+     * we don't bother showing "source X reported 0 results" upon expansion.
+     *
+     * We also remove the "more results" once we know there are no sources under "more results"
+     * to show.
      */
     public void testNonPromotedSourcesWithZeroResults_reportedBeforeViewed() {
         mBacker.addSourceResults(
@@ -913,8 +916,7 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName1, 1),
                 makeSourceResult(mName2, 0),
                 makeSourceResult(mName2, 1),
-                mSearchTheWeb,
-                mMoreExpanded);
+                mSearchTheWeb);  // no "more" results entry at all
     }
 
     /**
@@ -1049,7 +1051,8 @@ public class SourceSuggestionBackerTest extends TestCase
 
     /**
      * an implementation of {@link MoreAsserts#assertContentsInOrder(String, Iterable, Object[])}
-     * that isn't busted.  a bug has been filed about that, but for now this works.
+     * with some additional information placed in the assert message in the error case to make it
+     * easier to see where the mismatch is.
      */
     static void assertContentsInOrder(
             String message, Iterable<?> actual, Object... expected) {

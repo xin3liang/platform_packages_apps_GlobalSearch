@@ -362,15 +362,15 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
             // add "more results" if applicable
             int indexOfMore = dest.size();
-            if (!moreSources.isEmpty()) {
+
+            if (anyCorpusSourceVisible(moreSources)) {
                 if (DBG) Log.d(TAG, "snapshot: adding 'more results' expander");
 
                 dest.add(mMoreFactory.getMoreEntry(expandAdditional, moreSources));
                 if (expandAdditional) {
-                    for (SourceStat moreSource : moreSources) {
-                        if (moreSource.getNumResults() > 0
-                                || moreSource.getResponseStatus() != SourceStat.RESPONSE_FINISHED
-                                || mViewedNonPromoted.contains(moreSource.getName())) {
+                    for (int i = 0; i < moreSources.size(); i++) {
+                        final SourceStat moreSource = moreSources.get(i);
+                        if (shouldCorpusEntryBeVisible(moreSource)) {
                             if (DBG) Log.d(TAG, "snapshot: adding 'more' " + moreSource.getLabel());
                             dest.add(mCorpusFactory.getCorpusEntry(mQuery, moreSource));
                             mViewedNonPromoted.add(moreSource.getName());
@@ -378,10 +378,35 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                     }
                 }
             }
-            
             return indexOfMore;
         }
         return dest.size();
+    }
+
+    /**
+     * @param sourceStats A list of source stats.
+     * @return True if any of them should be visible.
+     */
+    private boolean anyCorpusSourceVisible(ArrayList<SourceStat> sourceStats) {
+        boolean needMore = false;
+        final int num = sourceStats.size();
+        for (int i = 0; i < num; i++) {
+            final SourceStat moreSource = sourceStats.get(i);
+            if (shouldCorpusEntryBeVisible(moreSource)) {
+                needMore = true;
+            }
+        }
+        return needMore;
+    }
+
+    /**
+     * @param sourceStat A corpus result stat
+     * @return True if it should be visible.
+     */
+    private boolean shouldCorpusEntryBeVisible(SourceStat sourceStat) {
+        return sourceStat.getNumResults() > 0
+                || sourceStat.getResponseStatus() != SourceStat.RESPONSE_FINISHED
+                || mViewedNonPromoted.contains(sourceStat.getName());
     }
 
     private String makeSuggestionKey(SuggestionData suggestion) {
