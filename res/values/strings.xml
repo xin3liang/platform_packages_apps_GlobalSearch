@@ -15,14 +15,14 @@
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <!-- Title for the search suggest provider. -->
-    <string name="global_search">Android Search</string>
+    <string name="global_search">Quick Search Box</string>
 
     <!-- Do not translate.  This string is not displayed in UI (because we have a badge icon). -->
-    <string name="search_label" translatable="false">Google</string>
+    <string name="search_label" translatable="false">Quick Search Box</string>
 
     <!-- This is the hint text shown in the system search dialog for global search, 
          before text is entered. -->
-    <string name="search_hint">Android Search</string>
+    <string name="search_hint">Quick Search Box</string>
 
     <!-- Note that this is the standard suggest url.  It uses the current locale for language -->
     <!-- (t%1$s) and country (%2$s) and should not need to be replaced by locale or mcc -->
@@ -124,7 +124,7 @@
     <string name="show_web_suggestions_summary_disabled">Don\'t show suggestions from the web search engine as you type</string>
     
     <!-- Title for 'system search' category of search settings -->
-    <string name="system_search_category_title">Phone search</string>
+    <string name="system_search_category_title">Quick Search Box</string>
     
     <!-- Title and summary for 'search sources' link for system search -->
     <string name="search_sources">Searchable items</string>
