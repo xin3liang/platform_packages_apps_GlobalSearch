@@ -166,10 +166,12 @@ public class SuggestionFactoryImpl implements SuggestionFactory {
         if (TextUtils.isEmpty(query)) {
             return null;
         }
-        String descriptionFormat = mContext.getString(R.string.search_the_web_description);
+        String suggestion = mContext.getString(R.string.search_the_web, query);
+        int ix = suggestion.indexOf('\n');
+
         return new SuggestionData.Builder(BUILTIN_SOURCE_COMPONENT)
-                .title(mContext.getString(R.string.search_the_web_title))
-                .description(String.format(descriptionFormat, query))
+                .title(suggestion.substring(0, ix))
+                .description(suggestion.substring(ix + 1))
                 .icon1(R.drawable.magnifying_glass)
                 .intentAction(Intent.ACTION_WEB_SEARCH)
                 .intentQuery(query)

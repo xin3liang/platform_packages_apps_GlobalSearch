@@ -39,13 +39,12 @@
     <string name="contact_phone_type_home">h:</string>
     <string name="contact_phone_type_work">w:</string>
 
-    <!-- The title of the suggestion that is always shown at the end of a list of results to let
-         the user search the web for the query currently in the text field. -->
-    <string name="search_the_web_title">Search the web</string>
-    
-    <!-- The description of the suggestion that is always shown at the end of a list of results
-         to let the user search the web for the query currently in the text field. -->
-    <string name="search_the_web_description">for \'%1$s\'</string>
+    <!-- The title and description of the suggestion that is always shown
+         at the end of a list of results to let
+         the user search the web for the query currently in the text field.
+         The first line is shown larger (the title) than the second
+         (the description). -->
+    <string name="search_the_web">Search the web\nfor \'<xliff:g id="term">%1$s</xliff:g>\'</string>
     
     <!-- The title of the suggestion that is shown at the end of a list of results if the query
          seems to match a url, to let the user go straight to the browser with that url. -->
