@@ -36,7 +36,7 @@ public class ProvidersPermissionTest extends AndroidTestCase {
                 .fragment("")
                 .build();
 
-        assertReadingContentUriRequiresPermission(uri, "com.android.globalsearch.GET_SUGGESTIONS");
+        assertReadingContentUriRequiresPermission(uri, android.Manifest.permission.GLOBAL_SEARCH);
     }
 
     public void testStatsProviderRequires_WRITE_STATS() {
@@ -48,6 +48,6 @@ public class ProvidersPermissionTest extends AndroidTestCase {
                 .fragment("")
                 .build();
 
-        assertWritingContentUriRequiresPermission(uri, "com.android.globalsearch.WRITE_STATS");
+        assertWritingContentUriRequiresPermission(uri, android.Manifest.permission.GLOBAL_SEARCH);
     }
 }

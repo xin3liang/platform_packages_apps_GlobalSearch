@@ -3,7 +3,7 @@ package com.android.globalsearch;
 import android.test.AndroidTestCase;
 
 /**
- * Tests com.android.globalsearch.LAUNCH_SUGGESTIONS protects launching {@link GlobalSearch}.
+ * Tests GLOBAL_SEARCH_CONTROL protects launching {@link GlobalSearch}.
  */
 public class LaunchSuggestionPermissionTest extends AndroidTestCase {
 
@@ -11,6 +11,6 @@ public class LaunchSuggestionPermissionTest extends AndroidTestCase {
         assertActivityRequiresPermission(
                 "com.android.globalsearch",
                 "com.android.globalsearch.GlobalSearch",
-                "com.android.globalsearch.LAUNCH_SUGGESTIONS");
+                android.Manifest.permission.GLOBAL_SEARCH_CONTROL);
     }
 }
