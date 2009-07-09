@@ -143,6 +143,8 @@ public class SearchSettings extends PreferenceActivity
         Log.i(TAG, "Number of web search activities = " + count);
         for (int i = 0; i < count; ++i) {
             SearchableInfo searchable = webSearchActivities.get(i);
+            if (searchable == null) continue;
+            
             ComponentName component = searchable.getSearchActivity();
             // If both GoogleSearch and EnhancedGoogleSearch are present, the former is hidden from
             // our list because the latter is a superset of the former.
