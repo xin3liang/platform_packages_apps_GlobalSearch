@@ -74,18 +74,8 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
 
         mRepo = createShortcutRepository();
 
-        mApp1 = new SuggestionData.Builder(APP_COMPONENT)
-                .title("first application")
-                .intentAction("action/app1")
-                .intentData("intentdata")
-                .shortcutId("app1_shortcut")
-                .build();
-        mApp2 = new SuggestionData.Builder(APP_COMPONENT)
-                .title("second application")
-                .intentAction("action/app2")
-                .intentData("intentdata")
-                .shortcutId("app2_shortcut")
-                .build();
+        mApp1 = makeApp("app1");
+        mApp2 = makeApp("app2");
 
         mContact1 = new SuggestionData.Builder(CONTACTS_COMPONENT)
                 .title("Joe Blow")
@@ -98,6 +88,15 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
                 .intentAction("view")
                 .intentData("contacts/mikeJ")
                 .shortcutId("mo-jo")
+                .build();
+    }
+
+    private SuggestionData makeApp(String name) {
+        return new SuggestionData.Builder(APP_COMPONENT)
+                .title(name)
+                .intentAction("view")
+                .intentData("apps/" + name)
+                .shortcutId("shorcut_" + name)
                 .build();
     }
 
@@ -361,8 +360,6 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
                 mApp1);
     }
 
-    public void TODO_testShortcutsOlderThanXDaysRemoved() {}
-
     public void testRefreshShortcut() {
 
         final SuggestionData app1 = new SuggestionData.Builder(APP_COMPONENT)
@@ -455,6 +452,17 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
         // app2 wins 2 - 1
         assertContentsInOrder("expecting app1's click count to reset after being invalidated.",
                 mRepo.getShortcutsForQuery("app", NOW), mApp2, mApp1);
+    }
+
+    public void testShortcutsLimitedCount() {
+
+        for (int i = 1; i <= 20; i++) {
+            mRepo.reportStats(new SessionStats("a", makeApp("app" + i)), NOW);
+        }
+
+        assertEquals("number of shortcuts should be limited.",
+                12, mRepo.getShortcutsForQuery("", NOW).size());
+
     }
 
 

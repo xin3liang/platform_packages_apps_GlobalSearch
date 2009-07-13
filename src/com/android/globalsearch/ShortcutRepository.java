@@ -43,6 +43,8 @@ public interface ShortcutRepository {
      */
     static final int MIN_IMPRESSIONS_FOR_SOURCE_RANKING = 5;
 
+    static final int MAX_SHORTCUTS_RETURNED = 12;
+
     /**
      * Checks whether there is any stored history.
      */

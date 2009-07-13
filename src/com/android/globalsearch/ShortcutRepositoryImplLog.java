@@ -126,9 +126,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
             + (MAX_STAT_AGE_MILLIS / 1000) + ")";
         String ordering_expr = "(" + hit_count_expr + " * " + scale_expr + ")";
         String orderBy = ordering_expr + " DESC";
-        // TODO: getShortcutsForQuery() should have a maxCount argument that we
-        // could use in the LIMIT clause
-        String limit = null;
+        final String limit = Integer.toString(MAX_SHORTCUTS_RETURNED);
         return SQLiteQueryBuilder.buildQueryString(
                 false, tables, columns, where, groupBy, having, orderBy, limit);
     }
