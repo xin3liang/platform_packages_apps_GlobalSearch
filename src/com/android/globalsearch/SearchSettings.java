@@ -183,11 +183,9 @@ public class SearchSettings extends PreferenceActivity
                 }
             } catch (PackageManager.NameNotFoundException exception) {
                 // Skip this entry and continue to list other activities.
-                Log.e(TAG, "Error loading web search source from activity "
-                        + component, exception);
+                Log.w(TAG, "Web search source not found: " + component);
             } catch (Resources.NotFoundException exception) {
-                Log.e(TAG, "Error loading web search source from activity "
-                        + component, exception);
+                Log.w(TAG, "No name for web search source: " + component);
             }
         }
 
