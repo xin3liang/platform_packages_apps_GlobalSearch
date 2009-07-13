@@ -274,6 +274,10 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         if (cursor == null) return null;
         
         try {
+            if (Thread.interrupted()) {
+                if (DBG) Log.d(LOG_TAG, "Interrupted");
+                return null;
+            }
             int count = cursor.getCount();
             if (count == 0) return null;
             if (count > 1) {
