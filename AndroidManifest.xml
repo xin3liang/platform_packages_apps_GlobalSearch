@@ -19,7 +19,8 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.globalsearch"
-    android:sharedUserId="android.uid.shared">
+    android:sharedUserId="android.uid.shared"
+    android:process="android.process.acore">
 
     <uses-permission android:name="android.permission.GLOBAL_SEARCH" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -31,7 +32,6 @@
         android:label="@string/global_search">
 
         <activity android:name=".GlobalSearch"
-                android:process="android.process.acore"
                 android:permission="android.permission.GLOBAL_SEARCH_CONTROL"
                 android:stateNotNeeded="true"
                 android:theme="@android:style/Theme.NoDisplay"
@@ -63,13 +63,11 @@
 
         <provider android:name=".SuggestionProvider"
             android:authorities="com.android.globalsearch.SuggestionProvider"
-            android:process="android.process.acore"
             android:permission="android.permission.GLOBAL_SEARCH_CONTROL" />
 
         <provider android:name=".StatsProvider"
-            android:permission="android.permission.GLOBAL_SEARCH_CONTROL"
             android:authorities="com.android.globalsearch.stats"
-            android:process="android.process.acore" />
+            android:permission="android.permission.GLOBAL_SEARCH_CONTROL" />
 
         <meta-data android:name="android.app.default_searchable"
             android:value=".GlobalSearch" />
