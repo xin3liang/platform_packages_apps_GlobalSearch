@@ -19,8 +19,7 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.globalsearch"
-    android:sharedUserId="android.uid.shared"
-    android:process="android.process.acore">
+    android:sharedUserId="android.uid.shared">
 
     <uses-permission android:name="android.permission.GLOBAL_SEARCH" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -29,7 +28,8 @@
     <uses-permission android:name="android.permission.SET_PREFERRED_APPLICATIONS" />
 
     <application
-        android:label="@string/global_search">
+        android:label="@string/global_search"
+        android:process="android.process.acore">
 
         <activity android:name=".GlobalSearch"
                 android:permission="android.permission.GLOBAL_SEARCH_CONTROL"
