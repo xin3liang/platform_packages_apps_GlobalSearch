@@ -74,7 +74,7 @@ public class SuggestionSession {
 
     // guarded by "this"
 
-    private SessionCache mSessionCache = new SessionCache();
+    private final SessionCache mSessionCache;
 
     // the cursor from the last character typed, if any
     private SuggestionCursor mPreviousCursor = null;
@@ -95,6 +95,12 @@ public class SuggestionSession {
      * in one of {@link #MAX_RESULTS_TO_DISPLAY} slots.
      */
     static final int NUM_PROMOTED_SOURCES = 4;
+
+    /**
+     * Whether we cache the results for each query / source.  This avoids querying a source twice
+     * for the same query, but uses more memory.
+     */
+    static final boolean CACHE_SUGGESTION_RESULTS = false;
 
     /**
      * Maximum number of results to display in the list, not including any
@@ -120,10 +126,6 @@ public class SuggestionSession {
 
     static final long PREFILL_MILLIS = 400L;
 
-    // constants for the typing delay heuristic.  see getRecommendedDelay
-    static final long TYPING_DELAY_LAST_THREE = 800L;
-    static final long TYPING_DELAY_LAST_TWO = 500L;
-
     /**
      * Interface for receiving notifications from session.
      */
@@ -148,6 +150,8 @@ public class SuggestionSession {
      * @param suggestionFactory Used to create particular suggestions.
      * @param listener The listener.
      * @param numPromotedSources The number of sources to query first for the promoted list.
+     * @param cacheSuggestionResults Whether to cache the results of sources in hopes we can avoid
+     *        requerying a given source twice for the same query.
      */
     public SuggestionSession(SourceLookup sourceLookup,
             ArrayList<SuggestionSource> enabledSources,
@@ -156,7 +160,8 @@ public class SuggestionSession {
             DelayedExecutor delayedExecutor,
             SuggestionFactory suggestionFactory,
             SessionCallback listener,
-            int numPromotedSources) {
+            int numPromotedSources,
+            boolean cacheSuggestionResults) {
         mSourceLookup = sourceLookup;
         mEnabledSources = enabledSources;
         mShortcutRepo = shortcutRepo;
@@ -165,6 +170,7 @@ public class SuggestionSession {
         mSuggestionFactory = suggestionFactory;
         mListener = listener;
         mNumPromotedSources = numPromotedSources;
+        mSessionCache = new SessionCache(cacheSuggestionResults);
 
         final int numEnabled = enabledSources.size();
         mEnabledByName = new HashSet<ComponentName>(numEnabled);
@@ -226,11 +232,6 @@ public class SuggestionSession {
         return cursor;
     }
 
-
-    // the last two key presses
-    long mLastLastKey = 0;
-    long mLastKey = 0;
-
     /**
      * The heuristic for deciding how long to delay work in hopese that we might avoid having to do
      * it if we think the user is still typing.
@@ -239,18 +240,9 @@ public class SuggestionSession {
      * @return The recommended millis to delay work.
      */
     long getRecommendedDelay(long keyTime) {
-        final long delta1 = keyTime - mLastKey;
-        final long delta2 = mLastKey - mLastLastKey;
-        final long avg = (delta2 + delta1) / 2;
-
-        if (DBG) Log.d(TAG, "delta1=" + delta1 + ", delta2=" + delta2 + ", avg=" + avg);
-
-        mLastLastKey = mLastKey;
-        mLastKey = keyTime;
-
-        if (avg < TYPING_DELAY_LAST_THREE) return TYPING_DELAY_LAST_THREE;
-        if (delta1 < TYPING_DELAY_LAST_TWO) return TYPING_DELAY_LAST_TWO;
-
+        // with better thread scheduling and prioritization, we don't need to do this anymore, the
+        // filter handler is able to do this for us :)
+        // leaving hook in place for now in case it turns out we need to bring this back.
         return 0;
     }
 
@@ -500,13 +492,18 @@ public class SuggestionSession {
 
         static final QueryCacheResults EMPTY = new QueryCacheResults();
 
-        private HashMap<String, HashSet<ComponentName>> mZeroResultSources
+        private final HashMap<String, HashSet<ComponentName>> mZeroResultSources
                 = new HashMap<String, HashSet<ComponentName>>();
 
-        private HashMap<String, SoftReference<QueryCacheResults>> mResultsCache
-                = new HashMap<String, SoftReference<QueryCacheResults>>();
+        private final HashMap<String, SoftReference<QueryCacheResults>> mResultsCache;
 
-        private HashSet<String> mRefreshedShortcuts = new HashSet<String>();
+        private final HashSet<String> mRefreshedShortcuts = new HashSet<String>();
+
+        SessionCache(boolean cacheQueryResults) {
+            mResultsCache = cacheQueryResults ?
+                    new HashMap<String, SoftReference<QueryCacheResults>>() :
+                    null;
+        }
 
         /**
          * @param query The query
@@ -551,13 +548,18 @@ public class SuggestionSession {
          */
         synchronized void reportSourceResult(String query, SuggestionResult sourceResult) {
 
-            QueryCacheResults queryCacheResults = getCachedResult(query);
-            if (queryCacheResults == null) {
-                queryCacheResults = new QueryCacheResults();
-                mResultsCache.put(query, new SoftReference<QueryCacheResults>(queryCacheResults));
+            // caching of query results
+            if (mResultsCache != null) {
+                QueryCacheResults queryCacheResults = getCachedResult(query);
+                if (queryCacheResults == null) {
+                    queryCacheResults = new QueryCacheResults();
+                    mResultsCache.put(
+                            query, new SoftReference<QueryCacheResults>(queryCacheResults));
+                }
+                queryCacheResults.addResult(sourceResult);
             }
-            queryCacheResults.addResult(sourceResult);
 
+            // book keeping about sources that have returned zero results
             if (!sourceResult.getSource().queryAfterZeroResults()
                     && sourceResult.getSuggestions().isEmpty()) {
                 HashSet<ComponentName> zeros = mZeroResultSources.get(query);
@@ -578,6 +580,8 @@ public class SuggestionSession {
         }
 
         private QueryCacheResults getCachedResult(String query) {
+            if (mResultsCache == null) return null;
+
             final SoftReference<QueryCacheResults> ref = mResultsCache.get(query);
             if (ref == null) return null;
 

@@ -32,7 +32,7 @@ public class SessionCacheTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
 
-        mCache = new SuggestionSession.SessionCache();
+        mCache = new SuggestionSession.SessionCache(true);
 
         mSourceName = new ComponentName(
                 "com.android.globalsearch", "com.android.globalsearch.GlobalSearch");

@@ -83,6 +83,7 @@ public class QueryMultiplexer implements Runnable {
     public void sendQuery() {
         for (SuggestionSource source : mSources) {
             final SuggestionRequest suggestionRequest = new SuggestionRequest(source);
+            suggestionRequest.setScheduledTime(System.nanoTime());
             mSentRequests.add(suggestionRequest);
             mExecutor.execute(suggestionRequest);
         }
@@ -99,7 +100,7 @@ public class QueryMultiplexer implements Runnable {
     /**
      * Converts nanoseconds to milliseconds.
      */
-    private static int ms(long ns) {
+    static int ms(long ns) {
         return (int) (ns / 1000000);
     }
 
@@ -110,7 +111,8 @@ public class QueryMultiplexer implements Runnable {
     class SuggestionRequest extends FutureTask<SuggestionResult> {
 
         private final SuggestionSource mSuggestionSource;
-        private long mStartTime = -1;
+        private long mScheduledTime = -1; // when we tell the executor to run this
+        private long mStartTime = -1;     // when it actually starts running
 
         /**
          * @param suggestionSource The suggestion source that this request is for.
@@ -122,6 +124,10 @@ public class QueryMultiplexer implements Runnable {
 
         public SuggestionSource getSuggestionSource() {
             return mSuggestionSource;
+        }
+
+        public void setScheduledTime(long scheduledTime) {
+            mScheduledTime = scheduledTime;
         }
 
         @Override
@@ -165,16 +171,8 @@ public class QueryMultiplexer implements Runnable {
         @Override
         protected void done() {
             final boolean cancelled = isCancelled();
-            if (DBG_LTNCY) {
-                long durationMillis = ms(System.nanoTime() - mStartTime);
-                final String latencyStr = !cancelled ?
-                        "took " + durationMillis + " ms" :
-                        mStartTime == -1 ?
-                                "(cancelled before ever running)" :
-                                "(cancelled after " + durationMillis + " ms)";
-                Log.d(TAG,
-                        mSuggestionSource.getLabel() + " " + latencyStr + " for '" + mQuery + "'");
-            }
+            if (DBG_LTNCY) logLatency(cancelled);
+
             try {
                 if (cancelled) {
                     if (DBG) Log.d(TAG, getTag() + " was cancelled");
@@ -222,6 +220,69 @@ public class QueryMultiplexer implements Runnable {
                 mReceiver.onNewSuggestionResult(
                         SuggestionResult.createErrorResult(mSuggestionSource));
             }
+        }
+
+        // logs a line about the time spent waiting to execute and executing with padding that will
+        // result in the entries being aligned, e.g:
+        // f'                   Apps  Glo #9  total=58	twait=2       duration=56
+        private void logLatency(boolean cancelled) {
+            final boolean everStarted = mStartTime != -1;
+            final long now = System.nanoTime();
+            final String rawtname = Thread.currentThread().getName();
+            final String tname =
+                    rawtname.substring(0, 3) + rawtname.substring(rawtname.length() - 3);
+            long threadwait = ms(mStartTime - mScheduledTime);
+            long durationMillis = ms(now - mStartTime);
+            long total = ms(now - mScheduledTime);
+
+            final StringBuilder sb = new StringBuilder(300);
+            padQ(sb, mQuery, 20);
+            sb.append(mSuggestionSource.getLabel().substring(0, 4)).append("  ");
+            sb.append(tname).append("  ");
+            sb.append("total=").append(total).append("\t");
+            if (everStarted) {
+                sb.append("twait=");
+                pad(sb, Long.toString(threadwait), 8);
+            }
+            if (!cancelled) {
+                sb.append("duration=");
+                pad(sb, Long.toString(durationMillis), 8);
+            } else {
+                if (!everStarted) {
+                    sb.append("twait=");
+                    pad(sb, Long.toString(total), 8);
+                    sb.append("(cancelled before running)");
+                } else {
+                    sb.append("duration=");
+                    pad(sb, Long.toString(durationMillis), 8);
+                    sb.append("(cancelled)");
+                }
+            }
+            Log.d(TAG, sb.toString());
+        }
+    }
+
+    /**
+     * Appends a string to the string builder with enough padding to make the entire addition a
+     * specific width.
+     */
+    static void pad(StringBuilder sb, String string, int width) {
+        sb.append(string);
+        final int padding = width - string.length();
+        for (int i = 0; i < padding; i++) {
+            sb.append(' ');
+        }
+    }
+
+    /**
+     * Appends a string to the string builder with enough padding to make the entire addition a
+     * specific width.  The string is surrounded by single quotes.
+     */
+    static void padQ(StringBuilder sb, String string, int width) {
+        sb.append('\'').append(string).append('\'');
+        final int padding = width - string.length();
+        for (int i = 0; i < padding; i++) {
+            sb.append(' ');
         }
     }
 }
