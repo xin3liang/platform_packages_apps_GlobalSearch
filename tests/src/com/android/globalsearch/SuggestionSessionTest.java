@@ -303,6 +303,13 @@ public class SuggestionSessionTest extends TestCase
                         + "is closed", mEngine.getSessionStats());
     }
 
+    public void testSessionClosing_whenPreCloseRespondMissing() {
+        final Cursor cursor = mSession.query("a");
+
+        cursor.close();
+        assertNotNull("Session should have closed.", mEngine.getSessionStats());
+    }
+
 
     public void testSessionStats_noClick() {
         final Cursor cursor = mSession.query("a");

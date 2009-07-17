@@ -86,6 +86,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     private static final int BACKGROUND_COLOR = 13;
 
     private boolean mOnMoreCalled = false;
+    private boolean mPreCloseReceived = false;
 
     private final String mQuery;
     private final DelayedExecutor mDelayedExecutor;
@@ -244,6 +245,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
      * @return The response bundle.
      */
     private Bundle respondPreClose(Bundle request) {
+        mPreCloseReceived = true;
         int maxPosDisplayed =
                 request.getInt(DialogCursorProtocol.PRE_CLOSE_SEND_MAX_DISPLAY_POS, -1);
 
@@ -304,6 +306,18 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
         mOnMoreCalled = true;
         if (mListener != null) mListener.onMoreVisible();
         return Bundle.EMPTY;
+    }
+
+    @Override
+    public void close() {
+        super.close();
+        if (!mPreCloseReceived) {
+            Log.w(TAG, "cursor closed before receiving DialogCursorProtocol.PRE_CLOSE in "
+                    + "Cursor.repond");
+            if (mListener != null) {
+                mListener.onClose(new ArrayList<SuggestionData>());
+            }
+        }
     }
 
     /**
