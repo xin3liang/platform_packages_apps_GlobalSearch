@@ -58,6 +58,9 @@ public class SuggestionProvider extends ContentProvider {
     // the maximum time that excess idle threads will wait for new tasks before terminating.
     private static final int THREAD_KEEPALIVE_SECONDS = 5;
 
+    // the maximum number of concurrent queries allowed for each source.
+    private static final int PER_SOURCE_CONCURRENT_QUERY_LIMIT = 3;
+
     private static final String AUTHORITY = "com.android.globalsearch.SuggestionProvider";
 
     private static final UriMatcher sUriMatcher = buildUriMatcher();
@@ -128,7 +131,9 @@ public class SuggestionProvider extends ContentProvider {
         mSessionManager = SessionManager.refreshSessionmanager(
                 getContext(),
                 mSources, ShortcutRepositoryImplLog.create(getContext()),
-                mQueryExecutor, mRefreshExecutor, mNotifyHandler);
+                new PerTagExecutor(mQueryExecutor, PER_SOURCE_CONCURRENT_QUERY_LIMIT),
+                mRefreshExecutor,
+                mNotifyHandler);
 
         return true;
     }

@@ -132,9 +132,9 @@ public class ShortcutRefresher {
 
         /**
          * @param source The source that should validate the shortcut.
-         * @param shortcutId The id of the shortcut.
+         * @param shortcut The shortcut.
          * @param receiver Who to report back to when the result is in.
-         * @param repo
+         * @param repo The repository to report the updated shortcut to.
          */
         ShortcutRefreshTask(SuggestionSource source, SuggestionData shortcut,
                 SuggestionBacker receiver, ShortcutRepository repo) {

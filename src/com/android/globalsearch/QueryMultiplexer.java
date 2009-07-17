@@ -16,6 +16,8 @@
 
 package com.android.globalsearch;
 
+import static com.android.globalsearch.SuggestionSession.SOURCE_TIMEOUT_MILLIS;
+
 import android.util.Log;
 
 import java.util.concurrent.Executor;
@@ -36,7 +38,7 @@ public class QueryMultiplexer implements Runnable {
     private static final boolean DBG_LTNCY = false;
     private static final String TAG = "GlobalSearch";
 
-    private final Executor mExecutor;
+    private final PerTagExecutor mExecutor;
     private final DelayedExecutor mDelayedExecutor;
     private final List<SuggestionSource> mSources;
     private final SuggestionBacker mReceiver;
@@ -58,7 +60,7 @@ public class QueryMultiplexer implements Runnable {
      * @param delayedExecutor Used to enforce a timeout on each query.
      */
     public QueryMultiplexer(String query, List<SuggestionSource> sources, int maxResultsPerSource,
-                            int queryLimit, SuggestionBacker receiver, Executor executor,
+                            int queryLimit, SuggestionBacker receiver, PerTagExecutor executor,
                             DelayedExecutor delayedExecutor) {
         mExecutor = executor;
         mQuery = query;
@@ -85,7 +87,22 @@ public class QueryMultiplexer implements Runnable {
             final SuggestionRequest suggestionRequest = new SuggestionRequest(source);
             suggestionRequest.setScheduledTime(System.nanoTime());
             mSentRequests.add(suggestionRequest);
-            mExecutor.execute(suggestionRequest);
+            final String tag = source.getComponentName().flattenToShortString();
+            final boolean queued = mExecutor.execute(tag, suggestionRequest);
+            if (queued) {
+                // if the task was queued because the source has too many already running, still
+                // make sure we report back the result as cancelled after the timeout is exceeded
+                // so the spinner doesn't continue forever.
+                mDelayedExecutor.postDelayed(new Runnable() {
+                    public void run() {
+                        if (!suggestionRequest.isDone()) {
+                            mReceiver.onNewSuggestionResult(
+                                    SuggestionResult.createCancelled(
+                                            suggestionRequest.getSuggestionSource()));
+                        }
+                    }
+                }, SOURCE_TIMEOUT_MILLIS);
+            }
         }
     }
 
@@ -139,11 +156,18 @@ public class QueryMultiplexer implements Runnable {
             mDelayedExecutor.postDelayed(new Runnable() {
                 public void run() {
                     if (!isDone()) {
-                        Log.d(TAG, "timing out query for " + mSuggestionSource.getLabel());
-                        cancel(true);
+                        Log.w(TAG, "source '" + mSuggestionSource.getLabel() + "' took longer than "
+                                + SOURCE_TIMEOUT_MILLIS + " millis for query '" + mQuery + "', "
+                                + "attempting to cancel it.");
+                        if (!cancel(true)) {
+                            // if we couldn't cancel it, report back directly so the spinner doesn't
+                            // go indefinitely
+                            mReceiver.onNewSuggestionResult(
+                                    SuggestionResult.createCancelled(mSuggestionSource));
+                        }
                     }
                 }
-            }, SuggestionSession.SOURCE_TIMEOUT_MILLIS);
+            }, SOURCE_TIMEOUT_MILLIS);
             if (DBG) Log.d(TAG, "starting query for " + mSuggestionSource.getLabel());
             super.run();
         }
@@ -158,7 +182,7 @@ public class QueryMultiplexer implements Runnable {
         @Override
         public boolean cancel(boolean mayInterruptIfRunning) {
             boolean canceled = super.cancel(mayInterruptIfRunning);
-            if (DBG) Log.d(TAG, getTag() + ": Cancelling: " + canceled);
+            if (true) Log.d(TAG, getTag() + ": Cancelling: " + canceled);
             return canceled;
         }
 

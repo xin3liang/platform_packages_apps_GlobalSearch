@@ -62,7 +62,7 @@ public class SuggestionSession {
     private final SourceLookup mSourceLookup;
     private final ArrayList<SuggestionSource> mEnabledSources;
     private final ShortcutRepository mShortcutRepo;
-    private final Executor mQueryExecutor;
+    private final PerTagExecutor mQueryExecutor;
     private final Executor mRefreshExecutor;
     private final DelayedExecutor mDelayedExecutor;
     private final SuggestionFactory mSuggestionFactory;
@@ -148,8 +148,9 @@ public class SuggestionSession {
     public SuggestionSession(SourceLookup sourceLookup,
             ArrayList<SuggestionSource> enabledSources,
             ShortcutRepository shortcutRepo,
-            Executor queryExecutor,
-            Executor refreshExecutor, DelayedExecutor delayedExecutor,
+            PerTagExecutor queryExecutor,
+            Executor refreshExecutor,
+            DelayedExecutor delayedExecutor,
             SuggestionFactory suggestionFactory,
             SessionCallback listener,
             int numPromotedSources,
@@ -617,7 +618,7 @@ public class SuggestionSession {
      */
     static class AsyncMux extends SuggestionBacker {
 
-        private final Executor mQueryExecutor;
+        private final PerTagExecutor mQueryExecutor;
         private final Executor mRefreshExecutor;
         private final DelayedExecutor mDelayedExecutor;
         private final SessionCache mSessionCache;
@@ -647,7 +648,7 @@ public class SuggestionSession {
          * @param repo The shortcut repository needed to create the shortcut refresher.
          */
         AsyncMux(
-                Executor queryExecutor,
+                PerTagExecutor queryExecutor,
                 Executor refreshExecutor,
                 DelayedExecutor delayedExecutor,
                 SessionCache sessionCache,

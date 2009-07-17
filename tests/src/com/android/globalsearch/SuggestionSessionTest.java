@@ -494,7 +494,7 @@ public class SuggestionSessionTest extends TestCase
      * control how results are reported and processed, and keep track of when the session is
      * closed.
      */
-    static class QueryEngine implements Executor, DelayedExecutor,
+    static class QueryEngine extends PerTagExecutor implements Executor, DelayedExecutor,
             SuggestionSession.SessionCallback{
 
         private long mNow = 0L;
@@ -503,6 +503,10 @@ public class SuggestionSessionTest extends TestCase
                 = new LinkedHashMap<ComponentName, FutureTask<SuggestionResult>>();
 
         private LinkedList<Delayed> mDelayed = new LinkedList<Delayed>();
+
+        public QueryEngine() {
+            super(null, 66);
+        }
 
         /**
          * book keeping for delayed runnables for emulating delayed execution.
@@ -593,6 +597,12 @@ public class SuggestionSessionTest extends TestCase
 
         // Executor
 
+        @Override
+        public boolean execute(String tag, Runnable command) {
+            execute(command);
+            return false;
+        }
+
         public void execute(Runnable command) {
             if (command instanceof QueryMultiplexer.SuggestionRequest) {
                 final QueryMultiplexer.SuggestionRequest suggestionRequest =
@@ -650,7 +660,8 @@ public class SuggestionSessionTest extends TestCase
         public TestSuggestionSession(SourceLookup sourceLookup,
                 ArrayList<SuggestionSource> enabledSources, SuggestionSessionTest test,
                 QueryEngine engine, int numPromotedSources) {
-            super(sourceLookup, enabledSources, test, engine, engine, engine,
+            super(sourceLookup, enabledSources, test,
+                    engine, engine, engine,
                     test, engine, numPromotedSources, true);
             mEngine = engine;
         }
