@@ -93,14 +93,14 @@
     <string name="web_search_category_title">Web search</string>
     
     <!-- Title and summary for 'search engine' setting -->
-    <string name="web_search_source">Search engine</string>
-    <string name="web_search_source_summary">Choose a web search engine</string>
+    <string name="web_search_source">Web search engine</string>
+    <string name="web_search_source_summary">%1$s</string>
     
     <!-- Title and summaries for 'search engine settings' link (if available for the chosen
          web search source) -->
     <string name="search_engine_settings">Search engine settings</string>
-    <string name="search_engine_settings_summary_enabled">Settings for web search engine \'%1$s\'</string>
-    <string name="search_engine_settings_summary_disabled">No settings for web search engine \'%1$s\'</string>
+    <string name="search_engine_settings_summary_enabled">Settings for %1$s</string>
+    <string name="search_engine_settings_summary_disabled">No settings for %1$s</string>
     
     <!-- Title and summaries for 'show web suggestions' check box setting -->
     <string name="show_web_suggestions">Show web suggestions</string>
