@@ -112,7 +112,7 @@ public class SearchSettings extends PreferenceActivity
         populateWebSourcePreference();
         populateSourcePreference();
         updateShowWebSuggestionsPreference();
-        updateSearchEngineSettingsPreference(mWebSourcePreference.getValue());
+        updateSearchEnginePreferences(mWebSourcePreference.getValue());
     }
 
     @Override
@@ -225,12 +225,12 @@ public class SearchSettings extends PreferenceActivity
     }
 
     /**
-     * Updates the "search engine settings" preference depending on whether
-     * the currently selected search engine has settings to expose or not.
+     * Updates the search engine preferences depending on the name of the currently
+     * selected search engine and whether it has settings to expose or not.
      *
      * @param webSourcePreferenceValue the web source preference value to use
      */
-    private void updateSearchEngineSettingsPreference(String webSourcePreferenceValue) {
+    private void updateSearchEnginePreferences(String webSourcePreferenceValue) {
         if (webSourcePreferenceValue == null) return;
 
         // Get the package name of the current activity chosen for web search.
@@ -263,9 +263,12 @@ public class SearchSettings extends PreferenceActivity
 
         // If for some reason the engine name could not be found, just don't set a summary.
         if (engineName != null) {
+            mWebSourcePreference.setSummary(
+                    getResources().getString(R.string.web_search_source_summary, engineName));
             mSearchEngineSettingsPreference.setSummary(
                     getResources().getString(summaryStringRes, engineName));
         } else {
+            mWebSourcePreference.setSummary(null);
             mSearchEngineSettingsPreference.setSummary(null);
         }
 
@@ -417,7 +420,7 @@ public class SearchSettings extends PreferenceActivity
             if (DBG) Log.i(TAG, "Setting default web search source as " + valueStr);
 
             mSearchManager.setDefaultWebSearch(activity);
-            updateSearchEngineSettingsPreference(valueStr);
+            updateSearchEnginePreferences(valueStr);
         } else {
             broadcastSettingsChanged();
         }
