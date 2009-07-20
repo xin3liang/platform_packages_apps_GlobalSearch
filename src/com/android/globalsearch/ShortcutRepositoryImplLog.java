@@ -40,7 +40,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
     private static final String TAG = "GlobalSearch";
 
     private static final String DB_NAME = "shortcuts-log.db";
-    private static final int DB_VERSION = 18;
+    private static final int DB_VERSION = 19;
 
     private static final String HAS_HISTORY_QUERY =
         "SELECT " + Shortcuts.intent_key.fullName + " FROM " + Shortcuts.TABLE_NAME;
@@ -285,6 +285,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
             .intentAction(cursor.getString(Shortcuts.intent_action.ordinal()))
             .intentData(cursor.getString(Shortcuts.intent_data.ordinal()))
             .intentQuery(cursor.getString(Shortcuts.intent_query.ordinal()))
+            .actionMsgCall(cursor.getString(Shortcuts.action_msg_call.ordinal()))
             .intentExtraData(cursor.getString(Shortcuts.intent_extradata.ordinal()))
             .intentComponentName(cursor.getString(Shortcuts.intent_component_name.ordinal()))
             .shortcutId(cursor.getString(Shortcuts.shortcut_id.ordinal()))
@@ -401,6 +402,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
             cv.put(Shortcuts.intent_action.name(), clicked.getIntentAction());
             cv.put(Shortcuts.intent_data.name(), clicked.getIntentData());
             cv.put(Shortcuts.intent_query.name(), clicked.getIntentQuery());
+            cv.put(Shortcuts.action_msg_call.name(), clicked.getActionMsgCall());
             cv.put(Shortcuts.intent_extradata.name(), clicked.getIntentExtraData());
             cv.put(Shortcuts.intent_component_name.name(), clicked.getIntentComponentName());
             cv.put(Shortcuts.shortcut_id.name(), clicked.getShortcutId());
@@ -512,6 +514,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
         intent_action,
         intent_data,
         intent_query,
+        action_msg_call,
         intent_extradata,
         intent_component_name,
         shortcut_id,
@@ -716,6 +719,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
                     Shortcuts.intent_action.name() + " TEXT, " +
                     Shortcuts.intent_data.name() + " TEXT, " +
                     Shortcuts.intent_query.name() + " TEXT, " +
+                    Shortcuts.action_msg_call.name() + " TEXT, " +
                     Shortcuts.intent_extradata.name() + " TEXT, " +
                     Shortcuts.intent_component_name.name() + " TEXT, " +
                     Shortcuts.shortcut_id.name() + " TEXT, " +
