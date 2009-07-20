@@ -78,9 +78,13 @@ public abstract class AbstractSuggestionSource implements SuggestionSource {
     }
 
     /** {@inheritDoc} */
-    public Callable<SuggestionData> getShortcutValidationTask(final String shortcutId) {
+    public Callable<SuggestionData> getShortcutValidationTask(final SuggestionData shortcut) {
+        if (shortcut == null) {
+            throw new IllegalArgumentException("shortcut must not be null");
+        }
+        final String shortcutId = shortcut.getShortcutId();
         if (shortcutId == null) {
-            throw new IllegalArgumentException("shorcut id must not be null");
+            throw new IllegalArgumentException("shortcut id must not be null");
         }
         if (SearchManager.SUGGEST_NEVER_MAKE_SHORTCUT.equals(shortcutId)) {
             throw new IllegalArgumentException("makes no sense to validate a shortcut that is "
@@ -88,7 +92,7 @@ public abstract class AbstractSuggestionSource implements SuggestionSource {
         }
         return new Callable<SuggestionData>() {
             public SuggestionData call() throws Exception {
-                return validateShortcut(shortcutId);
+                return validateShortcut(shortcut);
             }
         };
     }
@@ -98,12 +102,11 @@ public abstract class AbstractSuggestionSource implements SuggestionSource {
      * the shortcut if the shortcut is still valid, or <code>null</code> if the shortcut is not
      * valid.
      *
-     * @param shortcutId The id returned in
-     *   {@link android.app.SearchManager#SUGGEST_COLUMN_SHORTCUT_ID}
+     * @param shortcut The old shortcut.
      * @return a {@link SuggestionData} with the up to date information for the shortcut if the
      *   shortcut is still valid, or <code>null</code> otherwise.
      */
-    protected abstract SuggestionData validateShortcut(String shortcutId);
+    protected abstract SuggestionData validateShortcut(SuggestionData shortcut);
 
     /**
      * Strips the provided url of preceding "http://" or "https://" and any trailing "/".

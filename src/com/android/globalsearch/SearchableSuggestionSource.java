@@ -269,8 +269,8 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     }
 
     @Override
-    protected SuggestionData validateShortcut(String shortcutId) {
-        Cursor cursor = getValidationCursor(shortcutId);
+    protected SuggestionData validateShortcut(SuggestionData shortcut) {
+        Cursor cursor = getValidationCursor(shortcut);
         if (cursor == null) return null;
         
         try {
@@ -290,7 +290,9 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         }
     }
 
-    protected Cursor getValidationCursor(String shortcutId) {
+    protected Cursor getValidationCursor(SuggestionData shortcut) {
+        String shortcutId = shortcut.getShortcutId();
+        String extraData = shortcut.getIntentExtraData();
 
         String authority = mSearchable.getSuggestAuthority();
         if (authority == null) {
@@ -312,7 +314,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
         uriBuilder.appendPath(shortcutId);
 
         Uri uri = uriBuilder
-                .query("")     // TODO: Remove, workaround for a bug in Uri.writeToParcel()
+                .appendQueryParameter(SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA, extraData)
                 .fragment("")  // TODO: Remove, workaround for a bug in Uri.writeToParcel()
                 .build();
 

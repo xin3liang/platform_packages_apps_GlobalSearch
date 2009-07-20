@@ -91,7 +91,7 @@ public class ShortcutRefresher {
                 });
             } else {
                 final ShortcutRefreshTask refreshTask = new ShortcutRefreshTask(
-                        source, shortcut.getShortcutId(), mReceiver, mRepo);
+                        source, shortcut, mReceiver, mRepo);
                 refreshTask.setScheduledTime(System.nanoTime());
                 mSent.add(refreshTask);
                 mExecutor.execute(refreshTask);
@@ -136,11 +136,11 @@ public class ShortcutRefresher {
          * @param receiver Who to report back to when the result is in.
          * @param repo
          */
-        ShortcutRefreshTask(SuggestionSource source, String shortcutId,
+        ShortcutRefreshTask(SuggestionSource source, SuggestionData shortcut,
                 SuggestionBacker receiver, ShortcutRepository repo) {
-            super(source.getShortcutValidationTask(shortcutId));
+            super(source.getShortcutValidationTask(shortcut));
             mSource = source;
-            mShortcutId = shortcutId;
+            mShortcutId = shortcut.getShortcutId();
             mReceiver = receiver;
             mRepo = repo;
         }

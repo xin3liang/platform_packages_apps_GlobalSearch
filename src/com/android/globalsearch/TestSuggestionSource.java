@@ -88,7 +88,8 @@ class TestSuggestionSource extends AbstractSuggestionSource {
     }
 
     @Override
-    protected SuggestionData validateShortcut(String shortcutId) {
+    protected SuggestionData validateShortcut(SuggestionData shortcut) {
+        String shortcutId = shortcut.getShortcutId();
         for (List<SuggestionData> suggestionDatas : mCannedResponses.values()) {
             for (SuggestionData suggestionData : suggestionDatas) {
                 if (shortcutId.equals(suggestionData.getShortcutId())) {

@@ -90,10 +90,9 @@ public interface SuggestionSource {
      * date information for the shortcut if the shortcut is still valid, or <code>null</code>
      * otherwise.
      *
-     * @param shortcutId The id returned in
-     *    {@link android.app.SearchManager#SUGGEST_COLUMN_SHORTCUT_ID}
+     * @param shortcut The old shortcut.
      * @return A callable that will produce the result.
      */
-    Callable<SuggestionData> getShortcutValidationTask(String shortcutId);
+    Callable<SuggestionData> getShortcutValidationTask(SuggestionData shortcut);
 
 }
