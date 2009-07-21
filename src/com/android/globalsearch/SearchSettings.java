@@ -421,9 +421,9 @@ public class SearchSettings extends PreferenceActivity
 
             mSearchManager.setDefaultWebSearch(activity);
             updateSearchEnginePreferences(valueStr);
-        } else {
-            broadcastSettingsChanged();
         }
+        
+        broadcastSettingsChanged();
 
         return true;  // to update the selection in the list if the user brings it up again.
     }
