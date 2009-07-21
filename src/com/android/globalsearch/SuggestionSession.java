@@ -47,10 +47,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * the previous query for up to {@link #PREFILL_MILLIS} millis until the first result comes back.
  * This results in a smoother experience with less flickering of zero results.
  *
- * If we think the user is typing, and will continue to type we delay the sending of the queries to
- * the sources so we can cancel them when the next query comes in.
- * See {@link #getRecommendedDelay}.
- *
  * This class is thread safe, guarded by "this", to protect against the fact that {@link #query}
  * and the callbacks via {@link com.android.globalsearch.SuggestionCursor.CursorListener} may be
  * called by different threads (the filter thread of the ACTV, and the main thread respectively).
@@ -86,10 +82,6 @@ public class SuggestionSession {
 
     // used to quickly lookup whether a source is enabled
     private HashSet<ComponentName> mEnabledByName;
-
-    // holds a ref the pending work that attaches the backer to the cursor so we can cancel it.
-    private Cancellable mFireOffRunnable;
-
     /**
      * The number of sources that have a chance to show results above the "more results" entry
      * in one of {@link #MAX_RESULTS_TO_DISPLAY} slots.
@@ -190,35 +182,16 @@ public class SuggestionSession {
     public synchronized Cursor query(final String query) {
         mOutstandingQueryCount.incrementAndGet();
 
-        // cancel any pending work
-        if (mFireOffRunnable != null) {
-            if (mFireOffRunnable.cancel()) {
-                // if we succesfully cancelled the runnable, we need to decrement the count here;
-                // otherwise it will occur when the cursor is closed.
-                mOutstandingQueryCount.decrementAndGet();
-            }
-            mFireOffRunnable = null;
-        }
-
         final SuggestionCursor cursor = new SuggestionCursor(mDelayedExecutor, query);
 
-        // if the user is still typing, delay the work
-        final long recommendedDelay = getRecommendedDelay(getNow());
-        if (DBG) Log.d(TAG, "recDelay = " + recommendedDelay);
-        if (recommendedDelay == 0) {
-            fireStuffOff(cursor, query);
-        } else {
-            mFireOffRunnable = new Cancellable() {
-                public void doRun() {
-                    fireStuffOff(cursor, query);
-                }
-            };
-            mDelayedExecutor.postDelayed(mFireOffRunnable, recommendedDelay);
-        }
+        fireStuffOff(cursor, query);
 
         // if the cursor we are about to return is empty (no cache, no shortcuts),
         // prefill it with the previous results until we hear back from a source
-        if (mPreviousCursor != null && cursor.getCount() == 0 && mPreviousCursor.getCount() > 0) {
+        if (mPreviousCursor != null
+                && query.length() > 1       // don't prefil when going from empty to first char
+                && cursor.getCount() == 0
+                && mPreviousCursor.getCount() > 0) {
             cursor.prefill(mPreviousCursor);
 
             // limit the amount of time we show prefilled results
@@ -233,20 +206,6 @@ public class SuggestionSession {
     }
 
     /**
-     * The heuristic for deciding how long to delay work in hopese that we might avoid having to do
-     * it if we think the user is still typing.
-     *
-     * @param keyTime The current time.
-     * @return The recommended millis to delay work.
-     */
-    long getRecommendedDelay(long keyTime) {
-        // with better thread scheduling and prioritization, we don't need to do this anymore, the
-        // filter handler is able to do this for us :)
-        // leaving hook in place for now in case it turns out we need to bring this back.
-        return 0;
-    }
-
-    /**
      * Finishes the work necessary to report complete results back to the cursor.  This includes
      * getting the shortcuts, refreshing them, determining which source should be queried, sending
      * off the query to each of them, and setting up the callback from the cursor.
@@ -255,8 +214,6 @@ public class SuggestionSession {
      * @param query The query.
      */
     private void fireStuffOff(final SuggestionCursor cursor, final String query) {
-        if (DBG) Log.d(TAG, "**************firing of work for '" + query + "'");
-
         // get shortcuts
         final ArrayList<SuggestionData> shortcuts =
                 filterOnlyEnabled(mShortcutRepo.getShortcutsForQuery(query));
