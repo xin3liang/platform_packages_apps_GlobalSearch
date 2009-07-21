@@ -410,7 +410,7 @@ public class SearchSettings extends PreferenceActivity
      */
     private void broadcastSettingsChanged() {
         // We use a message broadcast since the listeners could be in multiple processes.
-        sendBroadcast(new Intent(SuggestionSources.ACTION_SETTINGS_CHANGED));
+        sendBroadcast(new Intent(SearchManager.INTENT_ACTION_SEARCH_SETTINGS_CHANGED));
     }
 
     public synchronized boolean onPreferenceChange(Preference preference, Object newValue) {

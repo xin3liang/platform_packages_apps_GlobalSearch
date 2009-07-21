@@ -33,10 +33,6 @@ public class SuggestionSources implements SourceLookup {
 
     // The key for the preference that holds the selected web search source
     public static final String WEB_SEARCH_SOURCE_PREF = "web_search_source";
-
-    // The intent action broadcasted by our settings UI when any of our settings change.
-    public static final String ACTION_SETTINGS_CHANGED =
-        "com.android.globalsearch.settings_changed";
     
     // An override value for web search providers to provide more results than others.
     private static final int WEB_RESULTS_OVERRIDE_LIMIT = 20;
@@ -143,7 +139,7 @@ public class SuggestionSources implements SourceLookup {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (SearchManager.INTENT_ACTION_SEARCHABLES_CHANGED.equals(action)
-                    || SuggestionSources.ACTION_SETTINGS_CHANGED.equals(action)) {
+                    || SearchManager.INTENT_ACTION_SEARCH_SETTINGS_CHANGED.equals(action)) {
                 // TODO: Instead of rebuilding the whole list on every change,
                 // just add, remove or update the application that has changed.
                 // Adding and updating seem tricky, since I can't see an easy way to list the
@@ -167,7 +163,8 @@ public class SuggestionSources implements SourceLookup {
                 new IntentFilter(SearchManager.INTENT_ACTION_SEARCHABLES_CHANGED));
 
         // Listen for search preference changes.
-        mContext.registerReceiver(mBroadcastReceiver, new IntentFilter(ACTION_SETTINGS_CHANGED));
+        mContext.registerReceiver(mBroadcastReceiver,
+                new IntentFilter(SearchManager.INTENT_ACTION_SEARCH_SETTINGS_CHANGED));
         
         mShowWebSuggestionsSettingChangeObserver = new ShowWebSuggestionsSettingChangeObserver();
         mContext.getContentResolver().registerContentObserver(
