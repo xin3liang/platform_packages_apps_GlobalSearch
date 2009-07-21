@@ -185,34 +185,6 @@ public class SuggestionSessionTest extends TestCase
         }
     }
 
-    public void testAvoidWorkWhileUserTypesFast() {
-        {
-            final Cursor cursor = mSession.query("a");
-            final Snapshot snapshot = getSnapshot(cursor);
-            assertTrue("isPending.", snapshot.isPending);
-        }
-        mEngine.finishAllSourceTasks();
-        mSession.setWorkDelay(800);
-        {
-            final Cursor cursor = mSession.query("b");
-
-            Snapshot snapshot = getSnapshot(cursor);
-            assertTrue("should report pending until delayed work is started.",
-                    snapshot.isPending);
-            MoreAsserts.assertEmpty("no sources should be pending.",
-                    mEngine.getPendingSources());
-
-            // now move time forward, this should fire the tasks off
-            mEngine.moveTimeForward(800);
-            cursor.requery();
-            snapshot = getSnapshot(cursor);
-            assertTrue("isPending.", snapshot.isPending);
-            MoreAsserts.assertContentsInOrder("sources in progress",
-                    mEngine.getPendingSources(),
-                    mWebComponent, mComponentA);
-        }
-    }
-
     public void testCaching() {
         // results for query
         final Cursor cursor1 = mSession.query("a");
@@ -287,20 +259,6 @@ public class SuggestionSessionTest extends TestCase
         sendPreClose(cursor2);
         assertNotNull(
                 "session should be closed after both cursors closed.", mEngine.getSessionStats());
-    }
-
-    public void testSessionClosing_evenWhenWorkCancelled() {
-        mSession.setWorkDelay(800);
-        final Cursor cursor1 = mSession.query("a");
-        final Cursor cursor2 = mSession.query("b");
-
-        // after the delay, query2 is executed
-        mEngine.moveTimeForward(800);
-        assertNull("session shouldn't be closed.", mEngine.getSessionStats());
-        sendPreClose(cursor2);
-        assertNotNull(
-                "session should be closed after first query is cancelled, and second cursor "
-                        + "is closed", mEngine.getSessionStats());
     }
 
     public void testSessionClosing_whenPreCloseRespondMissing() {
@@ -687,7 +645,6 @@ public class SuggestionSessionTest extends TestCase
     }
 
     static class TestSuggestionSession extends SuggestionSession {
-        private long mWorkDelay = 0L;
         private final QueryEngine mEngine;
 
         public TestSuggestionSession(SourceLookup sourceLookup,
@@ -696,15 +653,6 @@ public class SuggestionSessionTest extends TestCase
             super(sourceLookup, enabledSources, test, engine, engine,
                     test, engine, numPromotedSources, true);
             mEngine = engine;
-        }
-
-        public void setWorkDelay(long workDelay) {
-            mWorkDelay = workDelay;
-        }
-
-        @Override
-        long getRecommendedDelay(long keyTime) {
-            return mWorkDelay;
         }
 
         @Override
