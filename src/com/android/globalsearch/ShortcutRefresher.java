@@ -165,6 +165,10 @@ public class ShortcutRefresher {
                         + mSource.getComponentName().flattenToString()
                         + " for shorcut id " + mShortcutId,
                         e);
+            } catch (RuntimeException ex) {
+                // If we don't catch this here, it will get eaten.
+                // This is to catch for example SQLiteException from the shortcut repo
+                Log.e(TAG, "Shortcut refresh error", ex);
             }
         }
 

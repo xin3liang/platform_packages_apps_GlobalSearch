@@ -47,8 +47,8 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
     private static final String EMPTY_QUERY_SHORTCUT_QUERY = buildShortcutQuery(true);
     private static final String SHORTCUT_QUERY = buildShortcutQuery(false);
 
-    private static final String SHORTCUT_UPDATE_SQL = buildUpdateShortcutSql();
-    private static final String SHORTCUT_DELETE_SQL = buildDeleteShortcutSql();
+    private static final String SHORTCUT_BY_ID_WHERE =
+            Shortcuts.shortcut_id.name() + "=? AND " + Shortcuts.source.name() + "=?";
 
     private static final String SOURCE_RANKING_SQL = buildSourceRankingSql();
 
@@ -59,43 +59,6 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
      */
     public static ShortcutRepository create(Context context) {
         return new ShortcutRepositoryImplLog(context, DB_NAME);
-    }
-
-    /**
-     * @return A String with the sql to delete a shortcut based on its shortcut id.  The sql uses
-     *   query parameters.
-     */
-    static String buildDeleteShortcutSql() {
-        final StringBuilder sb = new StringBuilder(100);
-        sb.append("DELETE FROM ").append(Shortcuts.TABLE_NAME).append(" ");
-        sb.append("WHERE ");
-        sb.append(Shortcuts.shortcut_id.name()).append("=$1");
-        sb.append(" AND ").append(Shortcuts.source.name()).append("=?2");
-        return sb.toString();
-    }
-
-    /**
-     * @return A String with the sql to update a shortcut based on its shortcut id.  The sql uses
-     *   query paremeters.
-     */
-    static String buildUpdateShortcutSql() {
-        final StringBuilder sb = new StringBuilder(100);
-        sb.append("UPDATE ").append(Shortcuts.TABLE_NAME).append(" ");
-        sb.append("SET ");
-        sb.append(Shortcuts.format.name()).append("=?1");
-        sb.append(", ");
-        sb.append(Shortcuts.title.name()).append("=?2");
-        sb.append(", ");
-        sb.append(Shortcuts.description.name()).append("=?3");
-        sb.append(", ");
-        sb.append(Shortcuts.icon1.name()).append("=?4");
-        sb.append(", ");
-        sb.append(Shortcuts.icon2.name()).append("=?5");
-        sb.append(" WHERE ")
-                .append(Shortcuts.shortcut_id.name())
-                .append("=?6")
-                .append(" AND ").append(Shortcuts.source.name()).append("=?7");
-        return sb.toString();
     }
 
     private static String buildShortcutQuery(boolean emptyQuery) {
@@ -214,29 +177,14 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
 
         final SQLiteDatabase db = mOpenHelper.getWritableDatabase();
 
+        String[] whereArgs = { shortcutId, source.flattenToShortString() };
         if (refreshed == null) {
-            db.execSQL(
-                    SHORTCUT_DELETE_SQL,
-                    new Object[] {shortcutId, source.flattenToShortString()});
+            if (DBG) Log.d(TAG, "Deleting shortcut: " + shortcutId);
+            db.delete(Shortcuts.TABLE_NAME, SHORTCUT_BY_ID_WHERE, whereArgs);
         } else {
-            // Store the spinner icon as the icon2 if we need to show one whenever this
-            // shortcut gets displayed. We always store the spinner as icon2 for these cases,
-            // but the shortcut refresh query will update the in-memory results, thereby
-            // removing the spinner when the refresh is complete.
-            final String icon2 = refreshed.isSpinnerWhileRefreshing() ?
-                    String.valueOf(com.android.internal.R.drawable.search_spinner) :
-                    refreshed.getIcon2();
-            db.execSQL(
-                    SHORTCUT_UPDATE_SQL,
-                    new Object[]{
-                            refreshed.getFormat(),         // ?1
-                            refreshed.getTitle(),          // ?2
-                            refreshed.getDescription(),    // ?3
-                            refreshed.getIcon1(),          // ?4
-                            icon2,                         // ?5
-                            shortcutId,                    // ?6
-                            source.flattenToShortString(), // ?7
-                    });
+            if (DBG) Log.d(TAG, "Updating shortcut: " + shortcutId);
+            ContentValues shortcut = makeShortcutRow(refreshed);
+            db.update(Shortcuts.TABLE_NAME, shortcut, SHORTCUT_BY_ID_WHERE, whereArgs);
         }
     }
 
@@ -359,6 +307,34 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
         postSourceEventCleanup(now);
     }
 
+    private ContentValues makeShortcutRow(SuggestionData suggestion) {
+        String intentKey = makeIntentKey(suggestion);
+        // Store the spinner icon as the icon2 if we need to show one whenever this
+        // shortcut gets displayed. We always store the spinner as icon2 for these cases,
+        // but the shortcut refresh query will update the in-memory results, thereby
+        // removing the spinner when the refresh is complete.
+        String icon2 = suggestion.isSpinnerWhileRefreshing() ?
+                String.valueOf(com.android.internal.R.drawable.search_spinner) :
+                suggestion.getIcon2();
+        ContentValues cv = new ContentValues();
+        cv.put(Shortcuts.intent_key.name(), intentKey);
+        cv.put(Shortcuts.source.name(), suggestion.getSource().flattenToShortString());
+        cv.put(Shortcuts.format.name(), suggestion.getFormat());
+        cv.put(Shortcuts.title.name(), suggestion.getTitle());
+        cv.put(Shortcuts.description.name(), suggestion.getDescription());
+        cv.put(Shortcuts.icon1.name(), suggestion.getIcon1());
+        cv.put(Shortcuts.icon2.name(), icon2);
+        cv.put(Shortcuts.intent_action.name(), suggestion.getIntentAction());
+        cv.put(Shortcuts.intent_data.name(), suggestion.getIntentData());
+        cv.put(Shortcuts.intent_query.name(), suggestion.getIntentQuery());
+        cv.put(Shortcuts.action_msg_call.name(), suggestion.getActionMsgCall());
+        cv.put(Shortcuts.intent_extradata.name(), suggestion.getIntentExtraData());
+        cv.put(Shortcuts.intent_component_name.name(), suggestion.getIntentComponentName());
+        cv.put(Shortcuts.shortcut_id.name(), suggestion.getShortcutId());
+        cv.put(Shortcuts.spinner_while_refreshing.name(), suggestion.isSpinnerWhileRefreshing());
+        return cv;
+    }
+
     private void logClicked(SessionStats stats, long now) {
         final SuggestionData clicked = stats.getClicked();
         if (clicked == null) {
@@ -376,39 +352,15 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
             return;
         }
 
-        String intentKey = makeIntentKey(clicked);
-
         SQLiteDatabase db = mOpenHelper.getWritableDatabase();
 
         // Add or update suggestion info
         // Since intent_key is the primary key, any existing
         // suggestion with the same source+data+action will be replaced
-        {
-            // Store the spinner icon as the icon2 if we need to show one whenever this
-            // shortcut gets displayed. We always store the spinner as icon2 for these cases,
-            // but the shortcut refresh query will update the in-memory results, thereby
-            // removing the spinner when the refresh is complete.
-            String icon2 = clicked.isSpinnerWhileRefreshing() ?
-                    String.valueOf(com.android.internal.R.drawable.search_spinner) :
-                    clicked.getIcon2();
-            final ContentValues cv = new ContentValues();
-            cv.put(Shortcuts.intent_key.name(), intentKey);
-            cv.put(Shortcuts.source.name(), clicked.getSource().flattenToShortString());
-            cv.put(Shortcuts.format.name(), clicked.getFormat());
-            cv.put(Shortcuts.title.name(), clicked.getTitle());
-            cv.put(Shortcuts.description.name(), clicked.getDescription());
-            cv.put(Shortcuts.icon1.name(), clicked.getIcon1());
-            cv.put(Shortcuts.icon2.name(), icon2);
-            cv.put(Shortcuts.intent_action.name(), clicked.getIntentAction());
-            cv.put(Shortcuts.intent_data.name(), clicked.getIntentData());
-            cv.put(Shortcuts.intent_query.name(), clicked.getIntentQuery());
-            cv.put(Shortcuts.action_msg_call.name(), clicked.getActionMsgCall());
-            cv.put(Shortcuts.intent_extradata.name(), clicked.getIntentExtraData());
-            cv.put(Shortcuts.intent_component_name.name(), clicked.getIntentComponentName());
-            cv.put(Shortcuts.shortcut_id.name(), clicked.getShortcutId());
-            cv.put(Shortcuts.spinner_while_refreshing.name(), clicked.isSpinnerWhileRefreshing());
-            db.replaceOrThrow(Shortcuts.TABLE_NAME, null, cv);
-        }
+        if (DBG) Log.d(TAG, "Adding shortcut: " + clicked.getShortcutId());
+        ContentValues shortcut = makeShortcutRow(clicked);
+        String intentKey = shortcut.getAsString(Shortcuts.intent_key.name());
+        db.replaceOrThrow(Shortcuts.TABLE_NAME, null, shortcut);
 
         // Log click
         {
