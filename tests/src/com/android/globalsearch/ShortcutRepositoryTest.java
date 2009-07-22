@@ -408,6 +408,31 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
                 updated);
     }
 
+    public void testRefreshShortcutChangedIntent() {
+
+        final SuggestionData app1 = new SuggestionData.Builder(APP_COMPONENT)
+                .intentData("data")
+                .format("format")
+                .title("app1")
+                .description("cool app")
+                .shortcutId("app1_id")
+                .build();
+
+        mRepo.reportStats(new SessionStats("app", app1));
+
+        final SuggestionData updated = app1.buildUpon()
+                .intentData("data-updated")
+                .format("format (updated)")
+                .title("app1 (updated)")
+                .build();
+
+        mRepo.refreshShortcut(APP_COMPONENT, "app1_id", updated);
+
+        assertContentsInOrder("expected updated properties in match",
+                mRepo.getShortcutsForQuery("app", NOW),
+                updated);
+    }
+
     public void testInvalidateShortcut() {
         final SuggestionData app1 = new SuggestionData.Builder(APP_COMPONENT)
                 .title("app1")
