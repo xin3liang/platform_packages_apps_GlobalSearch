@@ -184,7 +184,8 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
         } else {
             if (DBG) Log.d(TAG, "Updating shortcut: " + shortcutId);
             ContentValues shortcut = makeShortcutRow(refreshed);
-            db.update(Shortcuts.TABLE_NAME, shortcut, SHORTCUT_BY_ID_WHERE, whereArgs);
+            db.updateWithOnConflict(Shortcuts.TABLE_NAME, shortcut,
+                    SHORTCUT_BY_ID_WHERE, whereArgs, SQLiteDatabase.ConflictAlgorithm.REPLACE);
         }
     }
 
