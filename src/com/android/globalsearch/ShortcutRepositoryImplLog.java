@@ -40,7 +40,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
     private static final String TAG = "GlobalSearch";
 
     private static final String DB_NAME = "shortcuts-log.db";
-    private static final int DB_VERSION = 19;
+    private static final int DB_VERSION = 20;
 
     private static final String HAS_HISTORY_QUERY =
         "SELECT " + Shortcuts.intent_key.fullName + " FROM " + Shortcuts.TABLE_NAME;
@@ -237,6 +237,8 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
             .intentExtraData(cursor.getString(Shortcuts.intent_extradata.ordinal()))
             .intentComponentName(cursor.getString(Shortcuts.intent_component_name.ordinal()))
             .shortcutId(cursor.getString(Shortcuts.shortcut_id.ordinal()))
+            .spinnerWhileRefreshing(
+                    Boolean.valueOf(cursor.getString(Shortcuts.spinner_while_refreshing.ordinal())))
             .build();
     }
 
@@ -331,7 +333,8 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
         cv.put(Shortcuts.intent_extradata.name(), suggestion.getIntentExtraData());
         cv.put(Shortcuts.intent_component_name.name(), suggestion.getIntentComponentName());
         cv.put(Shortcuts.shortcut_id.name(), suggestion.getShortcutId());
-        cv.put(Shortcuts.spinner_while_refreshing.name(), suggestion.isSpinnerWhileRefreshing());
+        cv.put(Shortcuts.spinner_while_refreshing.name(),
+                Boolean.toString(suggestion.isSpinnerWhileRefreshing()));
         return cv;
     }
 

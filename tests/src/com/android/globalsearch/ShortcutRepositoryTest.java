@@ -150,6 +150,31 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
         assertContentsInOrder(mRepo.getShortcutsForQuery("", NOW), clicked);
     }
 
+    public void testSpinnerWhileRefreshing() {
+        SuggestionData clicked = new SuggestionData.Builder(CONTACTS_COMPONENT)
+                .format("<i>%s</i>")
+                .title("title")
+                .description("description")
+                .icon1("icon1")
+                .icon2("icon2")
+                .intentAction("action")
+                .intentData("data")
+                .intentQuery("query")
+                .intentExtraData("extradata")
+                .intentComponentName("componentname")
+                .shortcutId("idofshortcut")
+                .spinnerWhileRefreshing(true)
+                .build();
+
+        mRepo.reportStats(new SessionStats("q", clicked), NOW);
+
+        SuggestionData expected = clicked.buildUpon()
+                .icon2(String.valueOf(com.android.internal.R.drawable.search_spinner))
+                .build();
+
+        assertContentsInOrder(mRepo.getShortcutsForQuery("q", NOW), expected);
+    }
+
     public void testPrefixesMatch() {
         MoreAsserts.assertEmpty(mRepo.getShortcutsForQuery("bob", NOW));
 
