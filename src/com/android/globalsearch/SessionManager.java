@@ -51,32 +51,36 @@ public class SessionManager implements SuggestionSession.SessionCallback {
      *
      * @param sources The suggestion sources.
      * @param shortcutRepo The shortcut repository.
-     * @param executor The executor passed along to the session.
+     * @param queryExecutor The executor used to execute search suggestion tasks.
+     * @param refreshExecutor The executor used execute shortcut refresh tasks.
      * @param handler The handler passed along to the session.
      * @return The up to date session manager.
      */
     public static synchronized SessionManager refreshSessionmanager(Context context,
-            SuggestionSources sources, ShortcutRepository shortcutRepo, Executor executor,
-            Handler handler) {
+            SuggestionSources sources, ShortcutRepository shortcutRepo, Executor queryExecutor,
+            Executor refreshExecutor, Handler handler) {
         if (DBG) Log.d(TAG, "refreshSessionmanager()");
 
-        sInstance = new SessionManager(context, sources, shortcutRepo, executor, handler);
+        sInstance = new SessionManager(context, sources, shortcutRepo,
+                queryExecutor, refreshExecutor, handler);
         return sInstance;
     }
 
     private SessionManager(Context context,
             SuggestionSources sources, ShortcutRepository shortcutRepo,
-            Executor executor, Handler handler) {
+            Executor queryExecutor, Executor refreshExecutor, Handler handler) {
         mContext = context;
         mSources = sources;
         mShortcutRepo = shortcutRepo;
-        mExecutor = executor;
+        mQueryExecutor = queryExecutor;
+        mRefreshExecutor = refreshExecutor;
         mHandler = handler;
     }
 
     private final SuggestionSources mSources;
     private final ShortcutRepository mShortcutRepo;
-    private final Executor mExecutor;
+    private final Executor mQueryExecutor;
+    private final Executor mRefreshExecutor;
     private final Handler mHandler;
     private SuggestionSession mSession;
 
@@ -130,13 +134,15 @@ public class SessionManager implements SuggestionSession.SessionCallback {
 
         return new SuggestionSession(
                 mSources, enabledSources,
-                mShortcutRepo, mExecutor,
+                mShortcutRepo,
+                mQueryExecutor,
+                mRefreshExecutor,
                 delayedExecutor, new SuggestionFactoryImpl(mContext), this,
                 SuggestionSession.NUM_PROMOTED_SOURCES, SuggestionSession.CACHE_SUGGESTION_RESULTS);
     }
 
     private void warmUpWebSource(final SuggestionSource webSearchSource) {
-        mExecutor.execute(new Runnable() {
+        mQueryExecutor.execute(new Runnable() {
             public void run() {
                 try {
                     webSearchSource.getSuggestionTask("", 0, 0).call();
