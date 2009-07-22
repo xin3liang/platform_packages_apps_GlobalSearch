@@ -226,13 +226,26 @@ public class SuggestionSession {
 
         // get the shortcuts to refresh
         final ArrayList<SuggestionData> shortcutsToRefresh = new ArrayList<SuggestionData>();
-        for (SuggestionData shortcut : shortcuts) {
+        final int numShortcuts = shortcuts.size();
+        for (int i = 0; i < numShortcuts; i++) {
+            SuggestionData shortcut = shortcuts.get(i);
 
             final String shortcutId = shortcut.getShortcutId();
             if (shortcutId == null) continue;
 
-            if (mSessionCache.hasShortcutBeenRefreshed(shortcut.getSource(), shortcutId)) continue;
-
+            if (mSessionCache.hasShortcutBeenRefreshed(shortcut.getSource(), shortcutId)) {
+                // if we've already refreshed the shortcut, don't do it again.  if it shows a
+                // spinner while refreshing, it will come out of the repo with a spinner for icon2.
+                // we need to remove this or replace it with what was refreshed as applicable.
+                if (shortcut.isSpinnerWhileRefreshing()) {
+                    shortcuts.set(
+                            i,
+                            shortcut.buildUpon().icon2(
+                                    mSessionCache.getRefreshedShortcutIcon2(
+                                            shortcut.getSource(), shortcutId)).build());
+                }
+                continue;
+            }
             shortcutsToRefresh.add(shortcut);
         }
 
@@ -264,7 +277,7 @@ public class SuggestionSession {
                     + "sources");
             Log.d(TAG, "identified " + sourcesToQuery.size() + " promoted sources to query");
             Log.d(TAG, "identified " + shortcutsToRefresh.size()
-                + " shortcuts out of " + shortcuts.size() + " total shortcuts to refresh");
+                + " shortcuts out of " + numShortcuts + " total shortcuts to refresh");
         }
 
         // fire off queries / refreshers
@@ -448,13 +461,13 @@ public class SuggestionSession {
     static class SessionCache {
 
         static final QueryCacheResults EMPTY = new QueryCacheResults();
+        static private final String NO_ICON = "NO_ICON";
 
         private final HashMap<String, HashSet<ComponentName>> mZeroResultSources
                 = new HashMap<String, HashSet<ComponentName>>();
 
         private final HashMap<String, SoftReference<QueryCacheResults>> mResultsCache;
-
-        private final HashSet<String> mRefreshedShortcuts = new HashSet<String>();
+        private final HashMap<String, String> mRefreshedShortcuts = new HashMap<String, String>();
 
         SessionCache(boolean cacheQueryResults) {
             mResultsCache = cacheQueryResults ?
@@ -482,13 +495,41 @@ public class SuggestionSession {
         }
 
         /**
+         * Reports that a source has refreshed a shortcut
+         */
+        synchronized void reportRefreshedShortcut(
+                ComponentName source, String shortcutId, SuggestionData shortcut) {
+            final String icon2 = (shortcut == null || !shortcut.isSpinnerWhileRefreshing()) ?
+                    NO_ICON :
+                    (shortcut.getIcon2() == null) ? NO_ICON : shortcut.getIcon2();
+            mRefreshedShortcuts.put(makeShortcutKey(source, shortcutId), icon2);
+        }
+
+        /**
          * @param source Identifies the source
          * @param shortcutId The id of the shortcut
          * @return Whether the shortcut id has been validated already
          */
         synchronized boolean hasShortcutBeenRefreshed(
                 ComponentName source, String shortcutId) {
-            return mRefreshedShortcuts.contains(shortcutId);
+            return mRefreshedShortcuts.containsKey(makeShortcutKey(source, shortcutId));
+        }
+
+        /**
+         * @return The icon2 that was reported by the refreshed source, or null if there was no
+         *         icon2 in the refreshed shortcut.  Also returns null if the shortcut was never
+         *         refreshed, or if the shortcut is not
+         *         {@link SuggestionData#isSpinnerWhileRefreshing()}.
+         */
+        synchronized String getRefreshedShortcutIcon2(ComponentName source, String shortcutId) {
+            final String icon2 = mRefreshedShortcuts.get(makeShortcutKey(source, shortcutId));
+            return (icon2 == null || icon2 == NO_ICON) ? null : icon2;
+        }
+
+        private static String makeShortcutKey(ComponentName name, String shortcutId) {
+            final String nameStr = name.toShortString();
+            return new StringBuilder(nameStr.length() + shortcutId.length() + 1)
+                    .append(nameStr).append('_').append(shortcutId).toString();
         }
 
         /**
@@ -499,6 +540,7 @@ public class SuggestionSession {
             final QueryCacheResults queryCacheResults = getCachedResult(query);
             return queryCacheResults == null ? EMPTY : queryCacheResults;
         }
+
 
         /**
          * Reports that a source has provided results for a particular query.
@@ -526,14 +568,6 @@ public class SuggestionSession {
                 }
                 zeros.add(sourceResult.getSource().getComponentName());
             }
-        }
-
-        /**
-         * Reports that a source has refreshed a shortcut
-         */
-        synchronized void reportRefreshedShortcut(ComponentName source, String shortcutId) {
-            // TODO: take source into account too
-            mRefreshedShortcuts.add(shortcutId);
         }
 
         private QueryCacheResults getCachedResult(String query) {
@@ -674,7 +708,7 @@ public class SuggestionSession {
         @Override
         protected boolean refreshShortcut(
                 ComponentName source, String shortcutId, SuggestionData shortcut) {
-            mSessionCache.reportRefreshedShortcut(source, shortcutId);
+            mSessionCache.reportRefreshedShortcut(source, shortcutId, shortcut);
             return mBackerToReportTo.refreshShortcut(source, shortcutId, shortcut);
         }
 

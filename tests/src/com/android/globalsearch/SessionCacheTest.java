@@ -56,4 +56,69 @@ public class SessionCacheTest extends TestCase {
         mCache.reportSourceResult("yo", new SuggestionResult(source));
         assertFalse(mCache.hasReportedZeroResultsForPrefix("yo man", mSourceName));
     }
+
+    public void testShortcutRefreshing_noIcon() {
+        final ComponentName name = new ComponentName("com.android.yo", "com.android.yo.Dog");
+        final String shortcutId = "shortcut1";
+        final SuggestionData refreshed = new SuggestionData.Builder(name)
+                .spinnerWhileRefreshing(true)
+                .shortcutId(shortcutId)
+                .title("hi")
+                .description("hi")
+                .intentAction("VIEW").intentData("id1").build();
+        assertFalse("hasShortcutBeenRefreshed", mCache.hasShortcutBeenRefreshed(name, shortcutId));
+        mCache.reportRefreshedShortcut(name, shortcutId, refreshed);
+        assertTrue("hasShortcutBeenRefreshed", mCache.hasShortcutBeenRefreshed(name, shortcutId));
+        assertNull("getRefreshedShortcutIcon2", mCache.getRefreshedShortcutIcon2(name, shortcutId));
+    }
+
+    public void testShortcutRefreshing_withIcon2NotSpinnerWhileRefreshing() {
+        final ComponentName name = new ComponentName("com.android.yo", "com.android.yo.Dog");
+        final String shortcutId = "shortcut1";
+        final SuggestionData refreshed = new SuggestionData.Builder(name)
+                .spinnerWhileRefreshing(false)
+                .shortcutId(shortcutId)
+                .title("hi")
+                .description("hi")
+                .icon2("icon2")
+                .intentAction("VIEW").intentData("id1").build();
+        mCache.reportRefreshedShortcut(name, shortcutId, refreshed);
+        assertTrue("hasShortcutBeenRefreshed", mCache.hasShortcutBeenRefreshed(name, shortcutId));
+        assertNull("getRefreshedShortcutIcon2", mCache.getRefreshedShortcutIcon2(name, shortcutId));
+    }
+
+    public void testShortcutRefreshing_withIcon2SpinnerWhileRefreshing() {
+        final ComponentName name = new ComponentName("com.android.yo", "com.android.yo.Dog");
+        final String shortcutId = "shortcut1";
+        final SuggestionData refreshed = new SuggestionData.Builder(name)
+                .spinnerWhileRefreshing(true)
+                .shortcutId(shortcutId)
+                .title("hi")
+                .description("hi")
+                .icon2("icon2")
+                .intentAction("VIEW").intentData("id1").build();
+        mCache.reportRefreshedShortcut(name, shortcutId, refreshed);
+        assertTrue("hasShortcutBeenRefreshed", mCache.hasShortcutBeenRefreshed(name, shortcutId));
+        assertEquals("icon2", mCache.getRefreshedShortcutIcon2(name, shortcutId));
+    }
+
+    public void testShortcutRefreshing_sameIdDifferentSources() {
+        final ComponentName name = new ComponentName("com.android.yo", "com.android.yo.Dog");
+        final String shortcutId = "shortcut1";
+        final SuggestionData refreshed = new SuggestionData.Builder(name)
+                .spinnerWhileRefreshing(true)
+                .shortcutId(shortcutId)
+                .title("hi")
+                .description("hi")
+                .icon2("icon2")
+                .intentAction("VIEW").intentData("id1").build();
+
+        final ComponentName otherName = new ComponentName("com.android.yo", "com.android.yo.Cat");
+        mCache.reportRefreshedShortcut(name, shortcutId, refreshed);
+        assertTrue("hasShortcutBeenRefreshed", mCache.hasShortcutBeenRefreshed(name, shortcutId));
+        assertFalse("hasShortcutBeenRefreshed should be false for same id but different source",
+                mCache.hasShortcutBeenRefreshed(otherName, shortcutId));
+
+    }
+
 }
