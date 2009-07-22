@@ -40,7 +40,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
     private static final String TAG = "GlobalSearch";
 
     private static final String DB_NAME = "shortcuts-log.db";
-    private static final int DB_VERSION = 20;
+    private static final int DB_VERSION = 21;
 
     private static final String HAS_HISTORY_QUERY =
         "SELECT " + Shortcuts.intent_key.fullName + " FROM " + Shortcuts.TABLE_NAME;
@@ -603,6 +603,8 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
                 = ClickLog.TABLE_NAME + "_purge";
         private static final String SHORTCUTS_DELETE_TRIGGER
                 = Shortcuts.TABLE_NAME + "_delete";
+        private static final String SHORTCUTS_UPDATE_INTENT_KEY_TRIGGER
+                = Shortcuts.TABLE_NAME + "_update_intent_key";
 
         public DbOpenHelper(Context context, String name, int version) {
             super(context, name, null, version);
@@ -625,6 +627,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
         private void dropTables(SQLiteDatabase db) {
             db.execSQL("DROP TRIGGER IF EXISTS " + CLICKLOG_PURGE_TRIGGER);
             db.execSQL("DROP TRIGGER IF EXISTS " + SHORTCUTS_DELETE_TRIGGER);
+            db.execSQL("DROP TRIGGER IF EXISTS " + SHORTCUTS_UPDATE_INTENT_KEY_TRIGGER);
             db.execSQL("DROP INDEX IF EXISTS " + CLICKLOG_HIT_TIME_INDEX);
             db.execSQL("DROP INDEX IF EXISTS " + CLICKLOG_QUERY_INDEX);
             db.execSQL("DROP TABLE IF EXISTS " + ClickLog.TABLE_NAME);
@@ -719,6 +722,19 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
                     + " DELETE FROM " + ClickLog.TABLE_NAME + " WHERE "
                             + ClickLog.intent_key.name()
                             + " = OLD." + Shortcuts.intent_key.name() + ";"
+                    + " END");
+
+            // trigger for updating click log entries when a shortcut changes its intent_key
+            db.execSQL("CREATE TRIGGER " + SHORTCUTS_UPDATE_INTENT_KEY_TRIGGER
+                    + " AFTER UPDATE ON " + Shortcuts.TABLE_NAME
+                    + " WHEN NEW." + Shortcuts.intent_key.name()
+                            + " != OLD." + Shortcuts.intent_key.name()
+                    + " BEGIN"
+                    + " UPDATE " + ClickLog.TABLE_NAME + " SET "
+                            + ClickLog.intent_key.name() + " = NEW." + Shortcuts.intent_key.name()
+                            + " WHERE "
+                            + ClickLog.intent_key.name() + " = OLD." + Shortcuts.intent_key.name()
+                            + ";"
                     + " END");
 
             db.execSQL("CREATE TABLE " + SourceLog.TABLE_NAME + " ( " +
