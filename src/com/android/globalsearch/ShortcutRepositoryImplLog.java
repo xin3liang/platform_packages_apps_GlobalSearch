@@ -40,7 +40,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
     private static final String TAG = "GlobalSearch";
 
     private static final String DB_NAME = "shortcuts-log.db";
-    private static final int DB_VERSION = 21;
+    private static final int DB_VERSION = 22;
 
     private static final String HAS_HISTORY_QUERY =
         "SELECT " + Shortcuts.intent_key.fullName + " FROM " + Shortcuts.TABLE_NAME;
@@ -595,6 +595,8 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
     // contains creation and update logic
     private static class DbOpenHelper extends SQLiteOpenHelper {
         private String mPath;
+        private static final String SHORTCUT_ID_INDEX
+                = Shortcuts.TABLE_NAME + "_" + Shortcuts.shortcut_id.name();
         private static final String CLICKLOG_QUERY_INDEX
                 = ClickLog.TABLE_NAME + "_" + ClickLog.query.name();
         private static final String CLICKLOG_HIT_TIME_INDEX
@@ -630,6 +632,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
             db.execSQL("DROP TRIGGER IF EXISTS " + SHORTCUTS_UPDATE_INTENT_KEY_TRIGGER);
             db.execSQL("DROP INDEX IF EXISTS " + CLICKLOG_HIT_TIME_INDEX);
             db.execSQL("DROP INDEX IF EXISTS " + CLICKLOG_QUERY_INDEX);
+            db.execSQL("DROP INDEX IF EXISTS " + SHORTCUT_ID_INDEX);
             db.execSQL("DROP TABLE IF EXISTS " + ClickLog.TABLE_NAME);
             db.execSQL("DROP TABLE IF EXISTS " + Shortcuts.TABLE_NAME);
             db.execSQL("DROP TABLE IF EXISTS " + SourceLog.TABLE_NAME);
@@ -684,6 +687,11 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
                     Shortcuts.shortcut_id.name() + " TEXT, " +
                     Shortcuts.spinner_while_refreshing.name() + " TEXT" +
                     ");");
+
+            // index for fast lookup of shortcuts by shortcut_id
+            db.execSQL("CREATE INDEX " + SHORTCUT_ID_INDEX
+                    + " ON " + Shortcuts.TABLE_NAME
+                    + "(" + Shortcuts.shortcut_id.name() + ", " + Shortcuts.source.name() + ")");
 
             db.execSQL("CREATE TABLE " + ClickLog.TABLE_NAME + " ( " +
                     ClickLog._id.name() + " INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
