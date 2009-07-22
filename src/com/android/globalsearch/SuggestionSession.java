@@ -62,7 +62,8 @@ public class SuggestionSession {
     private final SourceLookup mSourceLookup;
     private final ArrayList<SuggestionSource> mEnabledSources;
     private final ShortcutRepository mShortcutRepo;
-    private final Executor mExecutor;
+    private final Executor mQueryExecutor;
+    private final Executor mRefreshExecutor;
     private final DelayedExecutor mDelayedExecutor;
     private final SuggestionFactory mSuggestionFactory;
     private final SessionCallback mListener;
@@ -136,20 +137,19 @@ public class SuggestionSession {
      * @param enabledSources The enabled sources, in the order that they should be queried.  If the
      *        web source is enabled, it will always be first.
      * @param shortcutRepo How to find shortcuts for a given query
-     * @param executor Used to execute the asynchronous queriies (passed along to
-     *        {@link com.android.globalsearch.QueryMultiplexer}
+     * @param queryExecutor Used to execute the asynchronous queries
+     * @param refreshExecutor Used to execute refresh tasks.
      * @param delayedExecutor Used to post messages.
      * @param suggestionFactory Used to create particular suggestions.
      * @param listener The listener.
      * @param numPromotedSources The number of sources to query first for the promoted list.
      * @param cacheSuggestionResults Whether to cache the results of sources in hopes we can avoid
-     *        requerying a given source twice for the same query.
      */
     public SuggestionSession(SourceLookup sourceLookup,
             ArrayList<SuggestionSource> enabledSources,
             ShortcutRepository shortcutRepo,
-            Executor executor,
-            DelayedExecutor delayedExecutor,
+            Executor queryExecutor,
+            Executor refreshExecutor, DelayedExecutor delayedExecutor,
             SuggestionFactory suggestionFactory,
             SessionCallback listener,
             int numPromotedSources,
@@ -157,7 +157,8 @@ public class SuggestionSession {
         mSourceLookup = sourceLookup;
         mEnabledSources = enabledSources;
         mShortcutRepo = shortcutRepo;
-        mExecutor = executor;
+        mQueryExecutor = queryExecutor;
+        mRefreshExecutor = refreshExecutor;
         mDelayedExecutor = delayedExecutor;
         mSuggestionFactory = suggestionFactory;
         mListener = listener;
@@ -282,7 +283,8 @@ public class SuggestionSession {
 
         // fire off queries / refreshers
         final AsyncMux asyncMux = new AsyncMux(
-                mExecutor,
+                mQueryExecutor,
+                mRefreshExecutor,
                 mDelayedExecutor,
                 mSessionCache,
                 query,
@@ -330,7 +332,7 @@ public class SuggestionSession {
                 // the user has moved on (either clicked on something, dismissed the dialog, or
                 // pivoted into app specific search)
                 if (mOutstandingQueryCount.decrementAndGet() == 0) {
-                    if (DBG) Log.d(TAG, "closing session");
+                    Log.d(TAG, "closing session");
                     mListener.closeSession(new SessionStats(query, mClicked, mSourceImpressions));
                 }
             }
@@ -615,7 +617,8 @@ public class SuggestionSession {
      */
     static class AsyncMux extends SuggestionBacker {
 
-        private final Executor mExecutor;
+        private final Executor mQueryExecutor;
+        private final Executor mRefreshExecutor;
         private final DelayedExecutor mDelayedExecutor;
         private final SessionCache mSessionCache;
         private final String mQuery;
@@ -632,11 +635,8 @@ public class SuggestionSession {
         private volatile boolean mCanceled = false;
 
         /**
-         * TODO: just pass in a list of promoted sources and a list of additional sources (or
-         * perhaps just the number of promoted sources) once we automatically choose promoted
-         * sources based on a ranking returned by the shortcut repo.
-         *
-         * @param executor required by the query multiplexers.
+         * @param queryExecutor required by the query multiplexers.
+         * @param refreshExecutor required by the refresh multiplexers.
          * @param delayedExecutor required by the query multiplexers.
          * @param sessionCache results are repoted to the cache as they come in
          * @param query the query the tasks pertain to
@@ -647,15 +647,18 @@ public class SuggestionSession {
          * @param repo The shortcut repository needed to create the shortcut refresher.
          */
         AsyncMux(
-                Executor executor,
-                DelayedExecutor delayedExecutor, SessionCache sessionCache,
+                Executor queryExecutor,
+                Executor refreshExecutor,
+                DelayedExecutor delayedExecutor,
+                SessionCache sessionCache,
                 String query,
                 ArrayList<SuggestionData> shortcutsToValidate,
                 ArrayList<SuggestionSource> sourcesToQuery,
                 HashSet<ComponentName> promotedSources,
                 SourceSuggestionBacker backerToReportTo,
                 ShortcutRepository repo) {
-            mExecutor = executor;
+            mQueryExecutor = queryExecutor;
+            mRefreshExecutor = refreshExecutor;
             mDelayedExecutor = delayedExecutor;
             mSessionCache = sessionCache;
             mQuery = query;
@@ -718,7 +721,7 @@ public class SuggestionSession {
                 throw new IllegalStateException("Already refreshed once");
             }
             mShortcutRefresher = new ShortcutRefresher(
-                    mExecutor, sourceLookup, mShortcutsToValidate,
+                    mRefreshExecutor, sourceLookup, mShortcutsToValidate,
                     MAX_RESULTS_TO_DISPLAY, this, mRepo);
             if (DBG) Log.d(TAG, "sending shortcut refresher tasks for " +
                     mShortcutsToValidate.size() + " shortcuts.");
@@ -741,7 +744,7 @@ public class SuggestionSession {
             }
             mPromotedSourcesQueryMux = new QueryMultiplexer(
                     mQuery, promotedSources, MAX_RESULTS_PER_SOURCE, MAX_RESULTS_PER_SOURCE,
-                    this, mExecutor, mDelayedExecutor);
+                    this, mQueryExecutor, mDelayedExecutor);
             if (DBG) Log.d(TAG, "sending '" + mQuery + "' off to " + promotedSources.size() +
                     " promoted sources");
             mBackerToReportTo.reportPromotedQueryStartTime();
@@ -769,7 +772,7 @@ public class SuggestionSession {
 
             mAdditionalSourcesQueryMux = new QueryMultiplexer(
                     mQuery, additional, MAX_RESULTS_TO_DISPLAY, MAX_RESULTS_PER_SOURCE,
-                    this, mExecutor, mDelayedExecutor);
+                    this, mQueryExecutor, mDelayedExecutor);
             if (DBG) Log.d(TAG, "sending queries off to " + additional.size() + " promoted " +
                     "sources");
             mAdditionalSourcesQueryMux.sendQuery();
@@ -788,30 +791,5 @@ public class SuggestionSession {
                 mAdditionalSourcesQueryMux.cancel();
             }
         }
-    }
-
-    /**
-     * Simple wrapper of a Runnable to make it cancellable.
-     */
-    private static abstract class Cancellable implements Runnable {
-
-        private boolean mCancelled = false;
-        private boolean mHasRun = false;
-
-        /**
-         * @return Whether the cancellation was succesful in preventing this action from running.
-         */
-        public synchronized boolean cancel() {
-            mCancelled = true;
-            return !mHasRun;
-        }
-
-        public synchronized void run() {
-            if (mCancelled) return;
-            doRun();
-            mHasRun = true;
-        }
-
-        abstract void doRun();
     }
 }

@@ -28,8 +28,10 @@ import android.os.Process;
 import android.util.Log;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -42,8 +44,19 @@ public class SuggestionProvider extends ContentProvider {
     private static final boolean DBG = false;
     private static final String TAG = "GlobalSearch";
 
-    // the number of threads used for the asynchronous handling of suggestions
-    private static final int ASYNC_THREAD_POOL_SIZE = SuggestionSession.NUM_PROMOTED_SOURCES + 2;
+    // the core thread pool size for suggestion queries.  this number of threads may stay alive
+    // for up to {@link #THREAD_KEEPALIVE_SECONDS} awaiting new tasks to execute.
+    private static final int QUERY_THREAD_CORE_POOL_SIZE = SuggestionSession.NUM_PROMOTED_SOURCES ;
+
+    // the maximum number of threads used for suggestion queries
+    private static final int QUERY_THREAD_MAX_POOL_SIZE =
+            SuggestionSession.NUM_PROMOTED_SOURCES + 2;
+
+    // the number of threads used for the asynchronous refreshing of shortcuts
+    private static final int SHORTCUT_REFRESH_POOL_SIZE = 3;
+
+    // the maximum time that excess idle threads will wait for new tasks before terminating.
+    private static final int THREAD_KEEPALIVE_SECONDS = 5;
 
     private static final String AUTHORITY = "com.android.globalsearch.SuggestionProvider";
 
@@ -57,7 +70,8 @@ public class SuggestionProvider extends ContentProvider {
     // Executes notifications from the SuggestionCursor on
     // the main event handling thread.
     private Handler mNotifyHandler;
-    private ExecutorService mExecutorService;
+    private ExecutorService mQueryExecutor;
+    private ExecutorService mRefreshExecutor;
 
     private static ThreadFactory sThreadFactory = new ThreadFactory() {
         private final AtomicInteger mCount = new AtomicInteger(1);
@@ -99,12 +113,22 @@ public class SuggestionProvider extends ContentProvider {
 
         mNotifyHandler = new Handler(Looper.getMainLooper());
 
-        mExecutorService = Executors.newFixedThreadPool(ASYNC_THREAD_POOL_SIZE, sThreadFactory);
+        mQueryExecutor = new ThreadPoolExecutor(
+                QUERY_THREAD_CORE_POOL_SIZE, QUERY_THREAD_MAX_POOL_SIZE,
+                THREAD_KEEPALIVE_SECONDS, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<Runnable>(),
+                sThreadFactory);
+        
+        mRefreshExecutor = new ThreadPoolExecutor(
+                SHORTCUT_REFRESH_POOL_SIZE, SHORTCUT_REFRESH_POOL_SIZE,
+                THREAD_KEEPALIVE_SECONDS, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<Runnable>(),
+                sThreadFactory);
 
         mSessionManager = SessionManager.refreshSessionmanager(
                 getContext(),
                 mSources, ShortcutRepositoryImplLog.create(getContext()),
-                mExecutorService, mNotifyHandler);
+                mQueryExecutor, mRefreshExecutor, mNotifyHandler);
 
         return true;
     }

@@ -650,7 +650,7 @@ public class SuggestionSessionTest extends TestCase
         public TestSuggestionSession(SourceLookup sourceLookup,
                 ArrayList<SuggestionSource> enabledSources, SuggestionSessionTest test,
                 QueryEngine engine, int numPromotedSources) {
-            super(sourceLookup, enabledSources, test, engine, engine,
+            super(sourceLookup, enabledSources, test, engine, engine, engine,
                     test, engine, numPromotedSources, true);
             mEngine = engine;
         }
