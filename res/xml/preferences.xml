@@ -30,14 +30,7 @@
         <PreferenceScreen
                 android:key="search_engine_settings"
                 android:title="@string/search_engine_settings" />
-        
-        <CheckBoxPreference
-                android:key="show_web_suggestions"
-                android:title="@string/show_web_suggestions"
-                android:summaryOn="@string/show_web_suggestions_summary_enabled"
-                android:summaryOff="@string/show_web_suggestions_summary_disabled"
-                android:defaultValue="true" />
-                
+
     </PreferenceCategory>
     
     <PreferenceCategory

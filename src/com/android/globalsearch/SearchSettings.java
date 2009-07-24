@@ -58,7 +58,6 @@ public class SearchSettings extends PreferenceActivity
     // Only used to find the preferences after inflating
     private static final String CLEAR_SHORTCUTS_PREF = "clear_shortcuts";
     private static final String SEARCH_ENGINE_SETTINGS_PREF = "search_engine_settings";
-    private static final String SHOW_WEB_SUGGESTIONS_PREF = "show_web_suggestions";
     private static final String SEARCH_SOURCES_PREF = "search_sources";
 
     private SearchManager mSearchManager;
@@ -71,7 +70,6 @@ public class SearchSettings extends PreferenceActivity
     private Preference mClearShortcutsPreference;
     private ListPreference mWebSourcePreference;
     private PreferenceScreen mSearchEngineSettingsPreference;
-    private CheckBoxPreference mShowWebSuggestionsPreference;
     private PreferenceGroup mSourcePreferences;
 
     // Dialog ids
@@ -96,13 +94,10 @@ public class SearchSettings extends PreferenceActivity
                 SuggestionSources.WEB_SEARCH_SOURCE_PREF);
         mSearchEngineSettingsPreference = (PreferenceScreen) preferenceScreen.findPreference(
                 SEARCH_ENGINE_SETTINGS_PREF);
-        mShowWebSuggestionsPreference = (CheckBoxPreference) preferenceScreen.findPreference(
-                SHOW_WEB_SUGGESTIONS_PREF);
         mSourcePreferences = (PreferenceGroup) getPreferenceScreen().findPreference(
                 SEARCH_SOURCES_PREF);
 
         mClearShortcutsPreference.setOnPreferenceClickListener(this);
-        mShowWebSuggestionsPreference.setOnPreferenceClickListener(this);
 
         // Note: If a new preference was added to this UI, please set the onchange listener on the
         // new preference here.
@@ -111,7 +106,6 @@ public class SearchSettings extends PreferenceActivity
         updateClearShortcutsPreference();
         populateWebSourcePreference();
         populateSourcePreference();
-        updateShowWebSuggestionsPreference();
         updateSearchEnginePreferences(mWebSourcePreference.getValue());
     }
 
@@ -235,13 +229,12 @@ public class SearchSettings extends PreferenceActivity
 
         // Get the package name of the current activity chosen for web search.
         ComponentName component = ComponentName.unflattenFromString(webSourcePreferenceValue);
-        String packageName = component.getPackageName();
 
         // Now find out if this package contains an activity which satisfies the
         // WEB_SEARCH_SETTINGS intent, and if so, point the "search engine settings"
         // item there.
 
-        ResolveInfo matchedInfo = findWebSearchSettingsActivity(packageName);
+        ResolveInfo matchedInfo = findWebSearchSettingsActivity(component);
 
         // If we found a match, that means this web search source provides some settings,
         // so enable the link to its settings. If not, then disable this preference.
@@ -297,13 +290,24 @@ public class SearchSettings extends PreferenceActivity
      * {@link SearchManager#INTENT_ACTION_WEB_SEARCH_SETTINGS} intent, or null
      * if none.
      */
-    private ResolveInfo findWebSearchSettingsActivity(String packageName) {
+    private ResolveInfo findWebSearchSettingsActivity(ComponentName component) {
         // Get all the activities which satisfy the WEB_SEARCH_SETTINGS intent.
         PackageManager pm = getPackageManager();
         Intent intent = new Intent(SearchManager.INTENT_ACTION_WEB_SEARCH_SETTINGS);
         List<ResolveInfo> activitiesWithWebSearchSettings = pm.queryIntentActivities(intent, 0);
 
+        String packageName = component.getPackageName();
+        String name = component.getClassName();
+
         // Iterate through them and see if any of them are the activity we're looking for.
+        for (ResolveInfo resolveInfo : activitiesWithWebSearchSettings) {
+            if (packageName.equals(resolveInfo.activityInfo.packageName)
+                    && name.equals(resolveInfo.activityInfo.name)) {
+                return resolveInfo;
+            }
+        }
+
+        // If there is no exact match, look for one in the right package
         for (ResolveInfo resolveInfo : activitiesWithWebSearchSettings) {
             if (packageName.equals(resolveInfo.activityInfo.packageName)) {
                 return resolveInfo;
@@ -336,22 +340,6 @@ public class SearchSettings extends PreferenceActivity
             }
         }
     }
-    
-    /**
-     * Updates the "show web suggestions" preference from the value in system settings.
-     */
-    private void updateShowWebSuggestionsPreference() {
-        int value;
-        try {
-            value = Settings.System.getInt(
-                    getContentResolver(), Settings.System.SHOW_WEB_SUGGESTIONS);
-        } catch (SettingNotFoundException e) {
-            // No setting found, create one.
-            Settings.System.putInt(getContentResolver(), Settings.System.SHOW_WEB_SUGGESTIONS, 1);
-            value = 1;
-        }
-        mShowWebSuggestionsPreference.setChecked(value == 1);
-    }
 
     /**
      * Adds a suggestion source to the list of suggestion source checkbox preferences.
@@ -375,11 +363,6 @@ public class SearchSettings extends PreferenceActivity
         if (preference == mClearShortcutsPreference) {
             showDialog(CLEAR_SHORTCUTS_CONFIRM_DIALOG);
             return true;
-        } else if (preference == mShowWebSuggestionsPreference) {
-            Settings.System.putInt(
-                    getContentResolver(), 
-                    Settings.System.SHOW_WEB_SUGGESTIONS,
-                    mShowWebSuggestionsPreference.isChecked() ? 1 : 0);
         }
         return false;
     }

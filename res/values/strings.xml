@@ -102,11 +102,6 @@
     <string name="search_engine_settings_summary_enabled">Settings for %1$s</string>
     <string name="search_engine_settings_summary_disabled">No settings for %1$s</string>
     
-    <!-- Title and summaries for 'show web suggestions' check box setting -->
-    <string name="show_web_suggestions">Show web suggestions</string>
-    <string name="show_web_suggestions_summary_enabled">Show suggestions from the web search engine as you type</string>
-    <string name="show_web_suggestions_summary_disabled">Don\'t show suggestions from the web search engine as you type</string>
-    
     <!-- Title for 'system search' category of search settings -->
     <string name="system_search_category_title">Quick Search Box</string>
     
