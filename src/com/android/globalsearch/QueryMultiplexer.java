@@ -182,7 +182,7 @@ public class QueryMultiplexer implements Runnable {
         @Override
         public boolean cancel(boolean mayInterruptIfRunning) {
             boolean canceled = super.cancel(mayInterruptIfRunning);
-            if (true) Log.d(TAG, getTag() + ": Cancelling: " + canceled);
+            if (DBG) Log.d(TAG, getTag() + ": Cancelling: " + canceled);
             return canceled;
         }
 
