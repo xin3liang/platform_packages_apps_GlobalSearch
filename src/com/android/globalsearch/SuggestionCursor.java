@@ -294,10 +294,19 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
 
     @Override
     public void close() {
+        if (DBG) Log.d(TAG, "close()");
         super.close();
         if (mListener != null) {
             mListener.onClose();
         }
+    }
+
+    @Override
+    protected void finalize() {
+        if (!mClosed) {
+            Log.w(TAG, "SuggestionCursor finalized without being closed. Someone is leaking.");
+        }
+        super.finalize();
     }
 
     /**
