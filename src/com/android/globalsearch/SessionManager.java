@@ -20,6 +20,7 @@ import android.database.Cursor;
 import android.content.Context;
 import android.content.ComponentName;
 import android.os.Handler;
+import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.concurrent.Executor;
@@ -90,8 +91,10 @@ public class SessionManager implements SuggestionSession.SessionCallback {
      *
      * @see SuggestionSession#query(String)
      */
-    public Cursor query(Context context, String query) {
-        if (mSession == null) {
+    public synchronized Cursor query(Context context, String query) {
+        // create a new session if there is none,
+        // or when starting a new typing session
+        if (mSession == null || TextUtils.isEmpty(query)) {
             mSession = createSession();
         }
 
@@ -99,7 +102,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
     }
 
     /** {@inheritDoc} */
-    public void closeSession() {
+    public synchronized void closeSession() {
         if (DBG) Log.d(TAG, "closeSession()");
         mSession = null;
     }
