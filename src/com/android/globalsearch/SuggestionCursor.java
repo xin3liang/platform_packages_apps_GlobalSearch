@@ -21,7 +21,6 @@ import android.app.SearchManager.DialogCursorProtocol;
 import android.database.AbstractCursor;
 import android.database.CursorIndexOutOfBoundsException;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -86,7 +85,6 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     private static final int BACKGROUND_COLOR = 13;
 
     private boolean mOnMoreCalled = false;
-    private boolean mPreCloseReceived = false;
 
     private final String mQuery;
     private final DelayedExecutor mDelayedExecutor;
@@ -110,16 +108,16 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     public interface CursorListener {
         /**
          * Called when the cursor has been closed.
-         *
-         * @param displayedSuggestions the suggestions that have been displayed to the user.
          */
-        void onClose(List<SuggestionData> displayedSuggestions);
+        void onClose();
 
         /**
          * Called when an item is clicked.
          *
+         * @param click The suggestion that was clicked.
+         * @param displayedSuggestions The suggestions that have been displayed to the user.
          */
-        void onItemClicked(SuggestionData clicked);
+        void onItemClicked(SuggestionData clicked, List<SuggestionData> displayedSuggestions);
 
         /**
          * Called the first time "more" becomes visible
@@ -189,8 +187,6 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
         switch (method) {
             case DialogCursorProtocol.POST_REFRESH:
                 return respondPostRefresh(extras);
-            case DialogCursorProtocol.PRE_CLOSE:
-                return respondPreClose(extras);
             case DialogCursorProtocol.CLICK:
                 return respondClick(extras);
             case DialogCursorProtocol.THRESH_HIT:
@@ -239,27 +235,6 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
 
     /**
      * Handle receiving and sending back information associated with
-     * {@link DialogCursorProtocol#PRE_CLOSE}.
-     *
-     * @param request The bundle sent.
-     * @return The response bundle.
-     */
-    private Bundle respondPreClose(Bundle request) {
-        mPreCloseReceived = true;
-        int maxPosDisplayed =
-                request.getInt(DialogCursorProtocol.PRE_CLOSE_SEND_MAX_DISPLAY_POS, -1);
-
-        if (maxPosDisplayed >= mData.size()) {
-            maxPosDisplayed = -1;  // impressions of prefilled data :(
-        }
-        if (mListener != null) {
-            mListener.onClose(mData.subList(0, maxPosDisplayed + 1));
-        }
-        return Bundle.EMPTY;
-    }
-
-    /**
-     * Handle receiving and sending back information associated with
      * {@link DialogCursorProtocol#CLICK}.
      *
      * @param request The bundle sent.
@@ -267,16 +242,25 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
      */
     private Bundle respondClick(Bundle request) {
         final int pos = request.getInt(DialogCursorProtocol.CLICK_SEND_POSITION, -1);
+        int maxDisplayed = request.getInt(DialogCursorProtocol.CLICK_SEND_MAX_DISPLAY_POS, -1);
+        if (DBG) Log.d(TAG, "respondClick(), pos=" + pos + ", maxDisplayed=" + maxDisplayed);
+
         if (pos == -1) {
             Log.w(TAG, "DialogCursorProtocol.CLICK didn't come with extra CLICK_SEND_POSITION");
             return Bundle.EMPTY;
         }
 
-        if (mListener != null) mListener.onItemClicked(mData.get(pos));
+        // avoid exceptions from List.subList()
+        final int numSuggestions = mData.size();
+        if (maxDisplayed < -1) maxDisplayed = -1;
+        if (maxDisplayed >= numSuggestions) maxDisplayed = numSuggestions - 1;
+        List<SuggestionData> displayedSuggestions = mData.subList(0, maxDisplayed + 1);
+
+        if (mListener != null) mListener.onItemClicked(mData.get(pos), displayedSuggestions);
 
         // if they click on the "more results item"
         if (pos == getMoreResultsPosition()) {
-            // toggle the expansion of the addditional sources
+            // toggle the expansion of the additional sources
             mIncludeSources = !mIncludeSources;
             onNewResults();
 
@@ -311,12 +295,8 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     @Override
     public void close() {
         super.close();
-        if (!mPreCloseReceived) {
-            Log.w(TAG, "cursor closed before receiving DialogCursorProtocol.PRE_CLOSE in "
-                    + "Cursor.repond");
-            if (mListener != null) {
-                mListener.onClose(new ArrayList<SuggestionData>());
-            }
+        if (mListener != null) {
+            mListener.onClose();
         }
     }
 

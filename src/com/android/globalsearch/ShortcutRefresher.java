@@ -85,7 +85,9 @@ public class ShortcutRefresher {
             if (source == null) {
                 mExecutor.execute(new Runnable() {
                     public void run() {
-                        mRepo.refreshShortcut(componentName, shortcut.getShortcutId(), null);
+                        if (mRepo != null) {
+                            mRepo.refreshShortcut(componentName, shortcut.getShortcutId(), null);
+                        }
                         mReceiver.onRefreshShortcut(componentName, shortcut.getShortcutId(), null);
                     }
                 });
@@ -154,7 +156,9 @@ public class ShortcutRefresher {
 
             try {
                 final SuggestionData refreshed = get();
-                mRepo.refreshShortcut(mSource.getComponentName(), mShortcutId, refreshed);
+                if (mRepo != null) {
+                    mRepo.refreshShortcut(mSource.getComponentName(), mShortcutId, refreshed);
+                }
                 mReceiver.onRefreshShortcut(mSource.getComponentName(), mShortcutId, refreshed);
             } catch (CancellationException e) {
               // validation task was cancelled, nothing left to do

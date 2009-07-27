@@ -99,9 +99,8 @@ public class SessionManager implements SuggestionSession.SessionCallback {
     }
 
     /** {@inheritDoc} */
-    public void closeSession(SessionStats stats) {
-        if (DBG) Log.d(TAG, "closeSession");
-        mShortcutRepo.reportStats(stats);
+    public void closeSession() {
+        if (DBG) Log.d(TAG, "closeSession()");
         mSession = null;
     }
 
@@ -133,13 +132,15 @@ public class SessionManager implements SuggestionSession.SessionCallback {
             }
         };
 
-        return new SuggestionSession(
+        SuggestionSession session = new SuggestionSession(
                 mSources, enabledSources,
-                mShortcutRepo,
                 mQueryExecutor,
                 mRefreshExecutor,
-                delayedExecutor, new SuggestionFactoryImpl(mContext), this,
-                SuggestionSession.NUM_PROMOTED_SOURCES, SuggestionSession.CACHE_SUGGESTION_RESULTS);
+                delayedExecutor, new SuggestionFactoryImpl(mContext),
+                SuggestionSession.CACHE_SUGGESTION_RESULTS);
+        session.setListener(this);
+        session.setShortcutRepo(mShortcutRepo);
+        return session;
     }
 
     private void warmUpWebSource(final SuggestionSource webSearchSource) {

@@ -61,13 +61,13 @@ public class SuggestionSession {
 
     private final SourceLookup mSourceLookup;
     private final ArrayList<SuggestionSource> mEnabledSources;
-    private final ShortcutRepository mShortcutRepo;
+    private ShortcutRepository mShortcutRepo;
     private final PerTagExecutor mQueryExecutor;
     private final Executor mRefreshExecutor;
     private final DelayedExecutor mDelayedExecutor;
     private final SuggestionFactory mSuggestionFactory;
-    private final SessionCallback mListener;
-    private final int mNumPromotedSources;
+    private SessionCallback mListener;
+    private int mNumPromotedSources = NUM_PROMOTED_SOURCES;
 
     // guarded by "this"
 
@@ -78,8 +78,6 @@ public class SuggestionSession {
 
     // used to detect the closing of the session
     private final AtomicInteger mOutstandingQueryCount = new AtomicInteger(0);
-
-    private HashSet<ComponentName> mSourceImpressions = new HashSet<ComponentName>();
 
     // used to quickly lookup whether a source is enabled
     private HashSet<ComponentName> mEnabledByName;
@@ -126,44 +124,33 @@ public class SuggestionSession {
 
         /**
          * Called when the session is over.
-         *
-         * @param stats The stats of the session.
          */
-        void closeSession(SessionStats stats);
+        void closeSession();
     }
 
     /**
      * @param sourceLookup The sources to query for results
      * @param enabledSources The enabled sources, in the order that they should be queried.  If the
      *        web source is enabled, it will always be first.
-     * @param shortcutRepo How to find shortcuts for a given query
      * @param queryExecutor Used to execute the asynchronous queries
      * @param refreshExecutor Used to execute refresh tasks.
      * @param delayedExecutor Used to post messages.
      * @param suggestionFactory Used to create particular suggestions.
-     * @param listener The listener.
-     * @param numPromotedSources The number of sources to query first for the promoted list.
      * @param cacheSuggestionResults Whether to cache the results of sources in hopes we can avoid
      */
     public SuggestionSession(SourceLookup sourceLookup,
             ArrayList<SuggestionSource> enabledSources,
-            ShortcutRepository shortcutRepo,
             PerTagExecutor queryExecutor,
             Executor refreshExecutor,
             DelayedExecutor delayedExecutor,
             SuggestionFactory suggestionFactory,
-            SessionCallback listener,
-            int numPromotedSources,
             boolean cacheSuggestionResults) {
         mSourceLookup = sourceLookup;
         mEnabledSources = enabledSources;
-        mShortcutRepo = shortcutRepo;
         mQueryExecutor = queryExecutor;
         mRefreshExecutor = refreshExecutor;
         mDelayedExecutor = delayedExecutor;
         mSuggestionFactory = suggestionFactory;
-        mListener = listener;
-        mNumPromotedSources = numPromotedSources;
         mSessionCache = new SessionCache(cacheSuggestionResults);
 
         final int numEnabled = enabledSources.size();
@@ -172,6 +159,24 @@ public class SuggestionSession {
             mEnabledByName.add(enabledSources.get(i).getComponentName());
         }
         if (DBG) Log.d(TAG, "starting session");
+    }
+
+    /**
+     * Sets a listener that will be notified of session events.
+     */
+    public synchronized void setListener(SessionCallback listener) {
+        mListener = listener;
+    }
+
+    public synchronized void setShortcutRepo(ShortcutRepository shortcutRepo) {
+        mShortcutRepo = shortcutRepo;
+    }
+
+    /**
+     * @param numPromotedSources The number of sources to query first for the promoted list.
+     */
+    public synchronized void setNumPromotedSources(int numPromotedSources) {
+        mNumPromotedSources = numPromotedSources;
     }
 
     /**
@@ -217,8 +222,7 @@ public class SuggestionSession {
      */
     private void fireStuffOff(final SuggestionCursor cursor, final String query) {
         // get shortcuts
-        final ArrayList<SuggestionData> shortcuts =
-                filterOnlyEnabled(mShortcutRepo.getShortcutsForQuery(query));
+        final ArrayList<SuggestionData> shortcuts = getShortcuts(query);
 
         // filter out sources that aren't relevant to this query
         final ArrayList<SuggestionSource> sourcesToQuery =
@@ -298,56 +302,7 @@ public class SuggestionSession {
         cursor.attachBacker(asyncMux);
         asyncMux.setListener(cursor);
 
-        cursor.setListener(new SuggestionCursor.CursorListener() {
-            private SuggestionData mClicked = null;
-
-            public void onClose(List<SuggestionData> viewedSuggestions) {
-                asyncMux.cancel();
-
-                final int numViewed = viewedSuggestions.size();
-                if (DBG) {
-                    Log.d(TAG, "onClose('" + query + "',  " +
-                            numViewed + " displayed");
-                }
-                for (int i = 0; i < numViewed; i++) {
-                    final SuggestionData viewed = viewedSuggestions.get(i);
-                    final ComponentName sourceName = viewed.getSource();
-                    // only add it if it is from a source we know of (e.g, not a built in one
-                    // used for special suggestions like "more results").
-                    if (mSourceLookup.getSourceByComponentName(sourceName) != null) {
-                        mSourceImpressions.add(sourceName);
-                    } else if (SearchManager.INTENT_ACTION_CHANGE_SEARCH_SOURCE.equals(
-                            viewed.getIntentAction())) {
-                        // a corpus result under "more results"; unpack the component
-                        final ComponentName corpusName =
-                                ComponentName.unflattenFromString(viewed.getIntentData());
-                        if (corpusName != null && asyncMux.hasSourceStarted(corpusName)) {
-                            // we only count an impression if the source has at least begun
-                            // retrieving its results.
-                            mSourceImpressions.add(corpusName);
-                        }
-                    }
-                }
-
-                // when the cursor closes and there aren't any outstanding requests, it means
-                // the user has moved on (either clicked on something, dismissed the dialog, or
-                // pivoted into app specific search)
-                if (mOutstandingQueryCount.decrementAndGet() == 0) {
-                    Log.d(TAG, "closing session");
-                    mListener.closeSession(new SessionStats(query, mClicked, mSourceImpressions));
-                }
-            }
-
-            public void onItemClicked(SuggestionData clicked) {
-                if (DBG) Log.d(TAG, "onItemClicked");
-                mClicked = clicked;
-            }
-
-            public void onMoreVisible() {
-                if (DBG) Log.d(TAG, "onMoreVisible");
-                asyncMux.sendOffAdditionalSourcesQueries();
-            }
-        });
+        cursor.setListener(new SessionCursorListener(asyncMux));
 
         asyncMux.sendOffShortcutRefreshers(mSourceLookup);
         asyncMux.sendOffPromotedSourceQueries();
@@ -359,6 +314,92 @@ public class SuggestionSession {
                 cursor.onNewResults();
             }
         }, PROMOTED_SOURCE_DEADLINE);
+    }
+
+    private class SessionCursorListener implements SuggestionCursor.CursorListener {
+        private AsyncMux mAsyncMux;
+        public SessionCursorListener(AsyncMux asyncMux) {
+            mAsyncMux = asyncMux;
+        }
+        public void onClose() {
+            if (DBG) Log.d(TAG, "onClose(\"" + mAsyncMux.getQuery() + "\")");
+
+            mAsyncMux.cancel();
+            // when the cursor closes and there aren't any outstanding requests, it means
+            // the user has moved on (either clicked on something, dismissed the dialog, or
+            // pivoted into app specific search)
+            if (mOutstandingQueryCount.decrementAndGet() == 0) {
+                close();
+            }
+        }
+
+        public void onItemClicked(SuggestionData clicked,
+                List<SuggestionData> viewedSuggestions) {
+            if (DBG) Log.d(TAG, "onItemClicked()");
+
+            // find click to report
+            SuggestionData clickedSuggestion = null;
+            // Only record clicks on suggestions from external sources
+            if (isSourceSuggestion(clicked)) {
+                clickedSuggestion = clicked;
+            }
+
+            // find impressions to report
+            final int numViewed = viewedSuggestions.size();
+            HashSet<ComponentName> sourceImpressions = new HashSet<ComponentName>();
+            for (int i = 0; i < numViewed; i++) {
+                final SuggestionData viewed = viewedSuggestions.get(i);
+                // only add it if it is from a source we know of (e.g, not a built in one
+                // used for special suggestions like "more results").
+                if (isSourceSuggestion(viewed)) {
+                    sourceImpressions.add(viewed.getSource());
+                } else if (isCorpusSelector(viewed)) {
+                    // a corpus result under "more results"; unpack the component
+                    final ComponentName corpusName =
+                            ComponentName.unflattenFromString(viewed.getIntentData());
+                    if (corpusName != null && mAsyncMux.hasSourceStarted(corpusName)) {
+                        // we only count an impression if the source has at least begun
+                        // retrieving its results.
+                        sourceImpressions.add(corpusName);
+                    }
+                }
+            }
+
+            reportStats(new SessionStats(mAsyncMux.getQuery(),
+                    clickedSuggestion, sourceImpressions));
+        }
+
+        /**
+         * Checks whether a suggestion comes from a source we know of (e.g, not a built in one
+         * used for special suggestions like "more results").
+         */
+        private boolean isSourceSuggestion(SuggestionData suggestion) {
+            return mSourceLookup.getSourceByComponentName(suggestion.getSource()) != null;
+        }
+
+        private boolean isCorpusSelector(SuggestionData suggestion) {
+            return SearchManager.INTENT_ACTION_CHANGE_SEARCH_SOURCE.equals(
+                    suggestion.getIntentAction());
+        }
+
+        public void onMoreVisible() {
+            if (DBG) Log.d(TAG, "onMoreVisible");
+            mAsyncMux.sendOffAdditionalSourcesQueries();
+        }
+    }
+
+    private ArrayList<SuggestionData> getShortcuts(String query) {
+        if (mShortcutRepo == null) return new ArrayList<SuggestionData>();
+        return filterOnlyEnabled(mShortcutRepo.getShortcutsForQuery(query));
+    }
+
+    void reportStats(SessionStats stats) {
+        if (mShortcutRepo != null) mShortcutRepo.reportStats(stats);
+    }
+
+    synchronized void close() {
+        Log.d(TAG, "close()");
+        if (mListener != null) mListener.closeSession();
     }
 
     /**
@@ -670,6 +711,9 @@ public class SuggestionSession {
             mRepo = repo;
         }
 
+        public String getQuery() {
+            return mQuery;
+        }
 
         @Override
         public void snapshotSuggestions(ArrayList<SuggestionData> dest, boolean expandAdditional) {

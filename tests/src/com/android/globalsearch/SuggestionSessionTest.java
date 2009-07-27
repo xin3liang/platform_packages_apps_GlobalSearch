@@ -17,31 +17,31 @@
 
 package com.android.globalsearch;
 
-import junit.framework.TestCase;
+import com.android.globalsearch.SuggestionSession.SessionCallback;
+import com.google.android.collect.Lists;
 
-import android.os.Bundle;
-import android.database.Cursor;
-import android.content.ComponentName;
 import android.app.SearchManager;
-import static android.app.SearchManager.DialogCursorProtocol;
+import android.app.SearchManager.DialogCursorProtocol;
+import android.content.ComponentName;
+import android.database.Cursor;
+import android.os.Bundle;
 import android.test.MoreAsserts;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
 
-import com.google.android.collect.Lists;
+import junit.framework.TestCase;
 
 /**
  * Tests for {@link SuggestionSession}, its interaction with {@link SuggestionCursor}, and how and
  * when the session fires queries off to the suggestion sources.
  */
-public class SuggestionSessionTest extends TestCase
-        implements SuggestionFactory, ShortcutRepository  {
+public class SuggestionSessionTest extends TestCase implements SuggestionFactory {
 
     private TestSuggestionSession mSession;
     private QueryEngine mEngine;
@@ -93,24 +93,6 @@ public class SuggestionSessionTest extends TestCase
                 .intentData(title)
                 .build();
     }
-
-// --------------------- Interface ShortcutRepository ---------------------
-
-    public boolean hasHistory() {return true;}
-    public void clearHistory() {}
-    public void deleteRepository() {}
-    public void close() {}
-    public void reportStats(SessionStats stats) {}
-
-    public ArrayList<SuggestionData> getShortcutsForQuery(String query) {
-        return new ArrayList<SuggestionData>();
-    }
-
-    public ArrayList<ComponentName> getSourceRanking() {
-        throw new IllegalArgumentException();
-    }
-    public void refreshShortcut(
-            ComponentName source, String shortcutId, SuggestionData refreshed) {}
 
 // --------------------- Interface SuggestionFactory ---------------------
 
@@ -243,42 +225,35 @@ public class SuggestionSessionTest extends TestCase
         }        
     }
 
-    public void testSessionClosing_noWorkCancelling() {
+    public void testSessionClosing_single() {
+        final Cursor cursor = mSession.query("a");
+        cursor.close();
+        assertTrue("Session should have closed.", mEngine.isClosed());
+    }
+
+    public void testSessionClosing_multiple() {
         // first query fired off
         final Cursor cursor1 = mSession.query("a");
-        assertNull("session shouldn't be closed.", mEngine.getSessionStats());
+        assertFalse("session shouldn't be closed right after opening.", mEngine.isClosed());
 
         // second query starts
         final Cursor cursor2 = mSession.query("b");
         // first cursor closes (which is how it works from search dialog)
-        sendPreClose(cursor1);
-        assertNull("session shouldn't be closed after first cursor closes.",
-                mEngine.getSessionStats());
-        assertNull("session shouldn't be closed.", mEngine.getSessionStats());
+        cursor1.close();
+        assertFalse("session shouldn't be closed after first cursor close.", mEngine.isClosed());
 
-        sendPreClose(cursor2);
-        assertNotNull(
-                "session should be closed after both cursors closed.", mEngine.getSessionStats());
+        cursor2.close();
+        assertTrue("session should be closed after both cursors closed.", mEngine.isClosed());
     }
-
-    public void testSessionClosing_whenPreCloseRespondMissing() {
-        final Cursor cursor = mSession.query("a");
-
-        cursor.close();
-        assertNotNull("Session should have closed.", mEngine.getSessionStats());
-    }
-
 
     public void testSessionStats_noClick() {
         final Cursor cursor = mSession.query("a");
-        sendPreClose(cursor);
-        final SessionStats stats = mEngine.getSessionStats();
-        assertNotNull("session stats.", stats);
-        assertNull("clicked.", stats.getClicked());
-        MoreAsserts.assertEmpty("source impressions.", stats.getSourceImpressions());
+        cursor.close();
+        final List<SessionStats> stats = mEngine.getSessionStats();
+        MoreAsserts.assertEmpty("session stats reported without click.", stats);
     }
 
-    public void testSessionStats_click() {
+    public void testSessionStats_click_oneSourceViewed() {
         final Cursor cursor = mSession.query("a");
         mEngine.onSourceRespond(mWebComponent);
         mEngine.onSourceRespond(mComponentA);
@@ -287,11 +262,13 @@ public class SuggestionSessionTest extends TestCase
         MoreAsserts.assertContentsInOrder("suggestions.", snapshot.suggestionTitles,
                 mWebSuggestion.getTitle(), mSuggestionFromA.getTitle());
 
-        sendClick(cursor, 0);
-        sendPreClose(cursor);
-        final SessionStats stats = mEngine.getSessionStats();
-        assertNotNull("session stats.", stats);
-        assertEquals("clicked.", mWebSuggestion, stats.getClicked());
+        sendClick(cursor, 0, 0);
+        cursor.close();
+        final List<SessionStats> stats = mEngine.getSessionStats();
+        assertEquals("session stats.", 1, stats.size());
+        assertEquals("clicked.", mWebSuggestion, stats.get(0).getClicked());
+        MoreAsserts.assertContentsInAnyOrder("suggestions.", stats.get(0).getSourceImpressions(),
+                mWebSuggestion.getSource());
     }
 
     public void testSessionStats_allSourcesViewed() {
@@ -300,26 +277,12 @@ public class SuggestionSessionTest extends TestCase
         mEngine.onSourceRespond(mComponentA);
         cursor.requery();
 
-        sendPreClose(cursor, 1);
-        final SessionStats stats = mEngine.getSessionStats();
-        assertNotNull("session stats.", stats);
-        assertNull("clicked.", stats.getClicked());
-        MoreAsserts.assertContentsInAnyOrder("sources viewed.", stats.getSourceImpressions(),
+        sendClick(cursor, 1, 1);
+        final List<SessionStats> stats = mEngine.getSessionStats();
+        assertEquals("session stats.", 1, stats.size());
+        assertEquals("clicked.", mSuggestionFromA, stats.get(0).getClicked());
+        MoreAsserts.assertContentsInAnyOrder("sources viewed.", stats.get(0).getSourceImpressions(),
                 mWebComponent, mComponentA);
-    }
-
-    public void testSessionStats_oneSourceViewed() {
-        final Cursor cursor = mSession.query("a");
-        mEngine.onSourceRespond(mWebComponent);
-        mEngine.onSourceRespond(mComponentA);
-        cursor.requery();
-
-        sendPreClose(cursor, 0);
-        final SessionStats stats = mEngine.getSessionStats();
-        assertNotNull("session stats.", stats);
-        assertNull("clicked.", stats.getClicked());
-        MoreAsserts.assertContentsInOrder(
-                "sources viewed.", stats.getSourceImpressions(), mWebComponent);
     }
 
     public void testSessionStats_impressionsWithMoreNotExpanded() {
@@ -337,14 +300,13 @@ public class SuggestionSessionTest extends TestCase
                 mWebSuggestion.getTitle(), MORE.getTitle());
         assertEquals("should want notification of display of index of 'more'",
                 1, snapshot.displayNotify);
-
-        sendPreClose(cursor, 1);
-        final SessionStats stats = mEngine.getSessionStats();
-        assertNotNull("session stats.", stats);
-        assertNull("clicked.", stats.getClicked());
+        sendClick(cursor, 0, 1);
+        final List<SessionStats> stats = mEngine.getSessionStats();
+        assertEquals("session stats.", 1, stats.size());
+        assertEquals("clicked.", mWebSuggestion, stats.get(0).getClicked());
         MoreAsserts.assertContentsInAnyOrder(
                 "sources viewed (should not include component of 'more results' suggestion.",
-                stats.getSourceImpressions(), mWebComponent);
+                stats.get(0).getSourceImpressions(), mWebComponent);
     }
 
     /**
@@ -368,7 +330,7 @@ public class SuggestionSessionTest extends TestCase
         }
 
         // click on "more"
-        final int selectedPosition = sendClick(cursor, 1);
+        final int selectedPosition = sendClick(cursor, 1, 2);
         assertEquals("selected position should be index of 'more' after we click on 'more'",
                 1, selectedPosition);
         cursor.requery();
@@ -383,13 +345,13 @@ public class SuggestionSessionTest extends TestCase
                     snapshot.isPending);
         }
 
-        sendPreClose(cursor, 2);
-        final SessionStats stats = mEngine.getSessionStats();
-        assertNotNull("session stats.", stats);
+        final List<SessionStats> stats = mEngine.getSessionStats();
+        assertEquals("session stats.", 1, stats.size());
+        assertNull("Clicks on More should not be recorded", stats.get(0).getClicked());
         MoreAsserts.assertContentsInAnyOrder(
                 "sources viewed (should not include source that was viewed, but hasn't " +
                         "started retrieving results yet.)",
-                stats.getSourceImpressions(), mWebComponent);
+                stats.get(0).getSourceImpressions(), mWebComponent);
     }
 
     public void testSessionStats_impressionsWithMoreExpanded_afterSourceResponds() {
@@ -402,46 +364,51 @@ public class SuggestionSessionTest extends TestCase
         final Cursor cursor = mSession.query("a");
         mEngine.onSourceRespond(mWebComponent);
         cursor.requery();
+        assertEquals(2, cursor.getCount());
 
         // click on "more"
-        final int selectedPosition = sendClick(cursor, 1);
+        int selectedPosition = sendClick(cursor, 1, 1);
         assertEquals("selected position should be index of 'more' after we click on 'more'",
                 1, selectedPosition);
         cursor.requery();
+        assertEquals(3, cursor.getCount());
+
+        List<SessionStats> stats = mEngine.getSessionStats();
+        assertEquals("session stats.", 1, stats.size());
+        assertNull("Clicks on More should not be recorded", stats.get(0).getClicked());
+        MoreAsserts.assertContentsInAnyOrder(
+                "sources viewed.",
+                stats.get(0).getSourceImpressions(), mWebComponent);
 
         // viewing that index should kick start the second component
         final Bundle b = new Bundle();
         b.putInt(DialogCursorProtocol.METHOD, DialogCursorProtocol.THRESH_HIT);
         cursor.respond(b);
 
-        sendPreClose(cursor, 2);
-        final SessionStats stats = mEngine.getSessionStats();
-        assertNotNull("session stats.", stats);
+        // source responds
+        mEngine.onSourceRespond(mComponentA);
+        cursor.requery();
+
+        // click on More to collapse it
+        sendClick(cursor, 1, 2);
+        cursor.requery();
+        assertEquals(2, cursor.getCount());
+
+        stats = mEngine.getSessionStats();
+        assertEquals("session stats.", 2, stats.size());
+        assertNull("Clicks on More should not be recorded", stats.get(1).getClicked());
         MoreAsserts.assertContentsInAnyOrder(
                 "sources viewed.",
-                stats.getSourceImpressions(), mWebComponent, mComponentA);
+                stats.get(1).getSourceImpressions(), mWebComponent, mComponentA);
     }
 
 // --------------------- Utility methods ---------------------
 
-    private void sendPreClose(Cursor cursor) {
-        final Bundle b = new Bundle();
-        b.putInt(DialogCursorProtocol.METHOD, DialogCursorProtocol.PRE_CLOSE);
-        cursor.respond(b);
-    }
-
-    private void sendPreClose(Cursor cursor, int maxDisplayedPosition) {
-        final Bundle b = new Bundle();
-        b.putInt(DialogCursorProtocol.METHOD, DialogCursorProtocol.PRE_CLOSE);
-        b.putInt(DialogCursorProtocol.PRE_CLOSE_SEND_MAX_DISPLAY_POS, maxDisplayedPosition);
-        cursor.respond(b);
-    }
-
-
-    private int sendClick(Cursor cursor, int position) {
+    private int sendClick(Cursor cursor, int position, int maxDisplayedPosition) {
         final Bundle b = new Bundle();
         b.putInt(DialogCursorProtocol.METHOD, DialogCursorProtocol.CLICK);
         b.putInt(DialogCursorProtocol.CLICK_SEND_POSITION, position);
+        b.putInt(DialogCursorProtocol.CLICK_SEND_MAX_DISPLAY_POS, maxDisplayedPosition);
         final Bundle response = cursor.respond(b);
         return response.getInt(DialogCursorProtocol.CLICK_RECEIVE_SELECTED_POS, -1);
     }
@@ -495,7 +462,7 @@ public class SuggestionSessionTest extends TestCase
      * closed.
      */
     static class QueryEngine extends PerTagExecutor implements Executor, DelayedExecutor,
-            SuggestionSession.SessionCallback{
+            SuggestionSession.SessionCallback, ShortcutRepository {
 
         private long mNow = 0L;
 
@@ -503,6 +470,8 @@ public class SuggestionSessionTest extends TestCase
                 = new LinkedHashMap<ComponentName, FutureTask<SuggestionResult>>();
 
         private LinkedList<Delayed> mDelayed = new LinkedList<Delayed>();
+
+        private boolean mClosed = false;
 
         public QueryEngine() {
             super(null, 66);
@@ -523,7 +492,7 @@ public class SuggestionSessionTest extends TestCase
             }
         }
 
-        private SessionStats mSessionStats;
+        private List<SessionStats> mSessionStats = new ArrayList<SessionStats>();
 
         /**
          * @return A list of sources that have been queried and haven't been triggered to respond
@@ -588,10 +557,30 @@ public class SuggestionSessionTest extends TestCase
             }
         }
 
+        // ShortcutRepository
+
+        public boolean hasHistory() {return true;}
+        public void clearHistory() {}
+        public void deleteRepository() {}
+        public void close() {}
+        public void reportStats(SessionStats stats) {
+            mSessionStats.add(stats);
+        }
+
+        public ArrayList<SuggestionData> getShortcutsForQuery(String query) {
+            return new ArrayList<SuggestionData>();
+        }
+
+        public ArrayList<ComponentName> getSourceRanking() {
+            throw new IllegalArgumentException();
+        }
+        public void refreshShortcut(
+                ComponentName source, String shortcutId, SuggestionData refreshed) {}
+
         /**
-         * @return The stats from the end of the session, or null if the session is still ongoing.
+         * @return The stats that have been reported
          */
-        public SessionStats getSessionStats() {
+        public List<SessionStats> getSessionStats() {
             return mSessionStats;
         }
 
@@ -626,8 +615,12 @@ public class SuggestionSessionTest extends TestCase
 
         // Session callback
 
-        public void closeSession(SessionStats stats) {
-            mSessionStats = stats;
+        public void closeSession() {
+            mClosed = true;
+        }
+
+        public boolean isClosed() {
+            return mClosed;
         }
     }
 
@@ -660,9 +653,11 @@ public class SuggestionSessionTest extends TestCase
         public TestSuggestionSession(SourceLookup sourceLookup,
                 ArrayList<SuggestionSource> enabledSources, SuggestionSessionTest test,
                 QueryEngine engine, int numPromotedSources) {
-            super(sourceLookup, enabledSources, test,
-                    engine, engine, engine,
-                    test, engine, numPromotedSources, true);
+            super(sourceLookup, enabledSources,
+                    engine, engine, engine, test, true);
+            setListener(engine);
+            setShortcutRepo(engine);
+            setNumPromotedSources(numPromotedSources);
             mEngine = engine;
         }
 
