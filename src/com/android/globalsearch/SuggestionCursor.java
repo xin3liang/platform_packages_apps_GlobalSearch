@@ -305,6 +305,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     protected void finalize() {
         if (!mClosed) {
             Log.w(TAG, "SuggestionCursor finalized without being closed. Someone is leaking.");
+            close();
         }
         super.finalize();
     }

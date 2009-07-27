@@ -328,7 +328,9 @@ public class SuggestionSession {
             // when the cursor closes and there aren't any outstanding requests, it means
             // the user has moved on (either clicked on something, dismissed the dialog, or
             // pivoted into app specific search)
-            if (mOutstandingQueryCount.decrementAndGet() == 0) {
+            int refCount = mOutstandingQueryCount.decrementAndGet();
+            if (DBG) Log.d(TAG, "Session reference count: " + refCount);
+            if (refCount == 0) {
                 close();
             }
         }
