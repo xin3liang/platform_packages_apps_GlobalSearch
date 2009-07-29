@@ -29,11 +29,13 @@ import java.util.Collection;
 
 /**
  * Source suggestion backer shows (that is, snapshots) the results in the following order:
+ * - go to website (if applicable)
  * - shortcuts
- * - results from promoted sources
+ * - results from promoted sources that reported in time
  * - a "search the web for 'query'" entry
  * - a "more" item that, when expanded is followed by
  * - an entry for each promoted source that has more results than was displayed above
+ * - an entry for each promoted source that reported too late
  * - an entry for each non-promoted source
  *
  * The "search the web" and "more" entries appear only after the promoted sources are given
@@ -75,18 +77,19 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         SuggestionData getCorpusEntry(String query, SourceStat sourceStat);
     }
 
-    private final List<SuggestionData> mShortcuts;
     private final List<SuggestionSource> mSources;
     private final HashSet<ComponentName> mPromotedSources;
     private final SuggestionSource mSelectedWebSearchSource;
-    private final SuggestionData mGoToWebsiteSuggestion;
     private final SuggestionData mSearchTheWebSuggestion;
     private final MoreExpanderFactory mMoreFactory;
     private final CorpusResultFactory mCorpusFactory;
-    private final int mMaxPromotedSlots;
     private final long mPromotedSourceDeadline;
     private long mPromotedQueryStartTime;
-    
+
+    // The source suggestions that we have already committed to showing
+    private final ArrayList<SuggestionData> mCommitted;
+    private final int mSlotsRemaining;
+
     // The suggestion to pin to the bottom of the list, if any, coming from the web search source.
     // This is used by the Google search provider to pin a "Manage search history" item to the
     // bottom whenever we show search history related suggestions.
@@ -144,16 +147,20 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         }
 
         mQuery = query;
-        mShortcuts = shortcuts;
-        mGoToWebsiteSuggestion = goToWebsiteSuggestion;
         mSearchTheWebSuggestion = searchTheWebSuggestion;
         mMoreFactory = moreFactory;
         mPromotedSourceDeadline = promotedSourceDeadline;
         mCorpusFactory = corpusFactory;
         mSources = sources;
         mPromotedSources = promotedSources;
-        mMaxPromotedSlots = maxPromotedSlots;
         mSelectedWebSearchSource = selectedWebSearchSource;
+
+        mCommitted = new ArrayList<SuggestionData>(maxPromotedSlots);
+        if (goToWebsiteSuggestion != null) {
+            mCommitted.add(goToWebsiteSuggestion);
+        }
+        mCommitted.addAll(shortcuts);
+        mSlotsRemaining = maxPromotedSlots - shortcuts.size();
 
         mPromotedQueryStartTime = getNow();
 
@@ -200,31 +207,17 @@ public class SourceSuggestionBacker extends SuggestionBacker {
             ArrayList<SuggestionData> dest, boolean expandAdditional) {
         dest.clear();
 
-        // Add 'go to website' right at top if applicable.
-        if (mGoToWebsiteSuggestion != null) {
-            if (DBG) Log.d(TAG, "snapshot: adding 'go to website'");
-            dest.add(mGoToWebsiteSuggestion);
-        }
-
-        // start with all shortcuts
-        dest.addAll(mShortcuts);
-
-        // grab reported results from promoted sources that reported before the deadline
-        ArrayList<Iterator<SuggestionData>> reportedResults =
-                new ArrayList<Iterator<SuggestionData>>(mReportedResults.size());
-        for (SuggestionResult suggestionResult : mReportedResults.values()) {
-            final ComponentName name = suggestionResult.getSource().getComponentName();
-            if (mPromotedSources.contains(name)
-                    && mReportedBeforeDeadline.contains(name)
-                    && !suggestionResult.getSuggestions().isEmpty()) {
-                reportedResults.add(suggestionResult.getSuggestions().iterator());
-            }
-        }
+        dest.addAll(mCommitted);
 
         CounterMap<ComponentName> sourceToNumDisplayed = new CounterMap<ComponentName>();
 
-        final int promotedSlotsAvailable = mMaxPromotedSlots - mShortcuts.size();
-        int slotsRemaining = addChunked(dest, promotedSlotsAvailable,
+        // grab reported results from promoted sources that reported before the deadline
+        ArrayList<Iterator<SuggestionData>> reportedResults = getPromotedResults(true);
+
+        // add one chunk from each, with chunk size small enough to fit at least one suggestion
+        // from each promoted source.
+        final int chunkSize = calcChunkSize(mSlotsRemaining, mPromotedSources.size());
+        int slotsRemaining = addChunked(dest, mSlotsRemaining, chunkSize,
                 reportedResults, sourceToNumDisplayed);
 
         // if all of the promoted sources have responded (or the deadline for promoted sources
@@ -237,18 +230,17 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
             if (DBG) Log.d(TAG, "snapshot: mixing in rest of results.");
 
-            // prune out results that have nothing left
-            final Iterator<Iterator<SuggestionData>> pruner = reportedResults.iterator();
-            while (pruner.hasNext()) {
-                Iterator<SuggestionData> suggestionDataIterator = pruner.next();
-                if (!suggestionDataIterator.hasNext()) {
-                    pruner.remove();
+            // fill in remaining promoted slots using promoted sources that reported in time
+            final int resultCount = reportedResults.size();
+            int nonEmptyResultCount = 0;
+            for (int k = 0; k < resultCount; k++) {
+                if (reportedResults.get(k).hasNext()) {
+                    nonEmptyResultCount++;
                 }
             }
-
-            // fill in remaining promoted slots using promoted sources that reported in time
-            slotsRemaining =
-                    addChunked(dest, slotsRemaining, reportedResults, sourceToNumDisplayed);
+            final int newChunkSize = calcChunkSize(slotsRemaining, nonEmptyResultCount);
+            slotsRemaining = addChunked(dest, slotsRemaining, newChunkSize,
+                    reportedResults, sourceToNumDisplayed);
 
             // gather stats about sources so we can properly construct "more" ui
             ArrayList<SourceStat> moreSources = new ArrayList<SourceStat>();
@@ -256,9 +248,12 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                     && mReportedBeforeDeadline.contains(mPinToBottomSuggestion.getSource());
             for (SuggestionSource source : mSources) {
                 final boolean promoted = mPromotedSources.contains(source.getComponentName());
-                final boolean reported = mReportedResults.containsKey(source.getComponentName());
+                final SuggestionResult sourceResult =
+                        mReportedResults.get(source.getComponentName());
+                final boolean beforeDeadline =
+                        mReportedBeforeDeadline.contains(source.getComponentName());
 
-                if (!reported) {
+                if (sourceResult == null) {
                     // sources that haven't reported yet
                     final int responseStatus =
                             mPendingSources.contains(source.getComponentName()) ?
@@ -267,9 +262,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                     moreSources.add(new SourceStat(
                             source.getComponentName(), promoted, source.getLabel(),
                             source.getIcon(), responseStatus, 0, 0));
-                } else {
-                    final SuggestionResult sourceResult =
-                            mReportedResults.get(source.getComponentName());
+                } else if (beforeDeadline && promoted) {
                     int numDisplayed = sourceToNumDisplayed.readCounter(source.getComponentName());
 
                     // sources are only in "more" if they have undisplayed results
@@ -294,6 +287,17 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                                         numResultsRemaining,
                                         queryLimit));
                     }
+                } else {
+                    // unpromoted sources that have reported
+                    moreSources.add(
+                            new SourceStat(
+                                    source.getComponentName(),
+                                    false,
+                                    source.getLabel(),
+                                    source.getIcon(),
+                                    SourceStat.RESPONSE_FINISHED,
+                                    sourceResult.getCount(),
+                                    sourceResult.getQueryLimit()));
                 }
             }
 
@@ -318,7 +322,8 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
                 dest.add(mMoreFactory.getMoreEntry(expandAdditional, moreSources));
                 if (expandAdditional) {
-                    for (int i = 0; i < moreSources.size(); i++) {
+                    final int moreCount = moreSources.size();
+                    for (int i = 0; i < moreCount; i++) {
                         final SourceStat moreSource = moreSources.get(i);
                         if (shouldCorpusEntryBeVisible(moreSource)) {
                             if (DBG) Log.d(TAG, "snapshot: adding 'more' " + moreSource.getLabel());
@@ -344,20 +349,25 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         }
     }
 
+    private int calcChunkSize(int slotsRemaining, int sourceCount) {
+        if (sourceCount == 0) return 0;
+        return Math.max(1, slotsRemaining / sourceCount);
+    }
+
     /**
      * Adds suggestions from the given results in chunks.
      *
      * @param dest List to add suggestions to
      * @param slotsRemaining The number of available slots.
+     * @param chunkSize The number of suggstions to take from each result.
      * @param results The results to take suggestions from.
      * @return The number of slots remaining.
      */
     private int addChunked(ArrayList<SuggestionData> dest,
-            int slotsRemaining, ArrayList<Iterator<SuggestionData>> results,
+            int slotsRemaining, int chunkSize, ArrayList<Iterator<SuggestionData>> results,
             CounterMap<ComponentName> sourceToNumDisplayed) {
         final int resultCount = results.size();
         if (resultCount == 0 || slotsRemaining <= 0) return slotsRemaining;
-        final int chunkSize = Math.max(1, slotsRemaining / resultCount);
         outer: for (int j = 0; j < resultCount; j++) {
             Iterator<SuggestionData> result = results.get(j);
             for (int i = 0; i < chunkSize && result.hasNext(); i++) {
@@ -371,13 +381,20 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         return slotsRemaining;
     }
 
-    private ArrayList<Iterator<SuggestionData>> getLatePromoted() {
+    /**
+     * Gets results from promoted sources.
+     *
+     * @param beforeDeadline If true, gets the source that reported before the
+     *        deadline. If false, gets the sources that reported after the
+     *        deadline.
+     */
+    private ArrayList<Iterator<SuggestionData>> getPromotedResults(boolean beforeDeadline) {
         ArrayList<Iterator<SuggestionData>> results =
-                new ArrayList<Iterator<SuggestionData>>(mReportedResults.size());
+            new ArrayList<Iterator<SuggestionData>>(mReportedResults.size());
         for (SuggestionResult suggestionResult : mReportedResults.values()) {
             final ComponentName name = suggestionResult.getSource().getComponentName();
             if (mPromotedSources.contains(name)
-                    && !mReportedBeforeDeadline.contains(name)
+                    && beforeDeadline == mReportedBeforeDeadline.contains(name)
                     && !suggestionResult.getSuggestions().isEmpty()) {
                 results.add(suggestionResult.getSuggestions().iterator());
             }
@@ -493,21 +510,21 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     @Override
     protected synchronized boolean refreshShortcut(
             ComponentName source, String shortcutId, SuggestionData refreshed) {
-        final int size = mShortcuts.size();
+        final int size = mCommitted.size();
         for (int i = 0; i < size; i++) {
-            final SuggestionData shortcut = mShortcuts.get(i);
+            final SuggestionData shortcut = mCommitted.get(i);
             if (shortcutId.equals(shortcut.getShortcutId())) {
                 if (refreshed == null) {
                     // If we're removing this shortcut, we still need to stop the spinner in
                     // the icon2 value of any shortcut which was set to spin while refreshing.
                     if (shortcut.isSpinnerWhileRefreshing()) {
-                        mShortcuts.set(i, shortcut.buildUpon().icon2(null).build());
+                        mCommitted.set(i, shortcut.buildUpon().icon2(null).build());
                         return true;
                     } else {
                         return false;
                     }
                 } else {
-                    mShortcuts.set(i, refreshed);
+                    mCommitted.set(i, refreshed);
                 }
                 return true;
             }
