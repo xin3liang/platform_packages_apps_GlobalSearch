@@ -221,9 +221,10 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         // if all of the promoted sources have responded (or the deadline for promoted sources
         // has passed), we use up any remaining promoted slots, and display the "more" UI
         // - one exception: shortcuts only (no sources)
-        mShowingMore = (isPastDeadline() || allPromotedResponded()) && !mSources.isEmpty();
+        boolean shouldFill = (isPastDeadline() || allPromotedResponded()) && !mSources.isEmpty();
 
-        if (mShowingMore && !mFilledRest) {
+        // This is only done once, since it adds the suggestions to mCommitted permanently
+        if (shouldFill && !mFilledRest) {
             fillRest();
             // commit "search the web"
             if (mSearchTheWebSuggestion != null) {
@@ -241,14 +242,14 @@ public class SourceSuggestionBacker extends SuggestionBacker {
 
         dest.addAll(mCommitted);
 
-        if (mShowingMore) {
+        if (shouldFill) {
             // gather stats about sources so we can properly construct "more" ui
             ArrayList<SourceStat> moreSources = getMoreStats();
             // add "more results" if applicable
             int indexOfMore = dest.size();
             if (shouldMoreBeVisible(moreSources)) {
                 if (DBG) Log.d(TAG, "snapshot: adding 'more results' expander");
-
+                mShowingMore = true;
                 dest.add(mMoreFactory.getMoreEntry(expandAdditional, moreSources));
                 if (expandAdditional) {
                     final int moreCount = moreSources.size();
@@ -439,30 +440,22 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         }
 
         mReportedResults.put(source.getComponentName(), suggestionResult);
-        boolean addedPromoted = false;
         if (!pastDeadline) {
             mReportedBeforeDeadline.add(source.getComponentName());
-            if (mPromotedSources.contains(source.getComponentName())) {
-                addedPromoted = addTimelyPromotedResult(suggestionResult);
+        }
+
+        boolean addedPromoted = false;
+        if (mPromotedSources.contains(source.getComponentName())) {
+            Iterator<SuggestionData> result = suggestionResult.getSuggestions().iterator();
+            if (!pastDeadline) {
+                addedPromoted = addChunk(result, mTopChunkSize);
+                if (result.hasNext()) {
+                    mTimelyPromotedRemaining.add(result);
+                }
             }
         }
-        return pastDeadline || addedPromoted;
-    }
 
-    /**
-     * Adds {@link #mChunkSize} suggestions from the given result to
-     * {@link #mCommitted}. If there are any suggestions left, they are
-     * added to {@link #mTimelyPromotedRemaining}.
-     *
-     * @return {@code true} if any results were committed.
-     */
-    private boolean addTimelyPromotedResult(SuggestionResult suggestionResult) {
-        Iterator<SuggestionData> result = suggestionResult.getSuggestions().iterator();
-        boolean changed = addChunk(result, mTopChunkSize);
-        if (result.hasNext()) {
-            mTimelyPromotedRemaining.add(result);
-        }
-        return changed;
+        return pastDeadline || addedPromoted || allPromotedResponded();
     }
 
     /**
