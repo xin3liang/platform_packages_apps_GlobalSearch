@@ -171,6 +171,10 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         }
         mCommitted.addAll(shortcuts);
         mSlotsRemaining = maxPromotedSlots - shortcuts.size();
+        if (DBG) {
+            Log.d(TAG, "Committed " + shortcuts.size() + " shortcuts, "
+                    + mSlotsRemaining + " slots remaining");
+        }
         mTopChunkSize = calcChunkSize(mSlotsRemaining, mPromotedSources.size());
 
         mPromotedQueryStartTime = getNow();
@@ -218,10 +222,11 @@ public class SourceSuggestionBacker extends SuggestionBacker {
             ArrayList<SuggestionData> dest, boolean expandAdditional) {
         dest.clear();
 
-        // if all of the promoted sources have responded (or the deadline for promoted sources
-        // has passed), we use up any remaining promoted slots, and display the "more" UI
-        // - one exception: shortcuts only (no sources)
-        boolean shouldFill = (isPastDeadline() || allPromotedResponded()) && !mSources.isEmpty();
+        boolean shortcutsOnly = mSources.isEmpty();
+        boolean promotedDone = allPromotedResponded();
+        boolean shouldFill = 
+                (isPastDeadline() || mSlotsRemaining <= 0 || promotedDone) && !shortcutsOnly;
+        boolean shouldShowMore = (mSlotsRemaining <= 0 || promotedDone) && !shortcutsOnly;
 
         // This is only done once, since it adds the suggestions to mCommitted permanently
         if (shouldFill && !mFilledRest) {
@@ -231,18 +236,18 @@ public class SourceSuggestionBacker extends SuggestionBacker {
                 if (DBG) Log.d(TAG, "snapshot: adding 'search the web'");
                 mCommitted.add(mSearchTheWebSuggestion);
             }
-            // commit a pin-to-bottom suggestion if one has been found to use and its source reported
-            // before the deadline
-            if (mPinToBottomSuggestion != null) {
-                if (DBG) Log.d(TAG, "snapshot: adding a pin-to-bottom suggestion");
-                mCommitted.add(mPinToBottomSuggestion);
-            }
             mFilledRest = true;
         }
 
         dest.addAll(mCommitted);
 
-        if (shouldFill) {
+        if (shouldShowMore) {
+            // Add a pin-to-bottom suggestion if one has been found
+            if (mPinToBottomSuggestion != null) {
+                if (DBG) Log.d(TAG, "snapshot: adding a pin-to-bottom suggestion");
+                dest.add(mPinToBottomSuggestion);
+            }
+
             // gather stats about sources so we can properly construct "more" ui
             ArrayList<SourceStat> moreSources = getMoreStats();
             // add "more results" if applicable
@@ -405,20 +410,27 @@ public class SourceSuggestionBacker extends SuggestionBacker {
     @Override
     protected synchronized boolean addSourceResults(SuggestionResult suggestionResult) {
         final SuggestionSource source = suggestionResult.getSource();
+        final List<SuggestionData> suggestions = suggestionResult.getSuggestions();
         final boolean pastDeadline = isPastDeadline();
+
+        if (DBG) {
+            Log.d(TAG, source.getComponentName() + " reported " + suggestions.size()
+                    + " suggestions");
+        }
 
         // If the source is the web search source and there is a pin-to-bottom suggestion at
         // the end of the list of suggestions, store it separately, remove it from the list,
         // and keep going. The stored suggestion will be added to the very bottom of the list
         // in snapshotSuggestions.
-        final List<SuggestionData> suggestions = suggestionResult.getSuggestions();
+        SuggestionData pinToBottomSuggestion = null;
         if (isWebSuggestionSource(source)) {
             if (!suggestions.isEmpty()) {
                 int lastPosition = suggestions.size() - 1;
                 SuggestionData lastSuggestion = suggestions.get(lastPosition);
                 if (lastSuggestion.isPinToBottom()) {
-                    if (!pastDeadline) {
-                        mPinToBottomSuggestion = lastSuggestion;
+                    pinToBottomSuggestion = lastSuggestion;
+                    if (DBG) {
+                        Log.d(TAG, "Found pin-to-bottom suggestion: " + pinToBottomSuggestion);
                     }
                     suggestions.remove(lastPosition);
                 }
@@ -433,6 +445,7 @@ public class SourceSuggestionBacker extends SuggestionBacker {
             SuggestionData s = it.next();
             final String key = makeSuggestionKey(s);
             if (mSuggestionKeys.contains(key)) {
+                if (DBG) Log.d(TAG, "Removing duplicate suggestion " + s);
                 it.remove();
             } else {
                 mSuggestionKeys.add(key);
@@ -440,19 +453,29 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         }
 
         mReportedResults.put(source.getComponentName(), suggestionResult);
-        if (!pastDeadline) {
-            mReportedBeforeDeadline.add(source.getComponentName());
-        }
 
+        // handle filling in promoted results
         boolean addedPromoted = false;
         if (mPromotedSources.contains(source.getComponentName())) {
             Iterator<SuggestionData> result = suggestionResult.getSuggestions().iterator();
-            if (!pastDeadline) {
-                addedPromoted = addChunk(result, mTopChunkSize);
+            // we extend the deadline until the "More results" suggestion is shown
+            if (!mShowingMore) {
+                mReportedBeforeDeadline.add(source.getComponentName());
+                // If we have already used all reported promoted suggestions, take all slots
+                int chunkSize = mFilledRest ? mSlotsRemaining : mTopChunkSize;
+                addedPromoted = addChunk(result, chunkSize);
                 if (result.hasNext()) {
                     mTimelyPromotedRemaining.add(result);
                 }
             }
+        }
+        // If any suggestions from this source were added, make sure to show the
+        // pin-to-bottom suggestion
+        if (addedPromoted && pinToBottomSuggestion != null) {
+            if (DBG) {
+                Log.d(TAG, "Will show pin-to-bottom suggestion: " + pinToBottomSuggestion);
+            }
+            mPinToBottomSuggestion = pinToBottomSuggestion;
         }
 
         return pastDeadline || addedPromoted || allPromotedResponded();
@@ -483,7 +506,10 @@ public class SourceSuggestionBacker extends SuggestionBacker {
         for (int i = 0; i < chunkSize && result.hasNext(); i++) {
             if (mSlotsRemaining <= 0) return changed;
             final SuggestionData suggestionData = result.next();
-            if (DBG) Log.d(TAG, "Committing " + suggestionData);
+            if (DBG) {
+                Log.d(TAG, "Committing (" + (mSlotsRemaining-1) + " slots left) "
+                        + suggestionData);
+            }
             mCommitted.add(suggestionData);
             mSourceToNumDisplayed.incrementCounter(suggestionData.getSource());
             mSlotsRemaining--;

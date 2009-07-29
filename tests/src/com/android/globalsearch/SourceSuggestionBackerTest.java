@@ -73,6 +73,8 @@ public class SourceSuggestionBackerTest extends TestCase
         mName3 = new ComponentName(
                 "com.android.globalsearch", "com.android.globalsearch.Three");
 
+        
+
         mSource1 = new TestSuggestionSource.Builder()
                 .setComponent(mName1)
                 .setLabel(SOURCE1_LABEL)
@@ -122,11 +124,13 @@ public class SourceSuggestionBackerTest extends TestCase
                 this,        /** more factory points to {@link #getMoreEntry} */
                 this);       /** corpus factory points to {@link #getCorpusEntry} */
 
-        mMoreNotExpanded = new SuggestionData.Builder(mName1)
+        ComponentName moreName = new ComponentName("builtin","builtin");
+
+        mMoreNotExpanded = new SuggestionData.Builder(moreName)
                 .title("more unexpanded")
                 .build();
 
-        mMoreExpanded = new SuggestionData.Builder(mName1)
+        mMoreExpanded = new SuggestionData.Builder(moreName)
                 .title("more expanded")
                 .build();
 
@@ -165,21 +169,10 @@ public class SourceSuggestionBackerTest extends TestCase
         mBacker.setNow(NOW + DEADLINE);
 
         assertContentsInOrder(
-                "after deadline should see 'search the web' and 'more' entry.",
+                "after deadline should see 'search the web' entry.",
                 getSnapshotFromBacker(false),
                 mShortcut1,
-                mSearchTheWeb,
-                mMoreNotExpanded);
-
-        assertContentsInOrder(
-                "after deadline (expanded) should see 'search the web' and 'more' entries.",
-                getSnapshotFromBacker(true),
-                mShortcut1,
-                mSearchTheWeb,
-                mMoreExpanded,
-                makeCorpusEntry(SOURCE1_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0),
-                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0),
-                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0));
+                mSearchTheWeb);
     }
 
     public void testSomeResultsReported() {
@@ -206,6 +199,27 @@ public class SourceSuggestionBackerTest extends TestCase
         mBacker.reportSourceStarted(mName3);
         
         assertContentsInOrder(
+                "after deadline, should show shortcuts, chunks of promoted sources, " +
+                        "rest of promoted slots filled, and more.",
+                getSnapshotFromBacker(false),
+                mShortcut1,
+                makeSourceResult(mName1, 0),
+                makeSourceResult(mName1, 1),
+                makeSourceResult(mName1, 2),
+                makeSourceResult(mName1, 3),
+                mSearchTheWeb);
+
+        // source 2, the remaining promoted source, reports
+        mBacker.addSourceResults(
+                new SuggestionResult(mSource2, Lists.newArrayList(
+                        makeSourceResult(mName2, 0),
+                        makeSourceResult(mName2, 1),
+                        makeSourceResult(mName2, 2),
+                        makeSourceResult(mName2, 3),
+                        makeSourceResult(mName2, 4)
+                )));
+
+        assertContentsInOrder(
                 "after deadline(expanded), should show shortcuts, chunks of promoted sources, " +
                         "rest of promoted slots filled, and more.",
                 getSnapshotFromBacker(true),
@@ -215,47 +229,11 @@ public class SourceSuggestionBackerTest extends TestCase
                 makeSourceResult(mName1, 2),
                 makeSourceResult(mName1, 3),
                 mSearchTheWeb,
+                makeSourceResult(mName2, 0),
                 mMoreExpanded,
                 // no "more" result for source 1 since we've displayed all of its entries now
-                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0),
+                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_FINISHED, 4),
                 makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_IN_PROGRESS, 0));
-    }
-
-    public void testPromotedSourceRespondsAfterDeadline() {
-        mBacker.addSourceResults(
-                new SuggestionResult(mSource1, Lists.newArrayList(
-                        makeSourceResult(mName1, 0),
-                        makeSourceResult(mName1, 1))));
-
-        mBacker.setNow(NOW + DEADLINE);
-
-        assertContentsInOrder(
-                "after deadline pending promoted source should be under 'more'.",
-                getSnapshotFromBacker(true),
-                mShortcut1,
-                makeSourceResult(mName1, 0),
-                makeSourceResult(mName1, 1),
-                mSearchTheWeb,
-                mMoreExpanded,
-                // source 2 hasn't responded yet
-                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0),
-                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0));
-
-        mBacker.addSourceResults(
-                new SuggestionResult(mSource2, Lists.newArrayList(
-                        makeSourceResult(mName2, 0),
-                        makeSourceResult(mName2, 1))));
-
-        assertContentsInOrder(
-                "after deadline late reporting promoted source should be under 'more'.",
-                getSnapshotFromBacker(true),
-                mShortcut1,
-                makeSourceResult(mName1, 0),
-                makeSourceResult(mName1, 1),                
-                mSearchTheWeb,
-                mMoreExpanded,
-                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_FINISHED, 2),
-                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0));
     }
 
     public void testZeroReportingSources() {
@@ -272,24 +250,18 @@ public class SourceSuggestionBackerTest extends TestCase
 
         assertContentsInOrder(
                 "zero reporting before deadline, viewing after.",
-                getSnapshotFromBacker(true),
+                getSnapshotFromBacker(false),
                 mShortcut1,
-                mSearchTheWeb,
-                mMoreExpanded,
-                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0),
-                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0));
+                mSearchTheWeb);
 
-        // source 2 reports after deadline
-        assertTrue("reporting zero results after being shown should require updating.",
-                mBacker.addSourceResults(new SuggestionResult(mSource2)));
+        mBacker.addSourceResults(new SuggestionResult(mSource2));
 
         assertContentsInOrder(
-                "zero reporting after deadline.",
+                "zero reporting after promoted finished.",
                 getSnapshotFromBacker(true),
                 mShortcut1,
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_FINISHED, 0),
                 makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0));
 
         mBacker.addSourceResults(
@@ -303,8 +275,12 @@ public class SourceSuggestionBackerTest extends TestCase
                 mShortcut1,
                 mSearchTheWeb,
                 mMoreExpanded,
-                makeCorpusEntry(SOURCE2_LABEL, SourceStat.RESPONSE_FINISHED, 0),
                 makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_FINISHED, 2));
+
+        // source 3 reports after being shown
+        assertTrue("reporting zero results after being shown should require updating.",
+                mBacker.addSourceResults(new SuggestionResult(mSource3)));
+
     }
 
     public void testSourceReportsAfterDeadlineWithResults() {
@@ -341,16 +317,14 @@ public class SourceSuggestionBackerTest extends TestCase
         assertContentsInOrder(
                 "after deadline passes, we mix in the remaining promoted slots among the " +
                         "promoted  sources that have responded.",
-                getSnapshotFromBacker(true),
+                getSnapshotFromBacker(false),
                 makeSourceResult(mName1, 0),
                 makeSourceResult(mName1, 1),
                 makeSourceResult(mName2, 0),
                 makeSourceResult(mName2, 1),
                 makeSourceResult(mName1, 2),  // remaining space (now that deadline has passed)
                 makeSourceResult(mName2, 2),
-                mSearchTheWeb,
-                mMoreExpanded,
-                makeCorpusEntry(SOURCE3_LABEL, SourceStat.RESPONSE_NOT_STARTED, 0)
+                mSearchTheWeb
         );
 
         mBacker.addSourceResults(
@@ -408,6 +382,7 @@ public class SourceSuggestionBackerTest extends TestCase
                         )));
 
         mBacker.setNow(NOW + DEADLINE);
+        getSnapshotFromBacker(true); // trigger fillRest()
 
         mBacker.addSourceResults(
                 new SuggestionResult(mSource3, Lists.newArrayList(
@@ -854,6 +829,8 @@ public class SourceSuggestionBackerTest extends TestCase
 
         // another returns after the deadline with a pin to bottom
         mBacker.setNow(NOW + DEADLINE);
+        getSnapshotFromBacker(false); // trigger fillRest)
+
         mBacker.addSourceResults(
                 new SuggestionResult(mSource1, Lists.newArrayList(
                         makeSourceResult(mName1, 0),
