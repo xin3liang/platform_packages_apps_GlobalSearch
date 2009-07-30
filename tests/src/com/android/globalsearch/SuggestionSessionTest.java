@@ -17,7 +17,6 @@
 
 package com.android.globalsearch;
 
-import com.android.globalsearch.SuggestionSession.SessionCallback;
 import com.google.android.collect.Lists;
 
 import android.app.SearchManager;
@@ -73,17 +72,23 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
                 .addCannedResponse("b", mSuggestionFromA)
                 .create();
 
-        ArrayList<SuggestionSource> enabledSources = Lists.newArrayList(mWebSource, mSourceA);
-        mSession = initSession(enabledSources, mWebSource, 4);
+        ArrayList<SuggestionSource> promotableSources = Lists.newArrayList(mWebSource, mSourceA);
+        ArrayList<SuggestionSource> unpromotableSources = Lists.newArrayList();
+        mSession = initSession(promotableSources, unpromotableSources, mWebSource, 4);
     }
 
     private TestSuggestionSession initSession(
-            ArrayList<SuggestionSource> enabledSources,
+            ArrayList<SuggestionSource> promotableSources,
+            ArrayList<SuggestionSource> unpromotableSources,
             SuggestionSource webSource, int numPromotedSources) {
-        final SimpleSourceLookup sourceLookup = new SimpleSourceLookup(enabledSources, webSource);
+        ArrayList<SuggestionSource> allSources = new ArrayList<SuggestionSource>();
+        allSources.addAll(promotableSources);
+        allSources.addAll(unpromotableSources);
+        final SimpleSourceLookup sourceLookup = new SimpleSourceLookup(allSources, webSource);
         mEngine = new QueryEngine();
         return new TestSuggestionSession(
-                sourceLookup, enabledSources, this, mEngine, numPromotedSources);
+                sourceLookup, promotableSources, unpromotableSources,
+                this, mEngine, numPromotedSources);
     }
 
     SuggestionData makeSimple(ComponentName component, String title) {
@@ -196,7 +201,8 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
                 .setComponent(mComponentA)
                 .create();
 
-        mSession = initSession(Lists.newArrayList(mWebSource, aWithError), mWebSource, 4);
+        mSession = initSession(Lists.newArrayList(mWebSource, aWithError),
+                Lists.<SuggestionSource>newArrayList(), mWebSource, 4);
 
         {
             final Cursor cursor = mSession.query("a");
@@ -289,6 +295,7 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         final int numPromotedSources = 1;
         mSession = initSession(
                 Lists.newArrayList(mWebSource, mSourceA),
+                Lists.<SuggestionSource>newArrayList(), 
                 mWebSource,
                 numPromotedSources);
 
@@ -317,6 +324,7 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         final int numPromotedSources = 1;
         mSession = initSession(
                 Lists.newArrayList(mWebSource, mSourceA),
+                Lists.<SuggestionSource>newArrayList(), 
                 mWebSource,
                 numPromotedSources);
 
@@ -358,6 +366,7 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         final int numPromotedSources = 1;
         mSession = initSession(
                 Lists.newArrayList(mWebSource, mSourceA),
+                Lists.<SuggestionSource>newArrayList(), 
                 mWebSource,
                 numPromotedSources);
 
@@ -651,9 +660,11 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         private final QueryEngine mEngine;
 
         public TestSuggestionSession(SourceLookup sourceLookup,
-                ArrayList<SuggestionSource> enabledSources, SuggestionSessionTest test,
+                ArrayList<SuggestionSource> promotableSources,
+                ArrayList<SuggestionSource> unpromotableSources,
+                SuggestionSessionTest test,
                 QueryEngine engine, int numPromotedSources) {
-            super(sourceLookup, enabledSources,
+            super(sourceLookup, promotableSources, unpromotableSources,
                     engine, engine, engine, test, true);
             setListener(engine);
             setShortcutRepo(engine);

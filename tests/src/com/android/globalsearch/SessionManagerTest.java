@@ -68,34 +68,39 @@ public class SessionManagerTest extends TestCase {
     }
 
     public void testOrderSources_onlyIncludeEnabled() {
+        SessionManager.Sources sources1 = SessionManager.orderSources(
+                Lists.newArrayList(makeSource(B)),
+                makeSource(WEB),
+                Lists.newArrayList(C, D, WEB), // ranking
+                3);
         assertContentsInOrder(
-                "should only include enabled source, even if there if the ranking includes more.",
-                SessionManager.orderSources(
-                        Lists.newArrayList(makeSource(B)),
-                        makeSource(WEB),
-                        Lists.newArrayList(C, D, WEB), // ranking
-                        3),
+                "should only include enabled source, even if the ranking includes more.",
+                sources1.mPromotableSources,
                 makeSource(WEB), makeSource(B));
 
+        SessionManager.Sources sources2 = SessionManager.orderSources(
+                Lists.newArrayList(makeSource(B)),
+                makeSource(WEB),
+                Lists.newArrayList(C, B, WEB), // ranking
+                3);
+
         assertContentsInOrder(
-                "should only include enabled source, even if there if the ranking includes more.",
-                SessionManager.orderSources(
-                        Lists.newArrayList(makeSource(B)),
-                        makeSource(WEB),
-                        Lists.newArrayList(C, B, WEB), // ranking
-                        3),
+                "should only include enabled source, even if the ranking includes more.",
+                sources2.mPromotableSources,
                 makeSource(WEB), makeSource(B));
     }
 
 
     public void testOrderSources_webAlwaysFirst() {
+        SessionManager.Sources sources = SessionManager.orderSources(
+                mAllSuggestionSources,
+                makeSource(WEB),
+                Lists.newArrayList(C, D, WEB), // ranking
+                3);
+
         assertContentsInOrder(
                 "web source should be first even if its stats are worse.",
-                SessionManager.orderSources(
-                        mAllSuggestionSources,
-                        makeSource(WEB),
-                        Lists.newArrayList(C, D, WEB), // ranking
-                        3),
+                sources.mPromotableSources,
                 // first the web
                 makeSource(WEB),
                 // then the rest of the ranked
@@ -105,14 +110,15 @@ public class SessionManagerTest extends TestCase {
     }
 
     public void testOrderSources_unRankedAfterPromoted() {
+        SessionManager.Sources sources = SessionManager.orderSources(
+                mAllSuggestionSources,
+                makeSource(WEB),
+                Lists.newArrayList(C, D, WEB, B), // ranking
+                3);
         assertContentsInOrder(
                 "unranked sources should be ordered after the ranked sources in the promoted " +
                         "slots.",
-                SessionManager.orderSources(
-                        mAllSuggestionSources,
-                        makeSource(WEB),
-                        Lists.newArrayList(C, D, WEB, B), // ranking
-                        3),
+                sources.mPromotableSources,
                 // first the web
                 makeSource(WEB),
                 // then enough of the ranked to fill the remaining promoted slots

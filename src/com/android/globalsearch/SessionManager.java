@@ -118,7 +118,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
             warmUpWebSource(webSearchSource);
         }
 
-        final ArrayList<SuggestionSource> enabledSources = orderSources(
+        Sources sources = orderSources(
                 mSources.getEnabledSuggestionSources(),
                 webSearchSource,
                 mShortcutRepo.getSourceRanking(),
@@ -136,7 +136,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         };
 
         SuggestionSession session = new SuggestionSession(
-                mSources, enabledSources,
+                mSources, sources.mPromotableSources, sources.mUnpromotableSources,
                 mQueryExecutor,
                 mRefreshExecutor,
                 delayedExecutor, new SuggestionFactoryImpl(mContext),
@@ -159,11 +159,13 @@ public class SessionManager implements SuggestionSession.SessionCallback {
     }
 
     /**
-     * Produces a list of sources that are ordered by source ranking.  The ordering is as follows:
+     * Orders sources by source ranking.  The ordering is as follows:
      * - the web source is first regardless
      * - the rest of the promoted sources are filled based on the ranking passed in
      * - any unranked sources
-     * - the rest of the ranked sources
+     * The above are put in mPromotableSources.
+     *
+     * The rest of the ranked sources are put in mUnpromotableSources.
      *
      * The idea is that unranked sources get a bump until they have enough data to be ranked like
      * the rest, and at the same time, no source can be in the promoted list unless it has a high
@@ -173,9 +175,8 @@ public class SessionManager implements SuggestionSession.SessionCallback {
      * @param webSearchSource The name of the web search source, or <code>null</code> otherwise.
      * @param sourceRanking The order the sources should be in.
      * @param numPromoted  The number of promoted sources.
-     * @return A list of sources that are ordered by the source ranking.
      */
-    static ArrayList<SuggestionSource> orderSources(
+    static Sources orderSources(
             List<SuggestionSource> enabledSources,
             SuggestionSource webSearchSource,
             ArrayList<ComponentName> sourceRanking,
@@ -190,25 +191,26 @@ public class SessionManager implements SuggestionSession.SessionCallback {
             linkMap.put(source.getComponentName(), source);
         }
 
+        Sources sources = new Sources();
+
         // gather set of ranked
         final HashSet<ComponentName> allRanked = new HashSet<ComponentName>(sourceRanking);
-
-        ArrayList<SuggestionSource> ordered = new ArrayList<SuggestionSource>(numSources);
 
         // start with the web source if it exists
         if (webSearchSource != null) {
             if (DBG) Log.d(TAG, "Adding web search source: " + webSearchSource);
-            ordered.add(webSearchSource);
+            sources.add(webSearchSource, true);
         }
 
         // add ranked for rest of promoted slots
         final int numRanked = sourceRanking.size();
         int nextRanked = 0;
-        for (; nextRanked < numRanked && ordered.size() < numPromoted; nextRanked++) {
+        for (; nextRanked < numRanked && sources.mPromotableSources.size() < numPromoted;
+                nextRanked++) {
             final ComponentName ranked = sourceRanking.get(nextRanked);
             final SuggestionSource source = linkMap.remove(ranked);
             if (DBG) Log.d(TAG, "Adding promoted ranked source: (" + ranked + ") " + source);
-            if (source != null) ordered.add(source);
+            sources.add(source, true);
         }
 
         // now add the unranked
@@ -217,20 +219,50 @@ public class SessionManager implements SuggestionSession.SessionCallback {
             SuggestionSource source = sourceIterator.next();
             if (!allRanked.contains(source.getComponentName())) {
                 if (DBG) Log.d(TAG, "Adding unranked source: " + source);
-                ordered.add(source);
+                sources.add(source, false);
                 sourceIterator.remove();
             }
         }
 
-        // finally, any remaining ranked
+        // finally, add any remaining ranked to mUnpromotableSources
         for (int i = nextRanked; i < numRanked; i++) {
             final ComponentName ranked = sourceRanking.get(i);
             final SuggestionSource source = linkMap.get(ranked);
-            if (DBG) Log.d(TAG, "Adding unpromoted ranked source: (" + ranked + ") " + source);
-            if (source != null) ordered.add(source);
+            if (DBG) Log.d(TAG, "Adding ranked source: (" + ranked + ") " + source);
+            sources.add(source, false);
         }
 
-        if (DBG) Log.d(TAG, "Ordered sources: " + ordered);
-        return ordered;
+        if (DBG) Log.d(TAG, "Promotable sources: " + sources.mPromotableSources);
+        if (DBG) Log.d(TAG, "Unpromotable sources: " + sources.mUnpromotableSources);
+
+        return sources;
+    }
+
+    static class Sources {
+        public final ArrayList<SuggestionSource> mPromotableSources;
+        public final ArrayList<SuggestionSource> mUnpromotableSources;
+        public Sources() {
+            mPromotableSources = new ArrayList<SuggestionSource>();
+            mUnpromotableSources = new ArrayList<SuggestionSource>();
+        }
+        public void add(SuggestionSource source, boolean forcePromotable) {
+            if (source == null) return;
+            if (forcePromotable || shouldBePromotableWhenLowRanked(source)) {
+                if (DBG) Log.d(TAG, "  Promotable: " + source);
+                mPromotableSources.add(source);
+            } else {
+                if (DBG) Log.d(TAG, "  Unpromotable: " + source);
+                mUnpromotableSources.add(source);
+            }
+        }
+    }
+
+    private static boolean shouldBePromotableWhenLowRanked(SuggestionSource source) {
+        // TODO: this is an ugly hack to make sure the Music source is unpromotable unless
+        // it is ranked highly. (as long as there are at least
+        // SuggestionSession.NUM_PROMOTED_SOURCES other sources)
+        // Once the Music app returns better suggestions (i.e. token prefix matches, rather
+        // than string infix matches) this should be removed.
+        return !"com.android.music".equals(source.getComponentName().getPackageName());
     }
 }

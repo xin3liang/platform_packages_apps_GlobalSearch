@@ -60,7 +60,8 @@ public class SuggestionSession {
     private static final String TAG = "GlobalSearch";
 
     private final SourceLookup mSourceLookup;
-    private final ArrayList<SuggestionSource> mEnabledSources;
+    private final ArrayList<SuggestionSource> mPromotableSources;
+    private final ArrayList<SuggestionSource> mUnpromotableSources;
     private ShortcutRepository mShortcutRepo;
     private final PerTagExecutor mQueryExecutor;
     private final Executor mRefreshExecutor;
@@ -79,8 +80,8 @@ public class SuggestionSession {
     // used to detect the closing of the session
     private final AtomicInteger mOutstandingQueryCount = new AtomicInteger(0);
 
-    // used to quickly lookup whether a source is enabled
-    private HashSet<ComponentName> mEnabledByName;
+    // we only allow shortcuts from sources in this set
+    private HashSet<ComponentName> mAllowShortcutsFrom;
     /**
      * The number of sources that have a chance to show results above the "more results" entry
      * in one of {@link #MAX_RESULTS_TO_DISPLAY} slots.
@@ -130,7 +131,9 @@ public class SuggestionSession {
 
     /**
      * @param sourceLookup The sources to query for results
-     * @param enabledSources The enabled sources, in the order that they should be queried.  If the
+     * @param promotableSources The promotable sources, in the order that they should be queried.  If the
+     *        web source is enabled, it will always be first.
+     * @param unpromotableSources The unpromotable sources, in the order that they should be queried.  If the
      *        web source is enabled, it will always be first.
      * @param queryExecutor Used to execute the asynchronous queries
      * @param refreshExecutor Used to execute refresh tasks.
@@ -139,25 +142,32 @@ public class SuggestionSession {
      * @param cacheSuggestionResults Whether to cache the results of sources in hopes we can avoid
      */
     public SuggestionSession(SourceLookup sourceLookup,
-            ArrayList<SuggestionSource> enabledSources,
+            ArrayList<SuggestionSource> promotableSources,
+            ArrayList<SuggestionSource> unpromotableSources,
             PerTagExecutor queryExecutor,
             Executor refreshExecutor,
             DelayedExecutor delayedExecutor,
             SuggestionFactory suggestionFactory,
             boolean cacheSuggestionResults) {
         mSourceLookup = sourceLookup;
-        mEnabledSources = enabledSources;
+        mPromotableSources = promotableSources;
+        mUnpromotableSources = unpromotableSources;
         mQueryExecutor = queryExecutor;
         mRefreshExecutor = refreshExecutor;
         mDelayedExecutor = delayedExecutor;
         mSuggestionFactory = suggestionFactory;
         mSessionCache = new SessionCache(cacheSuggestionResults);
 
-        final int numEnabled = enabledSources.size();
-        mEnabledByName = new HashSet<ComponentName>(numEnabled);
-        for (int i = 0; i < numEnabled; i++) {
-            mEnabledByName.add(enabledSources.get(i).getComponentName());
+        final int numPromotable = promotableSources.size();
+        final int numUnpromotable = unpromotableSources.size();
+        mAllowShortcutsFrom = new HashSet<ComponentName>(numPromotable + numUnpromotable);
+        for (int i = 0; i < numPromotable; i++) {
+            mAllowShortcutsFrom.add(promotableSources.get(i).getComponentName());
         }
+        for (int i = 0; i < numUnpromotable; i++) {
+            mAllowShortcutsFrom.add(unpromotableSources.get(i).getComponentName());
+        }
+
         if (DBG) Log.d(TAG, "starting session");
     }
 
@@ -225,10 +235,20 @@ public class SuggestionSession {
         final ArrayList<SuggestionData> shortcuts = getShortcuts(query);
 
         // filter out sources that aren't relevant to this query
-        final ArrayList<SuggestionSource> sourcesToQuery =
-                filterSourcesForQuery(query, mEnabledSources);
+        final ArrayList<SuggestionSource> promotableSourcesToQuery =
+                filterSourcesForQuery(query, mPromotableSources);
+        final ArrayList<SuggestionSource> unpromotableSourcesToQuery =
+                filterSourcesForQuery(query, mUnpromotableSources);
+        final ArrayList<SuggestionSource> sourcesToQuery
+                = new ArrayList<SuggestionSource>(
+                        promotableSourcesToQuery.size() + unpromotableSourcesToQuery.size());
+        sourcesToQuery.addAll(promotableSourcesToQuery);
+        sourcesToQuery.addAll(unpromotableSourcesToQuery);
 
-        if (DBG) Log.d(TAG, sourcesToQuery.size() + " sources will be queried.");
+        if (DBG) {
+            Log.d(TAG, promotableSourcesToQuery.size() + " promotable sources and "
+                    + promotableSourcesToQuery.size() + " unpromotable sources will be queried.");
+        }
 
         // get the shortcuts to refresh
         final ArrayList<SuggestionData> shortcutsToRefresh = new ArrayList<SuggestionData>();
@@ -256,10 +276,8 @@ public class SuggestionSession {
         }
 
         // make the suggestion backer
-        final HashSet<ComponentName> promoted = new HashSet<ComponentName>(sourcesToQuery.size());
-        for (int i = 0; i < mNumPromotedSources && i < sourcesToQuery.size(); i++) {
-            promoted.add(sourcesToQuery.get(i).getComponentName());
-        }
+        final HashSet<ComponentName> promoted = pickPromotedSources(promotableSourcesToQuery);
+
         // cached source results
         final QueryCacheResults queryCacheResults = mSessionCache.getSourceResults(query);
 
@@ -281,7 +299,7 @@ public class SuggestionSession {
         if (DBG) {
             Log.d(TAG, "starting off with " + queryCacheResults.getResults().size() + " cached "
                     + "sources");
-            Log.d(TAG, "identified " + sourcesToQuery.size() + " promoted sources to query");
+            Log.d(TAG, "identified " + promoted.size() + " promoted sources to query");
             Log.d(TAG, "identified " + shortcutsToRefresh.size()
                 + " shortcuts out of " + numShortcuts + " total shortcuts to refresh");
         }
@@ -314,6 +332,14 @@ public class SuggestionSession {
                 cursor.onNewResults();
             }
         }, PROMOTED_SOURCE_DEADLINE);
+    }
+
+    private HashSet<ComponentName> pickPromotedSources(ArrayList<SuggestionSource> sources) {
+        HashSet<ComponentName> promoted = new HashSet<ComponentName>(sources.size());
+        for (int i = 0; i < mNumPromotedSources && i < sources.size(); i++) {
+            promoted.add(sources.get(i).getComponentName());
+        }
+        return promoted;
     }
 
     private class SessionCursorListener implements SuggestionCursor.CursorListener {
@@ -419,7 +445,7 @@ public class SuggestionSession {
                 shortcutsForQuery.size());
         for (int i = 0; i < numShortcuts; i++) {
             final SuggestionData shortcut = shortcutsForQuery.get(i);
-            if (mEnabledByName.contains(shortcut.getSource())) {
+            if (mAllowShortcutsFrom.contains(shortcut.getSource())) {
                 result.add(shortcut);
             }
         }
