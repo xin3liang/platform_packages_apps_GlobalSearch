@@ -15,47 +15,36 @@
 -->
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <!-- no translation found for global_search (1559383639633943667) -->
-    <skip />
-    <!-- no translation found for search_hint (7327393700556312801) -->
-    <skip />
-    <!-- no translation found for search_the_web (3101305283513526982) -->
-    <skip />
-    <string name="go_to_website_title">"Ga naar website"</string>
-    <string name="more_results">"Meer resultaten..."</string>
+    <string name="global_search" msgid="1559383639633943667">"Snelzoekvak"</string>
+    <string name="search_hint" msgid="7327393700556312801">"Snelzoekvak"</string>
+    <string name="search_the_web" msgid="3101305283513526982">"Zoeken op internet"\n"naar<xliff:g id="TERM">%1$s</xliff:g>"</string>
+    <string name="go_to_website_title" msgid="2452460002069003538">"Ga naar website"</string>
+    <string name="more_results" msgid="1297081065013362588">"Meer resultaten..."</string>
   <plurals name="total_result_count">
-    <item quantity="one">"%d resultaat"</item>
-    <item quantity="few">"%d resultaten"</item>
-    <item quantity="other">"%d resultaten"</item>
+    <item quantity="one" msgid="4135258943071319077">"%d resultaat"</item>
+    <item quantity="few" msgid="6516905676572982779">"%d resultaten"</item>
+    <item quantity="other" msgid="8425964209053633196">"%d resultaten"</item>
   </plurals>
   <plurals name="additional_result_count">
-    <item quantity="one">"%d extra resultaat"</item>
-    <item quantity="few">"%d extra resultaten"</item>
-    <item quantity="other">"%d extra resultaten"</item>
+    <item quantity="one" msgid="8234238164816358114">"%d extra resultaat"</item>
+    <item quantity="few" msgid="191280753746737109">"%d extra resultaten"</item>
+    <item quantity="other" msgid="1721743088189048541">"%d extra resultaten"</item>
   </plurals>
-    <string name="result_count_count_separator">": "</string>
-    <string name="result_count_app_separator">", "</string>
-    <string name="search_settings">"Zoekinstellingen"</string>
-    <string name="web_search_category_title">"Zoeken op internet"</string>
-    <string name="web_search_source">"Zoekmachine"</string>
-    <!-- no translation found for web_search_source_summary (1174960741879209963) -->
-    <skip />
-    <string name="search_engine_settings">"Zoekmachine-instellingen"</string>
-    <!-- no translation found for search_engine_settings_summary_enabled (3753059801411743136) -->
-    <skip />
-    <!-- no translation found for search_engine_settings_summary_disabled (1820449625081904875) -->
-    <skip />
-    <!-- no translation found for system_search_category_title (1035791922921085981) -->
-    <skip />
-    <!-- no translation found for search_sources (2868416396406193214) -->
-    <skip />
-    <!-- no translation found for search_sources_summary (8731536724682737524) -->
-    <skip />
-    <string name="clear_shortcuts">"Snelkoppelingen voor zoeken wissen"</string>
-    <!-- no translation found for clear_shortcuts_summary (247652062610173214) -->
-    <skip />
-    <!-- no translation found for clear_shortcuts_prompt (6457730799428681273) -->
-    <skip />
-    <string name="agree">"OK"</string>
-    <string name="disagree">"Annuleren"</string>
+    <string name="result_count_count_separator" msgid="4483303385647871257">": "</string>
+    <string name="result_count_app_separator" msgid="1478281021873053507">", "</string>
+    <string name="search_settings" msgid="2522442443192038495">"Zoekinstellingen"</string>
+    <string name="web_search_category_title" msgid="9091556547843829495">"Zoeken op internet"</string>
+    <string name="web_search_source" msgid="3143612593956844440">"Online zoekmachine"</string>
+    <string name="web_search_source_summary" msgid="6395557998177872284">"%1$s"</string>
+    <string name="search_engine_settings" msgid="615362367089124241">"Zoekmachine-instellingen"</string>
+    <string name="search_engine_settings_summary_enabled" msgid="2199475599593010870">"Instellingen voor %1$s"</string>
+    <string name="search_engine_settings_summary_disabled" msgid="6479198472126139365">"Geen instellingen voor %1$s"</string>
+    <string name="system_search_category_title" msgid="1035791922921085981">"Snelzoekvak"</string>
+    <string name="search_sources" msgid="2868416396406193214">"Doorzoekbare items"</string>
+    <string name="search_sources_summary" msgid="8731536724682737524">"Kies wat u op de telefoon wilt zoeken"</string>
+    <string name="clear_shortcuts" msgid="2044881876759765193">"Snelkoppelingen voor zoeken wissen"</string>
+    <string name="clear_shortcuts_summary" msgid="247652062610173214">"Snelkoppelingen naar recent geselecteerde zoekresultaten wissen"</string>
+    <string name="clear_shortcuts_prompt" msgid="6457730799428681273">"Hiermee worden snelkoppelingen naar recent geselecteerde zoekresultaten gewist."\n\n"(Als u uw browsergeschiedenis wilt wissen, gebruikt u de instellingen in uw browser.)"</string>
+    <string name="agree" msgid="5936827660124788057">"OK"</string>
+    <string name="disagree" msgid="8368106764820833311">"Annuleren"</string>
 </resources>

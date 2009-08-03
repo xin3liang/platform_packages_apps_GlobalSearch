@@ -15,47 +15,36 @@
 -->
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <!-- no translation found for global_search (1559383639633943667) -->
-    <skip />
-    <!-- no translation found for search_hint (7327393700556312801) -->
-    <skip />
-    <!-- no translation found for search_the_web (3101305283513526982) -->
-    <skip />
-    <string name="go_to_website_title">"Vai a sito web"</string>
-    <string name="more_results">"Altri risultati..."</string>
+    <string name="global_search" msgid="1559383639633943667">"Casella di ricerca rapida"</string>
+    <string name="search_hint" msgid="7327393700556312801">"Casella di ricerca rapida"</string>
+    <string name="search_the_web" msgid="3101305283513526982">"Cerca nel Web"\n"\"<xliff:g id="TERM">%1$s</xliff:g>\""</string>
+    <string name="go_to_website_title" msgid="2452460002069003538">"Vai a sito web"</string>
+    <string name="more_results" msgid="1297081065013362588">"Altri risultati..."</string>
   <plurals name="total_result_count">
-    <item quantity="one">"%d risultato"</item>
-    <item quantity="few">"%d risultati"</item>
-    <item quantity="other">"%d risultati"</item>
+    <item quantity="one" msgid="4135258943071319077">"%d risultato"</item>
+    <item quantity="few" msgid="6516905676572982779">"%d risultati"</item>
+    <item quantity="other" msgid="8425964209053633196">"%d risultati"</item>
   </plurals>
   <plurals name="additional_result_count">
-    <item quantity="one">"%d risultato aggiuntivo"</item>
-    <item quantity="few">"%d risultati aggiuntivi"</item>
-    <item quantity="other">"%d risultati aggiuntivi"</item>
+    <item quantity="one" msgid="8234238164816358114">"%d risultato aggiuntivo"</item>
+    <item quantity="few" msgid="191280753746737109">"%d risultati aggiuntivi"</item>
+    <item quantity="other" msgid="1721743088189048541">"%d risultati aggiuntivi"</item>
   </plurals>
-    <string name="result_count_count_separator">": "</string>
-    <string name="result_count_app_separator">", "</string>
-    <string name="search_settings">"Impostazioni ricerca"</string>
-    <string name="web_search_category_title">"Ricerca Web"</string>
-    <string name="web_search_source">"Motore di ricerca"</string>
-    <!-- no translation found for web_search_source_summary (1174960741879209963) -->
-    <skip />
-    <string name="search_engine_settings">"Impostazioni motore di ricerca"</string>
-    <!-- no translation found for search_engine_settings_summary_enabled (3753059801411743136) -->
-    <skip />
-    <!-- no translation found for search_engine_settings_summary_disabled (1820449625081904875) -->
-    <skip />
-    <!-- no translation found for system_search_category_title (1035791922921085981) -->
-    <skip />
-    <!-- no translation found for search_sources (2868416396406193214) -->
-    <skip />
-    <!-- no translation found for search_sources_summary (8731536724682737524) -->
-    <skip />
-    <string name="clear_shortcuts">"Cancella scorciatoie ricerca"</string>
-    <!-- no translation found for clear_shortcuts_summary (247652062610173214) -->
-    <skip />
-    <!-- no translation found for clear_shortcuts_prompt (6457730799428681273) -->
-    <skip />
-    <string name="agree">"OK"</string>
-    <string name="disagree">"Annulla"</string>
+    <string name="result_count_count_separator" msgid="4483303385647871257">": "</string>
+    <string name="result_count_app_separator" msgid="1478281021873053507">", "</string>
+    <string name="search_settings" msgid="2522442443192038495">"Impostazioni ricerca"</string>
+    <string name="web_search_category_title" msgid="9091556547843829495">"Ricerca Web"</string>
+    <string name="web_search_source" msgid="3143612593956844440">"Motore di ricerca web"</string>
+    <string name="web_search_source_summary" msgid="6395557998177872284">"%1$s"</string>
+    <string name="search_engine_settings" msgid="615362367089124241">"Impostazioni motore di ricerca"</string>
+    <string name="search_engine_settings_summary_enabled" msgid="2199475599593010870">"Impostazioni per %1$s"</string>
+    <string name="search_engine_settings_summary_disabled" msgid="6479198472126139365">"Nessuna impostazione per %1$s"</string>
+    <string name="system_search_category_title" msgid="1035791922921085981">"Casella di ricerca rapida"</string>
+    <string name="search_sources" msgid="2868416396406193214">"Elementi ricercabili"</string>
+    <string name="search_sources_summary" msgid="8731536724682737524">"Scegli che cosa cercare sul cellulare"</string>
+    <string name="clear_shortcuts" msgid="2044881876759765193">"Cancella scorciatoie ricerca"</string>
+    <string name="clear_shortcuts_summary" msgid="247652062610173214">"Cancella collegamenti a risultati di ricerca scelti di recente"</string>
+    <string name="clear_shortcuts_prompt" msgid="6457730799428681273">"Questa azione cancellerà tutti i collegamenti ai risultati di ricerca scelti di recente."\n\n"Per cancellare la cronologia del browser, utilizza le impostazioni del browser."</string>
+    <string name="agree" msgid="5936827660124788057">"OK"</string>
+    <string name="disagree" msgid="8368106764820833311">"Annulla"</string>
 </resources>
