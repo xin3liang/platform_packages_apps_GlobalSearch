@@ -109,7 +109,7 @@ public class SuggestionSession {
      * How long the promoted source have to respond before the "search the web" and "more results"
      * entries are added to the end of the list, in millis.
      */
-    private static final long PROMOTED_SOURCE_DEADLINE = 3500;
+    private static final long PROMOTED_SOURCE_DEADLINE = 6000L;
 
     /**
      * How long an individual source has to respond before they will be cancelled.
