@@ -44,7 +44,7 @@
     <string name="search_sources_summary" msgid="8731536724682737524">"Zvolte, co vyhledávat v telefonu"</string>
     <string name="clear_shortcuts" msgid="2044881876759765193">"Vymazat zástupce vyhledávání"</string>
     <string name="clear_shortcuts_summary" msgid="247652062610173214">"Vymazat zástupce nedávno zvolených výsledků vyhledávání"</string>
-    <string name="clear_shortcuts_prompt" msgid="6457730799428681273">"Tento krok vymaže všechny zástupce odkazující na nedávno zvolené výsledky vyhledávání."\n\n"(Pokud chcete vymazat historii prohlížeče, použijte nastavení prohlížeče.)"</string>
+    <string name="clear_shortcuts_prompt" msgid="6457730799428681273">"Tento krok vymaže všechny zástupce odkazující na nedávno zvolené výsledky vyhledávání."\n\n"(Pokud chcete vymazat historii Prohlížeče, použijte nastavení Prohlížeče.)"</string>
     <string name="agree" msgid="5936827660124788057">"OK"</string>
     <string name="disagree" msgid="8368106764820833311">"Zrušit"</string>
 </resources>

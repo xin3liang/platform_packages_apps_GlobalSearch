@@ -41,7 +41,7 @@
     <string name="search_engine_settings_summary_disabled" msgid="6479198472126139365">"Pas de paramètres pour \"%1$s\""</string>
     <string name="system_search_category_title" msgid="1035791922921085981">"Champ de recherche rapide"</string>
     <string name="search_sources" msgid="2868416396406193214">"Éléments pouvant être recherchés"</string>
-    <string name="search_sources_summary" msgid="8731536724682737524">"Choisissez ce que vous voulez rechercher sur le téléphone."</string>
+    <string name="search_sources_summary" msgid="8731536724682737524">"Sélection des éléments à rechercher sur le téléphone"</string>
     <string name="clear_shortcuts" msgid="2044881876759765193">"Effacer les raccourcis de recherche"</string>
     <string name="clear_shortcuts_summary" msgid="247652062610173214">"Effacer les raccourcis vers les résultats de recherche sélectionnés récemment"</string>
     <string name="clear_shortcuts_prompt" msgid="6457730799428681273">"Tous les raccourcis vers les résultats de recherche sélectionnés récemment seront effacés."\n\n"(Pour effacer le contenu de l\'historique de votre navigateur, utilisez les options de ce dernier.)"</string>
