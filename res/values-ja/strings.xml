@@ -41,7 +41,7 @@
     <string name="search_engine_settings_summary_disabled" msgid="6479198472126139365">"%1$sは設定されていません"</string>
     <string name="system_search_category_title" msgid="1035791922921085981">"クイック検索ボックス"</string>
     <string name="search_sources" msgid="2868416396406193214">"検索対象"</string>
-    <string name="search_sources_summary" msgid="8731536724682737524">"携帯で何を検索するかを選択する"</string>
+    <string name="search_sources_summary" msgid="8731536724682737524">"携帯内部の検索する対象を選択する"</string>
     <string name="clear_shortcuts" msgid="2044881876759765193">"検索ショートカットをクリアする"</string>
     <string name="clear_shortcuts_summary" msgid="247652062610173214">"最近選択した検索結果へのショートカットをクリアする"</string>
     <string name="clear_shortcuts_prompt" msgid="6457730799428681273">"最近選択した検索結果へのショートカットがすべてクリアされます。"\n\n"（ブラウザの履歴をクリアするにはブラウザの設定を使用してください。）"</string>
