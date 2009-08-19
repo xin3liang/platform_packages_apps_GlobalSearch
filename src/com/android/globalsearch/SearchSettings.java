@@ -68,7 +68,6 @@ public class SearchSettings extends PreferenceActivity
 
     // References to the top-level preference objects
     private Preference mClearShortcutsPreference;
-    private ListPreference mWebSourcePreference;
     private PreferenceScreen mSearchEngineSettingsPreference;
     private PreferenceGroup mSourcePreferences;
 
@@ -90,8 +89,6 @@ public class SearchSettings extends PreferenceActivity
 
         PreferenceScreen preferenceScreen = getPreferenceScreen();
         mClearShortcutsPreference = preferenceScreen.findPreference(CLEAR_SHORTCUTS_PREF);
-        mWebSourcePreference = (ListPreference) preferenceScreen.findPreference(
-                SuggestionSources.WEB_SEARCH_SOURCE_PREF);
         mSearchEngineSettingsPreference = (PreferenceScreen) preferenceScreen.findPreference(
                 SEARCH_ENGINE_SETTINGS_PREF);
         mSourcePreferences = (PreferenceGroup) getPreferenceScreen().findPreference(
@@ -99,14 +96,9 @@ public class SearchSettings extends PreferenceActivity
 
         mClearShortcutsPreference.setOnPreferenceClickListener(this);
 
-        // Note: If a new preference was added to this UI, please set the onchange listener on the
-        // new preference here.
-        mWebSourcePreference.setOnPreferenceChangeListener(this);
-
         updateClearShortcutsPreference();
-        populateWebSourcePreference();
         populateSourcePreference();
-        updateSearchEnginePreferences(mWebSourcePreference.getValue());
+        populateSearchEnginePreference();
     }
 
     @Override
@@ -114,98 +106,6 @@ public class SearchSettings extends PreferenceActivity
         mSources.close();
         mShortcuts.close();
         super.onDestroy();
-    }
-
-    /**
-     * Fills in the web search source pop-up list.
-     */
-    private void populateWebSourcePreference() {
-        SuggestionSource defWebSearch = mSources.getSelectedWebSearchSource();
-        ComponentName defComponentName = null;
-        if (defWebSearch != null) {
-            defComponentName = defWebSearch.getComponentName();
-        }
-
-        // Get the list of all packages handling intent action web search, these are the providers
-        // that we display in the selection list.
-        List<SearchableInfo> webSearchActivities = mSearchManager.getSearchablesForWebSearch();
-        PackageManager pm = getPackageManager();
-
-        ArrayList<String> labels = new ArrayList<String>();
-        ArrayList<String> values = new ArrayList<String>();
-        final int count = webSearchActivities.size();
-        Log.i(TAG, "Number of web search activities = " + count);
-        for (int i = 0; i < count; ++i) {
-            SearchableInfo searchable = webSearchActivities.get(i);
-            if (searchable == null) continue;
-            
-            ComponentName component = searchable.getSearchActivity();
-            // If both GoogleSearch and EnhancedGoogleSearch are present, the former is hidden from
-            // our list because the latter is a superset of the former.
-            if (component.flattenToShortString().equals(Searchables.GOOGLE_SEARCH_COMPONENT_NAME)) {
-                try {
-                    ComponentName enhancedGoogleSearch = ComponentName.unflattenFromString(
-                            Searchables.ENHANCED_GOOGLE_SEARCH_COMPONENT_NAME);
-                    pm.getActivityInfo(enhancedGoogleSearch, 0);
-
-                    // Control comes here if EnhancedGoogleSearch is installed, in which case it
-                    // overrides the GoogleSearch package in the web source list.
-                    continue;
-                } catch (PackageManager.NameNotFoundException e) {
-                    // Nothing to do as EnhancedGoogleSearch is not installed. Continue below and
-                    // add this source to the list.
-                }
-            }
-
-            try {
-                // Add the localised display name and index of the activity within our array as the
-                // label and value for each item. The index will be used to identify which item was
-                // selected by the user.
-                ActivityInfo activityInfo = pm.getActivityInfo(component, 0);
-                Resources res = pm.getResourcesForApplication(activityInfo.applicationInfo);
-                int labelRes = (activityInfo.labelRes != 0)
-                        ? activityInfo.labelRes : activityInfo.applicationInfo.labelRes;
-                String name = res.getString(labelRes);
-                String value = component.flattenToShortString();
-                labels.add(name);
-                values.add(value);
-                if (DBG) Log.d(TAG, "Listing web search source: " + name);
-                if (defComponentName != null
-                        && defComponentName.getClassName().equals(activityInfo.name)) {
-                    if (DBG) Log.d(TAG, "Default web search source: " + name);
-                    mWebSourcePreference.setValue(value);
-                }
-            } catch (PackageManager.NameNotFoundException exception) {
-                // Skip this entry and continue to list other activities.
-                Log.w(TAG, "Web search source not found: " + component);
-            } catch (Resources.NotFoundException exception) {
-                Log.w(TAG, "No name for web search source: " + component);
-            }
-        }
-
-        // Check if EnhancedGoogleSearch or GoogleSearch are available, and if so insert it at the
-        // first position.
-        for (int i = 1; i < values.size(); ++i) {
-            String value = values.get(i);
-            if (value.equals(Searchables.GOOGLE_SEARCH_COMPONENT_NAME) ||
-                    value.equals(Searchables.ENHANCED_GOOGLE_SEARCH_COMPONENT_NAME)) {
-                values.add(0, values.remove(i));
-                labels.add(0, labels.remove(i));
-                break;
-            }
-        }
-
-        try {
-            String[] labelsArray = new String[labels.size()];
-            String[] valuesArray = new String[values.size()];
-            labels.toArray(labelsArray);
-            values.toArray(valuesArray);
-            mWebSourcePreference.setEntries(labelsArray);
-            mWebSourcePreference.setEntryValues(valuesArray);
-        } catch (ArrayStoreException exception) {
-            // In this case we will end up displaying an empty list.
-            Log.e(TAG, "Error loading web search sources", exception);
-        }
     }
 
     /**
@@ -219,70 +119,40 @@ public class SearchSettings extends PreferenceActivity
     }
 
     /**
-     * Updates the search engine preferences depending on the name of the currently
-     * selected search engine and whether it has settings to expose or not.
-     *
-     * @param webSourcePreferenceValue the web source preference value to use
+     * Populates the preference item for the web search engine, which links to further
+     * search settings.
      */
-    private void updateSearchEnginePreferences(String webSourcePreferenceValue) {
-        if (webSourcePreferenceValue == null) return;
-
-        // Get the package name of the current activity chosen for web search.
-        ComponentName component = ComponentName.unflattenFromString(webSourcePreferenceValue);
-
-        // Now find out if this package contains an activity which satisfies the
-        // WEB_SEARCH_SETTINGS intent, and if so, point the "search engine settings"
-        // item there.
-
-        ResolveInfo matchedInfo = findWebSearchSettingsActivity(component);
-
-        // If we found a match, that means this web search source provides some settings,
-        // so enable the link to its settings. If not, then disable this preference.
-        mSearchEngineSettingsPreference.setEnabled(matchedInfo != null);
-
+    private void populateSearchEnginePreference() {
         PackageManager pm = getPackageManager();
-        String engineName = getWebSourceLabel(pm, component);
 
-        // Set the correct summary and intent information for the matched activity, if any.
-        int summaryStringRes;
-        Intent intent;
-        if (matchedInfo != null) {
-            summaryStringRes = R.string.search_engine_settings_summary_enabled;
-            intent = createWebSearchSettingsIntent(matchedInfo);
-        } else {
-            summaryStringRes = R.string.search_engine_settings_summary_disabled;
-            intent = null;
-        }
-
-        // If for some reason the engine name could not be found, just don't set a summary.
-        if (engineName != null) {
-            mWebSourcePreference.setSummary(
-                    getResources().getString(R.string.web_search_source_summary, engineName));
-            mSearchEngineSettingsPreference.setSummary(
-                    getResources().getString(summaryStringRes, engineName));
-        } else {
-            mWebSourcePreference.setSummary(null);
-            mSearchEngineSettingsPreference.setSummary(null);
-        }
-
-        mSearchEngineSettingsPreference.setIntent(intent);
-    }
-
-    /**
-     * Gets the name of the web source represented in the provided ResolveInfo.
-     */
-    private String getWebSourceLabel(PackageManager pm, ComponentName component) {
+        // Try to find EnhancedGoogleSearch if installed.
+        ComponentName webSearchComponent;
         try {
-            ActivityInfo activityInfo = pm.getActivityInfo(component, 0);
-            Resources res = pm.getResourcesForApplication(activityInfo.applicationInfo);
-            int labelRes = (activityInfo.labelRes != 0) ?
-                    activityInfo.labelRes : activityInfo.applicationInfo.labelRes;
-            return res.getString(labelRes);
-        } catch (PackageManager.NameNotFoundException exception) {
-            Log.e(TAG, "Error loading web search source from activity "
-                    + component, exception);
-            return null;
+            webSearchComponent = ComponentName.unflattenFromString(
+                    Searchables.ENHANCED_GOOGLE_SEARCH_COMPONENT_NAME);
+            pm.getActivityInfo(webSearchComponent, 0);
+        } catch (PackageManager.NameNotFoundException e1) {
+            // EnhancedGoogleSearch is not installed. Try to get GoogleSearch.
+            try {
+                webSearchComponent = ComponentName.unflattenFromString(
+                        Searchables.GOOGLE_SEARCH_COMPONENT_NAME);
+                pm.getActivityInfo(webSearchComponent, 0);
+            } catch (PackageManager.NameNotFoundException e2) {
+                throw new RuntimeException("could not find a web search provider");
+            }
         }
+
+        ResolveInfo matchedInfo = findWebSearchSettingsActivity(webSearchComponent);
+        if (matchedInfo == null) {
+            throw new RuntimeException("could not find settings for web search provider");
+        }
+
+        Intent intent = createWebSearchSettingsIntent(matchedInfo);
+        String searchEngineSettingsLabel =
+                matchedInfo.activityInfo.loadLabel(pm).toString();
+        mSearchEngineSettingsPreference.setTitle(searchEngineSettingsLabel);
+        
+        mSearchEngineSettingsPreference.setIntent(intent);
     }
 
     /**
@@ -387,9 +257,9 @@ public class SearchSettings extends PreferenceActivity
                 return null;
         }
     }
-
+    
     /**
-     * Inform our listeners (SuggestionSources objects) about the updated settings data.
+     * Informs our listeners (SuggestionSources objects) about the updated settings data.
      */
     private void broadcastSettingsChanged() {
         // We use a message broadcast since the listeners could be in multiple processes.
@@ -399,17 +269,8 @@ public class SearchSettings extends PreferenceActivity
     }
 
     public synchronized boolean onPreferenceChange(Preference preference, Object newValue) {
-        if (preference == mWebSourcePreference) {
-            String valueStr = (String)newValue;
-            ComponentName activity = ComponentName.unflattenFromString(valueStr);
-            if (DBG) Log.i(TAG, "Setting default web search source as " + valueStr);
-
-            mSearchManager.setDefaultWebSearch(activity);
-            updateSearchEnginePreferences(valueStr);
-        }
-        
         broadcastSettingsChanged();
-
-        return true;  // to update the selection in the list if the user brings it up again.
+        return true;
     }
+
 }

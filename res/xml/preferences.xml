@@ -20,16 +20,8 @@
     <PreferenceCategory
             android:title="@string/web_search_category_title">
             
-        <!-- Entries and values in this list are set dynamically. -->
-        <ListPreference
-                android:key="web_search_source"
-                android:title="@string/web_search_source"
-                android:summary="@string/web_search_source_summary"
-                android:dialogTitle="@string/web_search_source" />
-            
         <PreferenceScreen
-                android:key="search_engine_settings"
-                android:title="@string/search_engine_settings" />
+                android:key="search_engine_settings" />
 
     </PreferenceCategory>
     
