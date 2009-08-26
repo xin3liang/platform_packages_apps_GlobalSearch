@@ -59,22 +59,23 @@ public class SessionManager implements SuggestionSession.SessionCallback {
      */
     public static synchronized SessionManager refreshSessionmanager(Context context,
             Config config,
-            SuggestionSources sources, ShortcutRepository shortcutRepo,
+            SuggestionSources sources, ClickLogger clickLogger, ShortcutRepository shortcutRepo,
             PerTagExecutor queryExecutor,
             Executor refreshExecutor, Handler handler) {
         if (DBG) Log.d(TAG, "refreshSessionmanager()");
 
-        sInstance = new SessionManager(context, config, sources, shortcutRepo,
+        sInstance = new SessionManager(context, config, sources, clickLogger, shortcutRepo,
                 queryExecutor, refreshExecutor, handler);
         return sInstance;
     }
 
     private SessionManager(Context context, Config config,
-            SuggestionSources sources, ShortcutRepository shortcutRepo,
+            SuggestionSources sources, ClickLogger clickLogger, ShortcutRepository shortcutRepo,
             PerTagExecutor queryExecutor, Executor refreshExecutor, Handler handler) {
         mContext = context;
         mConfig = config;
         mSources = sources;
+        mClickLogger = clickLogger;
         mShortcutRepo = shortcutRepo;
         mQueryExecutor = queryExecutor;
         mRefreshExecutor = refreshExecutor;
@@ -83,6 +84,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
 
     private final Config mConfig;
     private final SuggestionSources mSources;
+    private final ClickLogger mClickLogger;
     private final ShortcutRepository mShortcutRepo;
     private final PerTagExecutor mQueryExecutor;
     private final Executor mRefreshExecutor;
@@ -146,6 +148,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
                 delayedExecutor, new SuggestionFactoryImpl(mContext),
                 SuggestionSession.CACHE_SUGGESTION_RESULTS);
         session.setListener(this);
+        session.setClickLogger(mClickLogger);
         session.setShortcutRepo(mShortcutRepo);
         return session;
     }

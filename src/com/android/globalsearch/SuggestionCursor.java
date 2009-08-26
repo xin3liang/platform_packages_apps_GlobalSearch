@@ -23,6 +23,7 @@ import android.database.CursorIndexOutOfBoundsException;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.KeyEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -119,10 +120,13 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
         /**
          * Called when an item is clicked.
          *
-         * @param clicked The suggestion that was clicked.
+         * @param pos The index of the suggestion that was clicked.
          * @param displayedSuggestions The suggestions that have been displayed to the user.
+         * @param actionKey action key used to click the suggestion, or KeyEvent.KEYCODE_UNKNOWN.
+         * @param actionMsg action message for the action key used, or {@code null}.
          */
-        void onItemClicked(SuggestionData clicked, List<SuggestionData> displayedSuggestions);
+        void onItemClicked(int pos, List<SuggestionData> displayedSuggestions,
+                int actionKey, String actionMsg);
 
         /**
          * Called the first time "more" becomes visible
@@ -265,6 +269,9 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     private Bundle respondClick(Bundle request) {
         final int pos = request.getInt(DialogCursorProtocol.CLICK_SEND_POSITION, -1);
         int maxDisplayed = request.getInt(DialogCursorProtocol.CLICK_SEND_MAX_DISPLAY_POS, -1);
+        int actionKey =
+                request.getInt(DialogCursorProtocol.CLICK_SEND_ACTION_KEY, KeyEvent.KEYCODE_UNKNOWN);
+        String actionMsg = request.getString(DialogCursorProtocol.CLICK_SEND_ACTION_MSG);
         if (DBG) Log.d(TAG, "respondClick(), pos=" + pos + ", maxDisplayed=" + maxDisplayed);
 
         if (pos == -1) {
@@ -274,7 +281,9 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
 
         List<SuggestionData> displayedSuggestions = getDisplayedSuggestions(maxDisplayed);
 
-        if (mListener != null) mListener.onItemClicked(mData.get(pos), displayedSuggestions);
+        if (mListener != null && pos >= 0 && pos <= maxDisplayed) {
+            mListener.onItemClicked(pos, displayedSuggestions, actionKey, actionMsg);
+        }
 
         // if they click on the "more results item"
         if (pos == getMoreResultsPosition()) {

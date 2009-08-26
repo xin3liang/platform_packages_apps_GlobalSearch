@@ -25,6 +25,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.SET_PREFERRED_APPLICATIONS" />
 
+    <permission android:name="com.android.globalsearch.permission.RECEIVE_GLOBALSEARCH_LOG"
+        android:permissionGroup="android.permission-group.SYSTEM_TOOLS"
+        android:protectionLevel="signatureOrSystem" />
+
     <application
         android:label="@string/global_search"
         android:process="android.process.acore">

@@ -64,6 +64,7 @@ public class SuggestionSession {
     private final SourceLookup mSourceLookup;
     private final ArrayList<SuggestionSource> mPromotableSources;
     private final ArrayList<SuggestionSource> mUnpromotableSources;
+    private ClickLogger mClickLogger;
     private ShortcutRepository mShortcutRepo;
     private final PerTagExecutor mQueryExecutor;
     private final Executor mRefreshExecutor;
@@ -154,6 +155,10 @@ public class SuggestionSession {
      */
     public synchronized void setListener(SessionCallback listener) {
         mListener = listener;
+    }
+
+    public synchronized void setClickLogger(ClickLogger clickLogger) {
+        mClickLogger = clickLogger;
     }
 
     public synchronized void setShortcutRepo(ShortcutRepository shortcutRepo) {
@@ -340,11 +345,17 @@ public class SuggestionSession {
             }
         }
 
-        public void onItemClicked(SuggestionData clicked,
-                List<SuggestionData> viewedSuggestions) {
-            if (DBG) Log.d(TAG, "onItemClicked(" + clicked + ")");
+        public void onItemClicked(int pos, List<SuggestionData> viewedSuggestions,
+                int actionKey, String actionMsg) {
+            if (DBG) Log.d(TAG, "onItemClicked(" + pos + ")");
+            SuggestionData clicked = viewedSuggestions.get(pos);
+            String query = mAsyncMux.getQuery();
 
-            // find click to report
+            // Report click to click logger
+            if (mClickLogger != null) {
+                mClickLogger.logClick(query, pos, viewedSuggestions, actionKey, actionMsg);
+            }
+
             SuggestionData clickedSuggestion = null;
             // Only record clicks on suggestions that are shortcuttable or from external sources
             if (isShortcuttable(clicked) || isSourceSuggestion(clicked)) {
@@ -354,8 +365,8 @@ public class SuggestionSession {
             // find impressions to report
             HashSet<ComponentName> sourceImpressions = getSourceImpressions(viewedSuggestions);
 
-            reportStats(new SessionStats(mAsyncMux.getQuery(),
-                    clickedSuggestion, sourceImpressions));
+            // Report impressions and click to shortcut repository
+            reportStats(new SessionStats(query, clickedSuggestion, sourceImpressions));
         }
 
         private HashSet<ComponentName> getSourceImpressions(

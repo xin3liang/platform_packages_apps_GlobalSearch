@@ -118,7 +118,9 @@ public class SuggestionProvider extends ContentProvider {
         mSessionManager = SessionManager.refreshSessionmanager(
                 getContext(),
                 mConfig,
-                mSources, ShortcutRepositoryImplLog.create(getContext(), mConfig),
+                mSources,
+                ClickLogger.getClickLogger(getContext()),
+                ShortcutRepositoryImplLog.create(getContext(), mConfig),
                 new PerTagExecutor(mQueryExecutor, mConfig.getPerSourceConcurrentQueryLimit()),
                 mRefreshExecutor,
                 mNotifyHandler);

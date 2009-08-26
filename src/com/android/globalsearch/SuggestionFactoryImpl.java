@@ -33,7 +33,7 @@ import static com.android.globalsearch.SourceSuggestionBacker.SourceStat;
  */
 public class SuggestionFactoryImpl implements SuggestionFactory {
 
-    private static final ComponentName BUILTIN_SOURCE_COMPONENT
+    public static final ComponentName BUILTIN_SOURCE_COMPONENT
             = new ComponentName("com.android.globalsearch",
                     "com.android.globalsearch.GlobalSearch");
 
