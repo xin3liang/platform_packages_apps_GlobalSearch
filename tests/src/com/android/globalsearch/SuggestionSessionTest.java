@@ -633,29 +633,6 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         }
     }
 
-    static class SimpleSourceLookup implements SourceLookup {
-        private final ArrayList<SuggestionSource> mSources;
-        private final SuggestionSource mWebSource;
-
-        public SimpleSourceLookup(ArrayList<SuggestionSource> sources, SuggestionSource webSource) {
-            mSources = sources;
-            mWebSource = webSource;
-        }
-
-        public SuggestionSource getSourceByComponentName(ComponentName componentName) {
-            for (SuggestionSource source : mSources) {
-                if (componentName.equals(source.getComponentName())) {
-                    return source;
-                }
-            }
-            return null;
-        }
-
-        public SuggestionSource getSelectedWebSearchSource() {
-            return mWebSource;
-        }
-    }
-
     static class TestSuggestionSession extends SuggestionSession {
         private final QueryEngine mEngine;
 
