@@ -48,6 +48,11 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
 
     private static final String TAG = SuggestionCursor.class.getSimpleName();
 
+    // The extra used to tell a cursor to close itself. This is a hack to work around
+    // the fact that cross-process cursors currently don't get closed by Cursor.close(),
+    // http://b/issue?id=2015069
+    private static final String EXTRA_CURSOR_RESPOND_CLOSE_CURSOR = "cursor_respond_close_cursor";
+
     // the same as the string in suggestActionMsgColumn in res/xml/searchable.xml
     private static final String SUGGEST_COLUMN_ACTION_MSG_CALL = "suggest_action_msg_call";
 
@@ -176,6 +181,13 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     @Override
     public Bundle respond(Bundle extras) {
         if (DBG) Log.d(TAG, "respond(" + extras + ")");
+
+        // Hack to work around http://b/issue?id=2015069,
+        // "CursorToBulkCursorAdaptor.close() does not call mCursor.close()"
+        if (extras.getBoolean(EXTRA_CURSOR_RESPOND_CLOSE_CURSOR)) {
+            close();
+            return Bundle.EMPTY;
+        }
 
         final int method = extras.getInt(SearchManager.DialogCursorProtocol.METHOD, -1);
 
