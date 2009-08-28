@@ -120,7 +120,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
 
         Sources sources = orderSources(
                 mSources.getEnabledSuggestionSources(),
-                webSearchSource,
+                mSources,
                 mShortcutRepo.getSourceRanking(),
                 SuggestionSession.NUM_PROMOTED_SOURCES);
 
@@ -182,14 +182,14 @@ public class SessionManager implements SuggestionSession.SessionCallback {
      * Quick search box.
      *
      * @param enabledSources The enabled sources.
-     * @param webSearchSource The name of the web search source, or <code>null</code> otherwise.
      * @param sourceRanking The order the sources should be in.
+     * @param sourceLookup For getting the web search source and trusted sources.
      * @param numPromoted  The number of promoted sources.
      * @return The order of the promotable and non-promotable sources.
      */
     static Sources orderSources(
             List<SuggestionSource> enabledSources,
-            SuggestionSource webSearchSource,
+            SourceLookup sourceLookup,
             ArrayList<ComponentName> sourceRanking,
             int numPromoted) {
 
@@ -208,6 +208,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         final HashSet<ComponentName> allRanked = new HashSet<ComponentName>(sourceRanking);
 
         // start with the web source if it exists
+        SuggestionSource webSearchSource = sourceLookup.getSelectedWebSearchSource();
         if (webSearchSource != null) {
             if (DBG) Log.d(TAG, "Adding web search source: " + webSearchSource);
             sources.add(webSearchSource, true);
@@ -230,17 +231,22 @@ public class SessionManager implements SuggestionSession.SessionCallback {
             SuggestionSource source = sourceIterator.next();
             if (!allRanked.contains(source.getComponentName())) {
                 if (DBG) Log.d(TAG, "Adding unranked source: " + source);
-                sources.add(source, false);
+                // To fix the empty room problem, we allow a small set of system apps
+                // to start putting their results in the promoted list before we
+                // have enough data to pick the high ranking ones.
+                sources.add(source, sourceLookup.isTrustedSource(source));
                 sourceIterator.remove();
             }
         }
 
-        // finally, add any remaining ranked to mUnpromotableSources
+        // finally, add any remaining ranked
         for (int i = nextRanked; i < numRanked; i++) {
             final ComponentName ranked = sourceRanking.get(i);
             final SuggestionSource source = linkMap.get(ranked);
-            if (DBG) Log.d(TAG, "Adding ranked source: (" + ranked + ") " + source);
-            sources.add(source, false);
+            if (source != null) {
+                if (DBG) Log.d(TAG, "Adding ranked source: (" + ranked + ") " + source);
+                sources.add(source, sourceLookup.isTrustedSource(source));
+            }
         }
 
         if (DBG) Log.d(TAG, "Promotable sources: " + sources.mPromotableSources);
@@ -258,7 +264,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         }
         public void add(SuggestionSource source, boolean forcePromotable) {
             if (source == null) return;
-            if (forcePromotable || promotableWhenInsufficientRankingInfo(source)) {
+            if (forcePromotable) {
                 if (DBG) Log.d(TAG, "  Promotable: " + source);
                 mPromotableSources.add(source);
             } else {
@@ -266,16 +272,5 @@ public class SessionManager implements SuggestionSession.SessionCallback {
                 mUnpromotableSources.add(source);
             }
         }
-    }
-
-    /**
-     * To fix the empty room problem, we allow a small set of system apps to start putting their
-     * results in the promoted list before we have enough data to pick the high ranking ones.
-     */
-    private static boolean promotableWhenInsufficientRankingInfo(SuggestionSource source) {
-        final String packageName = source.getComponentName().getPackageName();
-        return "com.android.contacts".equals(packageName) ||
-                "com.android.browser".equals(packageName) ||
-                "com.android.providers.applications".equals(packageName);
     }
 }

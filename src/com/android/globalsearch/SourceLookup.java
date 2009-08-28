@@ -36,4 +36,9 @@ public interface SourceLookup {
      */
     SuggestionSource getSelectedWebSearchSource();
 
+    /**
+     * Checks if we trust the given source not to be spammy.
+     */
+    boolean isTrustedSource(SuggestionSource source);
+
 }

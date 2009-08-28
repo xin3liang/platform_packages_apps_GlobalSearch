@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -56,6 +57,7 @@ public class SuggestionSources implements SourceLookup {
     private Context mContext;
     private SearchManager mSearchManager;
     private SharedPreferences mPreferences;
+    private HashSet<String> mTrustedPackages;
     private boolean mLoaded;
 
     // All available suggestion sources.
@@ -174,6 +176,8 @@ public class SuggestionSources implements SourceLookup {
             return;
         }
 
+        loadTrustedPackages();
+
         // Listen for searchables changes.
         mContext.registerReceiver(mBroadcastReceiver,
                 new IntentFilter(SearchManager.INTENT_ACTION_SEARCHABLES_CHANGED));
@@ -212,6 +216,14 @@ public class SuggestionSources implements SourceLookup {
         mLoaded = false;
     }
 
+    // TODO: should get this form a resource file, to allow vendor overlays
+    private void loadTrustedPackages() {
+        mTrustedPackages = new HashSet<String>();
+        mTrustedPackages.add("com.android.contacts");
+        mTrustedPackages.add("com.android.browser");
+        mTrustedPackages.add("com.android.providers.applications");
+    }
+
     /**
      * Loads the list of suggestion sources. This method is package private so that
      * it can be called efficiently from inner classes.
@@ -224,10 +236,22 @@ public class SuggestionSources implements SourceLookup {
         mSelectedWebSearchSource = findWebSearchSource();
     }
 
-    private void addExternalSources()  {
+    private void addExternalSources() {
+        ArrayList<SuggestionSource> trusted = new ArrayList<SuggestionSource>();
+        ArrayList<SuggestionSource> untrusted = new ArrayList<SuggestionSource>();
         for (SearchableInfo searchable : mSearchManager.getSearchablesInGlobalSearch()) {
             SuggestionSource source = new SearchableSuggestionSource(mContext, searchable);
-            addSuggestionSource(source);
+            if (isTrustedSource(source)) {
+                trusted.add(source);
+            } else {
+                untrusted.add(source);
+            }
+        }
+        for (SuggestionSource s : trusted) {
+            addSuggestionSource(s);
+        }
+        for (SuggestionSource s : untrusted) {
+            addSuggestionSource(s);
         }
     }
 
@@ -261,6 +285,12 @@ public class SuggestionSources implements SourceLookup {
         }
         String sourceEnabledPref = getSourceEnabledPreference(source);
         return mPreferences.getBoolean(sourceEnabledPref, defaultEnabled);
+    }
+
+    public boolean isTrustedSource(SuggestionSource source) {
+        if (source == null) return false;
+        final String packageName = source.getComponentName().getPackageName();
+        return mTrustedPackages != null && mTrustedPackages.contains(packageName);
     }
 
     /**

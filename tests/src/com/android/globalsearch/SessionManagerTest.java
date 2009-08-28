@@ -53,8 +53,9 @@ public class SessionManagerTest extends TestCase {
     static final ComponentName F =
             new ComponentName("com.android.contacts","com.example.F");
 
+    private SimpleSourceLookup mSourceLookup;
 
-    private List<SuggestionSource> mAllSuggestionSources;
+    private ArrayList<SuggestionSource> mAllSuggestionSources;
 
 
     @Override
@@ -64,6 +65,8 @@ public class SessionManagerTest extends TestCase {
         mAllSuggestionSources = Lists.newArrayList(
                 makeSource(B), makeSource(C), makeSource(D),
                 makeSource(E), makeSource(F));
+
+        mSourceLookup = new SimpleSourceLookup(mAllSuggestionSources, makeSource(WEB));
     }
 
     private SuggestionSource makeSource(ComponentName componentName) {
@@ -73,7 +76,7 @@ public class SessionManagerTest extends TestCase {
     public void testOrderSources_onlyIncludeEnabled() {
         SessionManager.Sources sources1 = SessionManager.orderSources(
                 Lists.newArrayList(makeSource(B)),
-                makeSource(WEB),
+                mSourceLookup,
                 Lists.newArrayList(C, D, WEB), // ranking
                 3);
         assertContentsInOrder(
@@ -83,7 +86,7 @@ public class SessionManagerTest extends TestCase {
 
         SessionManager.Sources sources2 = SessionManager.orderSources(
                 Lists.newArrayList(makeSource(B)),
-                makeSource(WEB),
+                mSourceLookup,
                 Lists.newArrayList(C, B, WEB), // ranking
                 3);
 
@@ -97,7 +100,7 @@ public class SessionManagerTest extends TestCase {
     public void testOrderSources_webAlwaysFirst() {
         SessionManager.Sources sources = SessionManager.orderSources(
                 mAllSuggestionSources,
-                makeSource(WEB),
+                mSourceLookup,
                 Lists.newArrayList(C, D, WEB), // ranking
                 3);
 
@@ -115,7 +118,7 @@ public class SessionManagerTest extends TestCase {
     public void testOrderSources_unRankedAfterPromoted() {
         SessionManager.Sources sources = SessionManager.orderSources(
                 mAllSuggestionSources,
-                makeSource(WEB),
+                mSourceLookup,
                 Lists.newArrayList(C, D, WEB, B), // ranking
                 3);
         assertContentsInOrder(
