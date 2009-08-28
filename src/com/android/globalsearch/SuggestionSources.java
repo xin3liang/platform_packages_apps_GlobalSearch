@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.os.Handler;
 import android.provider.Settings;
@@ -127,10 +128,10 @@ public class SuggestionSources implements SourceLookup {
     }
 
     /**
-     * Checks whether a suggestion source is enabled by default.
+     * Checks whether a suggestion source is enabled by default. For now, only trusted sources are.
      */
     public boolean isSourceDefaultEnabled(SuggestionSource source) {
-        return true;  // TODO: get from source?
+        return isTrustedSource(source);
     }
 
     /** {@inheritDoc} */
@@ -216,12 +217,15 @@ public class SuggestionSources implements SourceLookup {
         mLoaded = false;
     }
 
-    // TODO: should get this form a resource file, to allow vendor overlays
     private void loadTrustedPackages() {
+        // Get the list of trusted packages from a resource, which allows vendor overlays.
+        String[] trustedPackages = mContext.getResources().getStringArray(
+                R.array.trusted_search_providers);
+        
         mTrustedPackages = new HashSet<String>();
-        mTrustedPackages.add("com.android.contacts");
-        mTrustedPackages.add("com.android.browser");
-        mTrustedPackages.add("com.android.providers.applications");
+        for (String trustedPackage : trustedPackages) {
+            mTrustedPackages.add(trustedPackage);
+        }
     }
 
     /**
