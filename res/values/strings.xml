@@ -44,13 +44,13 @@
          used when some results from the source were shown in the top-level list. -->
     <plurals name="total_result_count">
         <!-- Case of one result. -->
-        <item quantity="one">%d result</item>
+        <item quantity="one"><xliff:g id="number" example="1">%d</xliff:g> result</item>
         
         <!-- Case of "few" (small number of) results. -->
-        <item quantity="few">%d results</item>
+        <item quantity="few"><xliff:g id="number" example="2">%d</xliff:g> results</item>
         
         <!-- Case of a plural number of results. -->
-        <item quantity="other">%d results</item>
+        <item quantity="other"><xliff:g id="number" example="5">%d</xliff:g> results</item>
     </plurals>
 
     <!-- A count of the number of additional results provided by a particular app to global search,
@@ -61,13 +61,13 @@
          when no results from the source were shown in the top-level list. -->
     <plurals name="additional_result_count">
         <!-- Case of one result. -->
-        <item quantity="one">%d additional result</item>
+        <item quantity="one"><xliff:g id="number" example="1">%d</xliff:g> additional result</item>
 
         <!-- Case of "few" (small number of) results. -->
-        <item quantity="few">%d additional results</item>
+        <item quantity="few"><xliff:g id="number" example="2">%d</xliff:g> additional results</item>
 
         <!-- Case of a plural number of results. -->
-        <item quantity="other">%d additional results</item>
+        <item quantity="other"><xliff:g id="number" example="5">%d</xliff:g> additional results</item>
     </plurals>
 
     <!-- The separator used for distinguishing app names from their counts
@@ -94,13 +94,13 @@
     
     <!-- Title and summary for 'search engine' setting -->
     <string name="web_search_source">Web search engine</string>
-    <string name="web_search_source_summary">%1$s</string>
+    <string name="web_search_source_summary"><xliff:g id="source" example="Google">%1$s</xliff:g></string>
     
     <!-- Title and summaries for 'search engine settings' link (if available for the chosen
          web search source) -->
     <string name="search_engine_settings">Search engine settings</string>
-    <string name="search_engine_settings_summary_enabled">Settings for %1$s</string>
-    <string name="search_engine_settings_summary_disabled">No settings for %1$s</string>
+    <string name="search_engine_settings_summary_enabled">Settings for <xliff:g id="provider" example="Google">%1$s</xliff:g></string>
+    <string name="search_engine_settings_summary_disabled">No settings for <xliff:g id="provider" example="Google">%1$s</xliff:g></string>
     
     <!-- Title for 'system search' category of search settings -->
     <string name="system_search_category_title">Quick Search Box</string>
