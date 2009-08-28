@@ -28,6 +28,9 @@ import com.google.android.collect.Lists;
 
 /**
  * Contains tests for logic in {@link SessionManager}
+ *
+ * TODO: refactor out hard coded 'promotableWhenInsufficientRankingInfo' list in session manager
+ * to make these tests less brittle.
  */
 public class SessionManagerTest extends TestCase {
 
@@ -36,19 +39,19 @@ public class SessionManagerTest extends TestCase {
             new ComponentName("com.example","com.example.WEB");
 
     static final ComponentName B =
-            new ComponentName("com.example","com.example.B");
+            new ComponentName("com.android.contacts","com.example.B");
 
     static final ComponentName C =
-            new ComponentName("com.example","com.example.C");
+            new ComponentName("com.android.contacts","com.example.C");
 
     static final ComponentName D =
-            new ComponentName("com.example","com.example.D");
+            new ComponentName("com.android.contacts","com.example.D");
 
     static final ComponentName E =
-            new ComponentName("com.example","com.example.E");
+            new ComponentName("com.android.contacts","com.example.E");
 
     static final ComponentName F =
-            new ComponentName("com.example","com.example.F");
+            new ComponentName("com.android.contacts","com.example.F");
 
 
     private List<SuggestionSource> mAllSuggestionSources;

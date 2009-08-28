@@ -159,22 +159,33 @@ public class SessionManager implements SuggestionSession.SessionCallback {
     }
 
     /**
-     * Orders sources by source ranking.  The ordering is as follows:
-     * - the web source is first regardless
-     * - the rest of the promoted sources are filled based on the ranking passed in
-     * - any unranked sources
-     * The above are put in mPromotableSources.
+     * Orders sources by source ranking, and into two groups: one that are candidates for the
+     * promoted list (mPromotableSources), and the other containing sources that should not be in
+     * the promoted list (mUnpromotableSources).
      *
-     * The rest of the ranked sources are put in mUnpromotableSources.
+     * The promotable list is as follows:
+     * - the web source
+     * - up to 'numPromoted' - 1 of the best ranked sources, among source for whom we have enough
+     * data (e.g are in the 'sourceRanking' list)
      *
-     * The idea is that unranked sources get a bump until they have enough data to be ranked like
-     * the rest, and at the same time, no source can be in the promoted list unless it has a high
-     * click through rate for a sustained amount of impressions.
+     * The unpromotoable list is as follows:
+     * - the sources lacking any impression / click data
+     * - the rest of the ranked sources
+     *
+     * The idea is to have the best ranked sources in the promoted list, and give newer sources the
+     * best slots under the "more results" positions to get a little extra attention until we have
+     * enough data to rank them as usual.
+     *
+     * Finally, to solve the empty room problem when there is no data about any sources, we allow
+     * a for a small whitelist of known system apps to be in the promoted list when there is no other
+     * ranked source available.  This should only take effect for the first few usages of
+     * Quick search box.
      *
      * @param enabledSources The enabled sources.
      * @param webSearchSource The name of the web search source, or <code>null</code> otherwise.
      * @param sourceRanking The order the sources should be in.
      * @param numPromoted  The number of promoted sources.
+     * @return The order of the promotable and non-promotable sources.
      */
     static Sources orderSources(
             List<SuggestionSource> enabledSources,
@@ -247,7 +258,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         }
         public void add(SuggestionSource source, boolean forcePromotable) {
             if (source == null) return;
-            if (forcePromotable || shouldBePromotableWhenLowRanked(source)) {
+            if (forcePromotable || promotableWhenInsufficientRankingInfo(source)) {
                 if (DBG) Log.d(TAG, "  Promotable: " + source);
                 mPromotableSources.add(source);
             } else {
@@ -257,12 +268,14 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         }
     }
 
-    private static boolean shouldBePromotableWhenLowRanked(SuggestionSource source) {
-        // TODO: this is an ugly hack to make sure the Music source is unpromotable unless
-        // it is ranked highly. (as long as there are at least
-        // SuggestionSession.NUM_PROMOTED_SOURCES other sources)
-        // Once the Music app returns better suggestions (i.e. token prefix matches, rather
-        // than string infix matches) this should be removed.
-        return !"com.android.music".equals(source.getComponentName().getPackageName());
+    /**
+     * To fix the empty room problem, we allow a small set of system apps to start putting their
+     * results in the promoted list before we have enough data to pick the high ranking ones.
+     */
+    private static boolean promotableWhenInsufficientRankingInfo(SuggestionSource source) {
+        final String packageName = source.getComponentName().getPackageName();
+        return "com.android.contacts".equals(packageName) ||
+                "com.android.browser".equals(packageName) ||
+                "com.android.providers.applications".equals(packageName);
     }
 }
