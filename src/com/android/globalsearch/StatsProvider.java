@@ -16,6 +16,8 @@
 
 package com.android.globalsearch;
 
+import java.util.ArrayList;
+
 import android.app.SearchManager;
 import android.content.ComponentName;
 import android.content.ContentProvider;
@@ -51,6 +53,17 @@ public class StatsProvider extends ContentProvider {
         ComponentName name = ComponentName.unflattenFromString(values.getAsString(
                 SearchManager.SEARCH_CLICK_REPORT_COLUMN_COMPONENT));
         String query = values.getAsString(SearchManager.SEARCH_CLICK_REPORT_COLUMN_QUERY);
+        
+        // Don't shortcut if this is not a promoted source.
+        boolean promotedSource = false;
+        ArrayList<ComponentName> sourceRanking = mShortcutRepo.getSourceRanking();
+        for (int i = 0; i < SuggestionSession.NUM_PROMOTED_SOURCES && i < sourceRanking.size();
+                i++) {
+            if (name.equals(sourceRanking.get(i))) {
+                promotedSource = true;
+            }
+        }
+        if (!promotedSource) return null;
 
         final SuggestionData suggestionData = new SuggestionData.Builder(name)
                 .format(values.getAsString(SearchManager.SUGGEST_COLUMN_FORMAT))
