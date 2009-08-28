@@ -218,11 +218,17 @@ public class SuggestionSources implements SourceLookup {
     }
 
     private void loadTrustedPackages() {
+        mTrustedPackages = new HashSet<String>();
+
         // Get the list of trusted packages from a resource, which allows vendor overlays.
         String[] trustedPackages = mContext.getResources().getStringArray(
                 R.array.trusted_search_providers);
         
-        mTrustedPackages = new HashSet<String>();
+        if (trustedPackages == null) {
+            Log.w(TAG, "Could not load list of trusted search providers, trusting none");
+            return;
+        }
+        
         for (String trustedPackage : trustedPackages) {
             mTrustedPackages.add(trustedPackage);
         }
