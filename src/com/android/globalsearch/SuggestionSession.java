@@ -133,8 +133,7 @@ public class SuggestionSession {
      * @param sourceLookup The sources to query for results
      * @param promotableSources The promotable sources, in the order that they should be queried.  If the
      *        web source is enabled, it will always be first.
-     * @param unpromotableSources The unpromotable sources, in the order that they should be queried.  If the
-     *        web source is enabled, it will always be first.
+     * @param unpromotableSources The unpromotable sources, in the order that they should be queried.
      * @param queryExecutor Used to execute the asynchronous queries
      * @param refreshExecutor Used to execute refresh tasks.
      * @param delayedExecutor Used to post messages.
