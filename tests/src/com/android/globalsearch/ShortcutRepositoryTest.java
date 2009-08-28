@@ -530,7 +530,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
                         Lists.newArrayList(APP_COMPONENT, CONTACTS_COMPONENT)), NOW);
 
         assertContentsInOrder("expecting apps to rank ahead of contacts (more clicks)",
-                mRepo.getSourceRanking(0),
+                mRepo.getSourceRanking(0, 0),
                 APP_COMPONENT, CONTACTS_COMPONENT);
 
         // 2 clicks on a contact, impression for both apps and contacts
@@ -544,7 +544,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
                         Lists.newArrayList(APP_COMPONENT, CONTACTS_COMPONENT)), NOW);
 
         assertContentsInOrder("expecting contacts to rank ahead of apps (more clicks)",
-                mRepo.getSourceRanking(0),
+                mRepo.getSourceRanking(0, 0),
                 CONTACTS_COMPONENT, APP_COMPONENT);
     }
 
@@ -563,7 +563,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
 
         assertContentsInOrder(
                 "apps (1 click / 2 impressions) should beat contacts (2 clicks / 5 impressions)",
-                mRepo.getSourceRanking(0),
+                mRepo.getSourceRanking(0, 0),
                 APP_COMPONENT, CONTACTS_COMPONENT);
 
         // contacts: up to 4 clicks in 7 impressions
@@ -572,7 +572,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
 
         assertContentsInOrder(
                 "contacts (4 click / 7 impressions) should beat apps (1 clicks / 2 impressions)",
-                mRepo.getSourceRanking(0),
+                mRepo.getSourceRanking(0, 0),
                 CONTACTS_COMPONENT, APP_COMPONENT);
     }
 
@@ -594,12 +594,12 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
 
         assertContentsInOrder(
                 "old clicks for apps shouldn't count.",
-                mRepo.getSourceRanking(0),
+                mRepo.getSourceRanking(0, 0),
                 CONTACTS_COMPONENT, APP_COMPONENT);
     }
 
 
-    public void testSourceRanking_filterSourcesWithInsufficientImpressions() {
+    public void testSourceRanking_filterSourcesWithInsufficientData() {
         sourceImpressions(APP_COMPONENT, 1, 5);
         sourceImpressions(CONTACTS_COMPONENT, 1, 2);
         sourceImpressions(BOOKMARKS_COMPONENT, 9, 10);
@@ -609,8 +609,18 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
         
         assertContentsInOrder(
                 "ordering should only include sources with at least 5 impressions.",
-                mRepo.getSourceRanking(5),
+                mRepo.getSourceRanking(5, 0),
                 BOOKMARKS_COMPONENT, MARKET_COMPONENT, APP_COMPONENT);
+
+        assertContentsInOrder(
+                "ordering should only include sources with at least 2 clicks.",
+                mRepo.getSourceRanking(0, 2),
+                HISTORY_COMPONENT, BOOKMARKS_COMPONENT, MARKET_COMPONENT);
+
+        assertContentsInOrder(
+                "ordering should only include sources with at least 5 impressions and 3 clicks.",
+                mRepo.getSourceRanking(5, 3),
+                BOOKMARKS_COMPONENT, MARKET_COMPONENT);
     }
 
     protected void sourceImpressions(ComponentName source, int clicks, int impressions) {

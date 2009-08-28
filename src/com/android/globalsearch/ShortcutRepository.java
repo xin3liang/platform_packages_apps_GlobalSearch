@@ -43,6 +43,11 @@ public interface ShortcutRepository {
      */
     static final int MIN_IMPRESSIONS_FOR_SOURCE_RANKING = 5;
 
+    /**
+     * The mininum number of clicks to be considered for source ranking.
+     */
+    static final int MIN_CLICKS_FOR_SOURCE_RANKING = 3;
+
     static final int MAX_SHORTCUTS_RETURNED = 12;
 
     /**

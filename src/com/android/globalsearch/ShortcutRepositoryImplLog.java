@@ -104,7 +104,8 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
 
         final String tables = SourceStats.TABLE_NAME;
         final String[] columns = SourceStats.COLUMNS;
-        final String where = SourceStats.total_impressions + " >= $1";
+        final String where = SourceStats.total_impressions + " >= $1 AND "
+                + SourceStats.total_clicks + " >= $2";
         final String groupBy = null;
         final String having = null;
         final String orderBy = orderingExpr + " DESC";
@@ -167,7 +168,8 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
 
     /** {@inheritDoc} */
     public ArrayList<ComponentName> getSourceRanking() {
-        return getSourceRanking(MIN_IMPRESSIONS_FOR_SOURCE_RANKING);
+        return getSourceRanking(MIN_IMPRESSIONS_FOR_SOURCE_RANKING,
+                MIN_CLICKS_FOR_SOURCE_RANKING);
     }
 
     /** {@inheritDoc} */
@@ -275,13 +277,14 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
      * Returns the source ranking for sources with a minimum number of impressions.
      *
      * @param minImpressions The minimum number of impressions a source must have.
+     * @param minClicks The minimum number of clicks a source must have.
      * @return The list of sources, ranked by click through rate.
      */
-    ArrayList<ComponentName> getSourceRanking(int minImpressions) {
+    ArrayList<ComponentName> getSourceRanking(int minImpressions, int minClicks) {
         SQLiteDatabase db = mOpenHelper.getReadableDatabase();
         final Cursor cursor = db.rawQuery(
                 SOURCE_RANKING_SQL,
-                new String[] { String.valueOf(minImpressions) });
+                new String[] { String.valueOf(minImpressions), String.valueOf(minClicks) });
         try {
             final ArrayList<ComponentName> sources =
                     new ArrayList<ComponentName>(cursor.getCount());
