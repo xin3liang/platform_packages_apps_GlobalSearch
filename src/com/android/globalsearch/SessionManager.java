@@ -58,20 +58,22 @@ public class SessionManager implements SuggestionSession.SessionCallback {
      * @return The up to date session manager.
      */
     public static synchronized SessionManager refreshSessionmanager(Context context,
+            Config config,
             SuggestionSources sources, ShortcutRepository shortcutRepo,
             PerTagExecutor queryExecutor,
             Executor refreshExecutor, Handler handler) {
         if (DBG) Log.d(TAG, "refreshSessionmanager()");
 
-        sInstance = new SessionManager(context, sources, shortcutRepo,
+        sInstance = new SessionManager(context, config, sources, shortcutRepo,
                 queryExecutor, refreshExecutor, handler);
         return sInstance;
     }
 
-    private SessionManager(Context context,
+    private SessionManager(Context context, Config config,
             SuggestionSources sources, ShortcutRepository shortcutRepo,
             PerTagExecutor queryExecutor, Executor refreshExecutor, Handler handler) {
         mContext = context;
+        mConfig = config;
         mSources = sources;
         mShortcutRepo = shortcutRepo;
         mQueryExecutor = queryExecutor;
@@ -79,6 +81,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         mHandler = handler;
     }
 
+    private final Config mConfig;
     private final SuggestionSources mSources;
     private final ShortcutRepository mShortcutRepo;
     private final PerTagExecutor mQueryExecutor;
@@ -122,7 +125,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
                 mSources.getEnabledSuggestionSources(),
                 mSources,
                 mShortcutRepo.getSourceRanking(),
-                SuggestionSession.NUM_PROMOTED_SOURCES);
+                mConfig.getNumPromotedSources());
 
         // implement the delayed executor using the handler
         final DelayedExecutor delayedExecutor = new DelayedExecutor() {
@@ -136,6 +139,7 @@ public class SessionManager implements SuggestionSession.SessionCallback {
         };
 
         SuggestionSession session = new SuggestionSession(
+                mConfig,
                 mSources, sources.mPromotableSources, sources.mUnpromotableSources,
                 mQueryExecutor,
                 mRefreshExecutor,

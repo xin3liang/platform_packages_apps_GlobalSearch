@@ -30,11 +30,13 @@ import android.net.Uri;
  * in global search, pivots into an app, and clicks on a result.
  */
 public class StatsProvider extends ContentProvider {
+    private Config mConfig;
     private ShortcutRepository mShortcutRepo;
 
     @Override
     public boolean onCreate() {
-        mShortcutRepo = ShortcutRepositoryImplLog.create(getContext());
+        mConfig = Config.getConfig(getContext());
+        mShortcutRepo = ShortcutRepositoryImplLog.create(getContext(), mConfig);
         return true;
     }
 
@@ -57,7 +59,7 @@ public class StatsProvider extends ContentProvider {
         // Don't shortcut if this is not a promoted source.
         boolean promotedSource = false;
         ArrayList<ComponentName> sourceRanking = mShortcutRepo.getSourceRanking();
-        for (int i = 0; i < SuggestionSession.NUM_PROMOTED_SOURCES && i < sourceRanking.size();
+        for (int i = 0; i < mConfig.getNumPromotedSources() && i < sourceRanking.size();
                 i++) {
             if (name.equals(sourceRanking.get(i))) {
                 promotedSource = true;

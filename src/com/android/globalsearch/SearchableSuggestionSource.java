@@ -67,8 +67,7 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     // Cached icon for the activity
     private String mIcon;
     
-    // An override value for the max number of results to provide.
-    private int mMaxResultsOverride;
+    private final boolean mIsWebSuggestionSource;
 
     // Action key info for KEYCODE_CALL
     private String mCallActionMsg = null;
@@ -79,6 +78,11 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     private static final String SUGGEST_COLUMN_PIN_TO_BOTTOM = "suggest_pin_to_bottom";
 
     public SearchableSuggestionSource(Context context, SearchableInfo searchable) {
+        this(context, searchable, false);
+    }
+
+    public SearchableSuggestionSource(Context context, SearchableInfo searchable,
+            boolean isWebSuggestionSource) {
         mContext = context;
         mSearchable = searchable;
         ComponentName componentName = mSearchable.getSearchActivity();
@@ -105,20 +109,13 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
 
         mLabel = findLabel();
         mIcon = findIcon();
-        mMaxResultsOverride = 0;
+        mIsWebSuggestionSource = isWebSuggestionSource;
 
         SearchableInfo.ActionKeyInfo actionCall = mSearchable.findActionKey(KeyEvent.KEYCODE_CALL);
         if (actionCall != null) {
             mCallActionMsg = actionCall.getSuggestActionMsg();
             mCallActionMsgCol = actionCall.getSuggestActionMsgColumn();
         }
-
-    }
-    
-    public SearchableSuggestionSource(Context context, SearchableInfo searchable,
-            int maxResultsOverride) {
-        this(context, searchable);
-        mMaxResultsOverride = maxResultsOverride;
     }
 
     /**
@@ -162,6 +159,11 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     }
 
     @Override
+    public boolean isWebSuggestionSource() {
+        return mIsWebSuggestionSource;
+    }
+
+    @Override
     public SuggestionResult getSuggestions(String query, int maxResults, int queryLimit) {
         Cursor cursor = getCursor(query, queryLimit);
         // Be resilient to non-existent suggestion providers, as the build this is running on
@@ -178,8 +180,6 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
                 if (DBG) Log.d(LOG_TAG, "Interrupted");
                 return SuggestionResult.createCancelled(this);
             }
-
-            maxResults = (mMaxResultsOverride > 0) ? mMaxResultsOverride : maxResults;
 
             int count = cursor.getCount();
             if (DBG) {
@@ -585,49 +585,6 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     @Override
     public String toString() {
         return super.toString() + "{component=" + mFlattenedComponentName + "}";
-    }
-
-    /**
-     * Factory method. Creates a suggestion source from the searchable
-     * information of a given component.
-     *
-     * @param context Context to use in the suggestion source.
-     * @param componentName Component whose searchable information will be
-     * used to construct ths suggestion source.
-     * @return A suggestion source, or <code>null</code> if the given component
-     * is not searchable.
-     */
-    public static SearchableSuggestionSource create(Context context, ComponentName componentName) {
-        SearchManager searchManager = (SearchManager)
-                context.getSystemService(Context.SEARCH_SERVICE);
-        SearchableInfo si = searchManager.getSearchableInfo(componentName, false);
-        if (si == null) {
-            return null;
-        }
-        return new SearchableSuggestionSource(context, si);
-    }
-    
-    /**
-     * Factory method. Creates a suggestion source from the searchable
-     * information of a given component.
-     *
-     * @param context Context to use in the suggestion source.
-     * @param componentName Component whose searchable information will be
-     * used to construct this suggestion source.
-     * @param maxResultsOverride An override value to use for the number of results that
-     * this source should be allowed to provide.
-     * @return A suggestion source, or <code>null</code> if the given component
-     * is not searchable.
-     */
-    public static SearchableSuggestionSource create(Context context, ComponentName componentName,
-            int maxResultsOverride) {
-        SearchManager searchManager = (SearchManager)
-                context.getSystemService(Context.SEARCH_SERVICE);
-        SearchableInfo si = searchManager.getSearchableInfo(componentName, false);
-        if (si == null) {
-            return null;
-        }
-        return new SearchableSuggestionSource(context, si, maxResultsOverride);
     }
 
     /**

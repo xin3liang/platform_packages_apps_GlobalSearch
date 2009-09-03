@@ -87,8 +87,10 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         allSources.addAll(promotableSources);
         allSources.addAll(unpromotableSources);
         final SimpleSourceLookup sourceLookup = new SimpleSourceLookup(allSources, webSource);
+        Config config = Config.getDefaultConfig();
         mEngine = new QueryEngine();
         return new TestSuggestionSession(
+                config,
                 sourceLookup, promotableSources, unpromotableSources,
                 this, mEngine, numPromotedSources);
     }
@@ -638,12 +640,12 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
     static class TestSuggestionSession extends SuggestionSession {
         private final QueryEngine mEngine;
 
-        public TestSuggestionSession(SourceLookup sourceLookup,
+        public TestSuggestionSession(Config config, SourceLookup sourceLookup,
                 ArrayList<SuggestionSource> promotableSources,
                 ArrayList<SuggestionSource> unpromotableSources,
                 SuggestionSessionTest test,
                 QueryEngine engine, int numPromotedSources) {
-            super(sourceLookup, promotableSources, unpromotableSources,
+            super(config, sourceLookup, promotableSources, unpromotableSources,
                     engine, engine, engine, test, true);
             setListener(engine);
             setShortcutRepo(engine);

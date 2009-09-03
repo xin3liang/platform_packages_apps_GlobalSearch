@@ -60,9 +60,8 @@ public class SearchSettings extends PreferenceActivity
     private static final String SEARCH_ENGINE_SETTINGS_PREF = "search_engine_settings";
     private static final String SEARCH_SOURCES_PREF = "search_sources";
 
-    private SearchManager mSearchManager;
-
     // These instances are not shared with SuggestionProvider
+    private Config mConfig;
     private SuggestionSources mSources;
     private ShortcutRepository mShortcuts;
 
@@ -78,11 +77,10 @@ public class SearchSettings extends PreferenceActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mSearchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
-
+        mConfig = Config.getConfig(this);
         mSources = new SuggestionSources(this);
         mSources.load();
-        mShortcuts = ShortcutRepositoryImplLog.create(this);
+        mShortcuts = ShortcutRepositoryImplLog.create(this, mConfig);
         getPreferenceManager().setSharedPreferencesName(SuggestionSources.PREFERENCES_NAME);
 
         addPreferencesFromResource(R.xml.preferences);

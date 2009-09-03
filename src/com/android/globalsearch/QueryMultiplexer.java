@@ -16,16 +16,13 @@
 
 package com.android.globalsearch;
 
-import static com.android.globalsearch.SuggestionSession.SOURCE_TIMEOUT_MILLIS;
-
 import android.util.Log;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.FutureTask;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.concurrent.FutureTask;
 
 /**
  * Responsible for sending out a query to a list of {@link SuggestionSource}s asynchronously and
@@ -44,7 +41,9 @@ public class QueryMultiplexer implements Runnable {
     private final SuggestionBacker mReceiver;
     private final String mQuery;
     private final int mMaxResultsPerSource;
+    private final int mWebResultsOverrideLimit;
     private final int mQueryLimit;
+    private final long mSourceTimeoutMillis;
 
     private ArrayList<SuggestionRequest> mSentRequests;
 
@@ -53,22 +52,28 @@ public class QueryMultiplexer implements Runnable {
      * @param sources The sources.
      * @param maxResultsPerSource The maximum number of results each source should respond with,
      *        passsed along to each source as part of the query.
+     * @param webResultsOverrideLimit The maximum number of results that the web suggestion
+     *        source should respond with.
      * @param queryLimit An advisory maximum number that each source should return
      *        in {@link com.android.globalsearch.SuggestionResult#getCount()}.
      * @param receiver The receiver of results.
      * @param executor Used to execute each source's {@link SuggestionSource#getSuggestionTask}
      * @param delayedExecutor Used to enforce a timeout on each query.
+     * @param sourceTimeoutMillis Timeout in milliseconds for each source request.
      */
     public QueryMultiplexer(String query, List<SuggestionSource> sources, int maxResultsPerSource,
-                            int queryLimit, SuggestionBacker receiver, PerTagExecutor executor,
-                            DelayedExecutor delayedExecutor) {
+                int webResultsOverrideLimit,
+                int queryLimit, SuggestionBacker receiver, PerTagExecutor executor,
+                DelayedExecutor delayedExecutor, long sourceTimeoutMillis) {
         mExecutor = executor;
         mQuery = query;
         mSources = sources;
         mReceiver = receiver;
         mMaxResultsPerSource = maxResultsPerSource;
+        mWebResultsOverrideLimit = webResultsOverrideLimit;
         mQueryLimit = queryLimit;
         mDelayedExecutor = delayedExecutor;
+        mSourceTimeoutMillis = sourceTimeoutMillis;
         mSentRequests = new ArrayList<SuggestionRequest>(mSources.size());
     }
 
@@ -101,7 +106,7 @@ public class QueryMultiplexer implements Runnable {
                                             suggestionRequest.getSuggestionSource()));
                         }
                     }
-                }, SOURCE_TIMEOUT_MILLIS);
+                }, mSourceTimeoutMillis);
             }
         }
     }
@@ -121,6 +126,9 @@ public class QueryMultiplexer implements Runnable {
         return (int) (ns / 1000000);
     }
 
+    protected int getMaxResults(SuggestionSource source) {
+        return source.isWebSuggestionSource() ? mWebResultsOverrideLimit : mMaxResultsPerSource;
+    }
 
     /**
      * Once a result of a suggestion task is complete, it will report the suggestions to the mixer.
@@ -135,7 +143,8 @@ public class QueryMultiplexer implements Runnable {
          * @param suggestionSource The suggestion source that this request is for.
          */
         SuggestionRequest(SuggestionSource suggestionSource) {
-            super(suggestionSource.getSuggestionTask(mQuery, mMaxResultsPerSource, mQueryLimit));
+            super(suggestionSource.getSuggestionTask(mQuery, 
+                    getMaxResults(suggestionSource), mQueryLimit));
             mSuggestionSource = suggestionSource;
         }
 
@@ -157,7 +166,7 @@ public class QueryMultiplexer implements Runnable {
                 public void run() {
                     if (!isDone()) {
                         Log.w(TAG, "source '" + mSuggestionSource.getLabel() + "' took longer than "
-                                + SOURCE_TIMEOUT_MILLIS + " millis for query '" + mQuery + "', "
+                                + mSourceTimeoutMillis + " ms for query '" + mQuery + "', "
                                 + "attempting to cancel it.");
                         if (!cancel(true)) {
                             // if we couldn't cancel it, report back directly so the spinner doesn't
@@ -167,7 +176,7 @@ public class QueryMultiplexer implements Runnable {
                         }
                     }
                 }
-            }, SOURCE_TIMEOUT_MILLIS);
+            }, mSourceTimeoutMillis);
             if (DBG) Log.d(TAG, "starting query for " + mSuggestionSource.getLabel());
             super.run();
         }

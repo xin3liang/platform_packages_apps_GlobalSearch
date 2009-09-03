@@ -44,30 +44,42 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
 
     private static final String HAS_HISTORY_QUERY =
         "SELECT " + Shortcuts.intent_key.fullName + " FROM " + Shortcuts.TABLE_NAME;
-    private static final String EMPTY_QUERY_SHORTCUT_QUERY = buildShortcutQuery(true);
-    private static final String SHORTCUT_QUERY = buildShortcutQuery(false);
+    private final String mEmptyQueryShortcutQuery ;
+    private final String mShortcutQuery;
 
     private static final String SHORTCUT_BY_ID_WHERE =
             Shortcuts.shortcut_id.name() + "=? AND " + Shortcuts.source.name() + "=?";
 
     private static final String SOURCE_RANKING_SQL = buildSourceRankingSql();
 
-    private DbOpenHelper mOpenHelper;
+    private final Config mConfig;
+    private final DbOpenHelper mOpenHelper;
 
     /**
      * Create an instance to the repo.
      */
-    public static ShortcutRepository create(Context context) {
-        return new ShortcutRepositoryImplLog(context, DB_NAME);
+    public static ShortcutRepository create(Context context, Config config) {
+        return new ShortcutRepositoryImplLog(context, config, DB_NAME);
     }
 
-    private static String buildShortcutQuery(boolean emptyQuery) {
+    /**
+     * @param context Used to create / open db
+     * @param name The name of the database to create.
+     */
+    ShortcutRepositoryImplLog(Context context, Config config, String name) {
+        mConfig = config;
+        mOpenHelper = new DbOpenHelper(context, name, DB_VERSION, config);
+        mEmptyQueryShortcutQuery = buildShortcutQuery(true);
+        mShortcutQuery = buildShortcutQuery(false);
+    }
+
+    private String buildShortcutQuery(boolean emptyQuery) {
         // clicklog first, since that's where restrict the result set
         String tables = ClickLog.TABLE_NAME + " INNER JOIN " + Shortcuts.TABLE_NAME
                 + " ON " + ClickLog.intent_key.fullName + " = " + Shortcuts.intent_key.fullName;
         String[] columns = Shortcuts.COLUMNS;
         // SQL expression for the time before which no clicks should be counted.
-        String cutOffTime_expr = "(" + "?3" + " - " + MAX_STAT_AGE_MILLIS + ")";
+        String cutOffTime_expr = "(" + "?3" + " - " + mConfig.getMaxStatAgeMillis() + ")";
         // Avoid GLOB by using >= AND <, with some manipulation (see nextString(String)).
         // to figure out the upper bound (e.g. >= "abc" AND < "abd"
         // This allows us to use parameter binding and still take advantage of the
@@ -86,10 +98,10 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
             "((" + last_hit_time_expr + " - " + cutOffTime_expr + ") / "
             // divided by time (sec) from cut-off to now
             // we use msec/sec to get 1000 as max score
-            + (MAX_STAT_AGE_MILLIS / 1000) + ")";
+            + (mConfig.getMaxStatAgeMillis() / 1000) + ")";
         String ordering_expr = "(" + hit_count_expr + " * " + scale_expr + ")";
         String orderBy = ordering_expr + " DESC";
-        final String limit = Integer.toString(MAX_SHORTCUTS_RETURNED);
+        final String limit = Integer.toString(mConfig.getMaxShortcutsReturned());
         return SQLiteQueryBuilder.buildQueryString(
                 false, tables, columns, where, groupBy, having, orderBy, limit);
     }
@@ -112,14 +124,6 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
         final String limit = null;
         return SQLiteQueryBuilder.buildQueryString(
                 false, tables, columns, where, groupBy, having, orderBy, limit);
-    }
-
-    /**
-     * @param context Used to create / open db
-     * @param name The name of the database to create.
-     */
-    ShortcutRepositoryImplLog(Context context, String name) {
-        mOpenHelper = new DbOpenHelper(context, name, DB_VERSION);
     }
 
     protected DbOpenHelper getOpenHelper() {
@@ -168,8 +172,8 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
 
     /** {@inheritDoc} */
     public ArrayList<ComponentName> getSourceRanking() {
-        return getSourceRanking(MIN_IMPRESSIONS_FOR_SOURCE_RANKING,
-                MIN_CLICKS_FOR_SOURCE_RANKING);
+        return getSourceRanking(mConfig.getMinImpressionsForSourceRanking(),
+                mConfig.getMinClicksForSourceRanking());
     }
 
     /** {@inheritDoc} */
@@ -194,7 +198,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
 // -------------------------- end ShortcutRepository --------------------------
 
     ArrayList<SuggestionData> getShortcutsForQuery(String query, long now) {
-        String sql = query.length() == 0 ? EMPTY_QUERY_SHORTCUT_QUERY : SHORTCUT_QUERY;
+        String sql = query.length() == 0 ? mEmptyQueryShortcutQuery : mShortcutQuery;
         String[] params = buildShortcutQueryParams(query, now);
         if (DBG) {
             Log.d(TAG, sql);
@@ -423,7 +427,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
         // purge old log entries
         db.execSQL("DELETE FROM " + SourceLog.TABLE_NAME + " WHERE "
                 + SourceLog.time.name() + " <"
-                + now + " - " + MAX_SOURCE_EVENT_AGE_MILLIS + ";");
+                + now + " - " + mConfig.getMaxSourceEventAgeMillis() + ";");
 
         // update the source stats
         final String columns = SourceLog.component + "," +
@@ -597,6 +601,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
 
     // contains creation and update logic
     private static class DbOpenHelper extends SQLiteOpenHelper {
+        private Config mConfig;
         private String mPath;
         private static final String SHORTCUT_ID_INDEX
                 = Shortcuts.TABLE_NAME + "_" + Shortcuts.shortcut_id.name();
@@ -611,8 +616,9 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
         private static final String SHORTCUTS_UPDATE_INTENT_KEY_TRIGGER
                 = Shortcuts.TABLE_NAME + "_update_intent_key";
 
-        public DbOpenHelper(Context context, String name, int version) {
+        public DbOpenHelper(Context context, String name, int version, Config config) {
             super(context, name, null, version);
+            mConfig = config;
         }
 
         public String getPath() {
@@ -722,7 +728,7 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
                     + " DELETE FROM " + ClickLog.TABLE_NAME + " WHERE "
                             + ClickLog.hit_time.name() + " <"
                             + " NEW." + ClickLog.hit_time.name()
-                                    + " - " + MAX_STAT_AGE_MILLIS + ";"
+                                    + " - " + mConfig.getMaxStatAgeMillis() + ";"
                     + " END");
 
             // trigger for deleting clicks about a shortcut once that shortcut has been

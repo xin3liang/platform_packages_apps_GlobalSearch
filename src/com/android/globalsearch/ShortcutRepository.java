@@ -26,30 +26,6 @@ import java.util.ArrayList;
  */
 public interface ShortcutRepository {
 
-    static final long DAY_MILLIS = 86400000L;
-
-    /**
-     * The maximum age in milliseconds of clicks that will be used for finding
-     * and ranking shortcuts.
-     *
-     * Package visible for testing.
-     */
-    static final long MAX_STAT_AGE_MILLIS = 7 * DAY_MILLIS;
-
-    static final long MAX_SOURCE_EVENT_AGE_MILLIS = 30 * DAY_MILLIS;
-
-    /**
-     * The mininum number of impressions to be considered for source ranking.
-     */
-    static final int MIN_IMPRESSIONS_FOR_SOURCE_RANKING = 5;
-
-    /**
-     * The mininum number of clicks to be considered for source ranking.
-     */
-    static final int MIN_CLICKS_FOR_SOURCE_RANKING = 3;
-
-    static final int MAX_SHORTCUTS_RETURNED = 12;
-
     /**
      * Checks whether there is any stored history.
      */

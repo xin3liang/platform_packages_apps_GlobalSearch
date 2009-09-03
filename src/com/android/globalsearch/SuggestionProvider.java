@@ -44,23 +44,6 @@ public class SuggestionProvider extends ContentProvider {
     private static final boolean DBG = false;
     private static final String TAG = "GlobalSearch";
 
-    // the core thread pool size for suggestion queries.  this number of threads may stay alive
-    // for up to {@link #THREAD_KEEPALIVE_SECONDS} awaiting new tasks to execute.
-    private static final int QUERY_THREAD_CORE_POOL_SIZE = SuggestionSession.NUM_PROMOTED_SOURCES ;
-
-    // the maximum number of threads used for suggestion queries
-    private static final int QUERY_THREAD_MAX_POOL_SIZE =
-            SuggestionSession.NUM_PROMOTED_SOURCES + 2;
-
-    // the number of threads used for the asynchronous refreshing of shortcuts
-    private static final int SHORTCUT_REFRESH_POOL_SIZE = 3;
-
-    // the maximum time that excess idle threads will wait for new tasks before terminating.
-    private static final int THREAD_KEEPALIVE_SECONDS = 5;
-
-    // the maximum number of concurrent queries allowed for each source.
-    private static final int PER_SOURCE_CONCURRENT_QUERY_LIMIT = 3;
-
     private static final String AUTHORITY = "com.android.globalsearch.SuggestionProvider";
 
     private static final UriMatcher sUriMatcher = buildUriMatcher();
@@ -68,6 +51,7 @@ public class SuggestionProvider extends ContentProvider {
     // UriMatcher constants
     private static final int SEARCH_SUGGEST = 0;
 
+    private Config mConfig;
     private SuggestionSources mSources;
 
     // Executes notifications from the SuggestionCursor on
@@ -111,27 +95,31 @@ public class SuggestionProvider extends ContentProvider {
     @Override
     public boolean onCreate() {
         if (DBG) Log.d("SESSION", "SuggestionProvider.onCreate");
+        mConfig = Config.getConfig(getContext());
         mSources = new SuggestionSources(getContext());
         mSources.load();
 
         mNotifyHandler = new Handler(Looper.getMainLooper());
 
         mQueryExecutor = new ThreadPoolExecutor(
-                QUERY_THREAD_CORE_POOL_SIZE, QUERY_THREAD_MAX_POOL_SIZE,
-                THREAD_KEEPALIVE_SECONDS, TimeUnit.SECONDS,
+                mConfig.getQueryThreadCorePoolSize(),
+                mConfig.getQueryThreadMaxPoolSize(),
+                mConfig.getThreadKeepaliveSeconds(), TimeUnit.SECONDS,
                 new LinkedBlockingQueue<Runnable>(),
                 sThreadFactory);
         
         mRefreshExecutor = new ThreadPoolExecutor(
-                SHORTCUT_REFRESH_POOL_SIZE, SHORTCUT_REFRESH_POOL_SIZE,
-                THREAD_KEEPALIVE_SECONDS, TimeUnit.SECONDS,
+                mConfig.getShortcutRefreshCorePoolSize(),
+                mConfig.getShortcutRefreshMaxPoolSize(),
+                mConfig.getThreadKeepaliveSeconds(), TimeUnit.SECONDS,
                 new LinkedBlockingQueue<Runnable>(),
                 sThreadFactory);
 
         mSessionManager = SessionManager.refreshSessionmanager(
                 getContext(),
-                mSources, ShortcutRepositoryImplLog.create(getContext()),
-                new PerTagExecutor(mQueryExecutor, PER_SOURCE_CONCURRENT_QUERY_LIMIT),
+                mConfig,
+                mSources, ShortcutRepositoryImplLog.create(getContext(), mConfig),
+                new PerTagExecutor(mQueryExecutor, mConfig.getPerSourceConcurrentQueryLimit()),
                 mRefreshExecutor,
                 mNotifyHandler);
 

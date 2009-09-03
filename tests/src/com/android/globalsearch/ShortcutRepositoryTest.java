@@ -59,7 +59,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
     static final ComponentName MARKET_COMPONENT =
         new ComponentName("com.android.vending","com.android.vending.Market");
 
-
+    protected Config mConfig;
     protected ShortcutRepositoryImplLog mRepo;
     protected SuggestionData mApp1;
     protected SuggestionData mApp2;
@@ -67,12 +67,14 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
     protected SuggestionData mContact2;
 
     protected ShortcutRepositoryImplLog createShortcutRepository() {
-        return new ShortcutRepositoryImplLog(getContext(), "test-shortcuts-log.db");
+        return new ShortcutRepositoryImplLog(getContext(), mConfig, "test-shortcuts-log.db");
     }
     
     @Override
     protected void setUp() throws Exception {
         super.setUp();
+
+        mConfig = Config.getDefaultConfig();
 
         mRepo = createShortcutRepository();
 
@@ -302,7 +304,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
     public void testRecencyOverridesClicks() {
 
         // 5 clicks, most recent half way through age limit
-        long halfWindow = ShortcutRepository.MAX_STAT_AGE_MILLIS / 2;
+        long halfWindow = mConfig.getMaxStatAgeMillis() / 2;
         mRepo.reportStats(new SessionStats("app", mApp1), NOW - halfWindow);
         mRepo.reportStats(new SessionStats("app", mApp1), NOW - halfWindow);
         mRepo.reportStats(new SessionStats("app", mApp1), NOW - halfWindow);
@@ -322,7 +324,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
     public void testEntryOlderThanAgeLimitFiltered() {
         mRepo.reportStats(new SessionStats("app", mApp1), NOW);
 
-        long pastWindow = ShortcutRepository.MAX_STAT_AGE_MILLIS + 1000;
+        long pastWindow = mConfig.getMaxStatAgeMillis() + 1000;
         mRepo.reportStats(new SessionStats("app", mApp2), NOW - pastWindow);
 
         assertContentsInOrder("expecting app2 not clicked on recently enough to be filtered",
@@ -580,7 +582,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
 
     public void testOldSourceStatsDontCount() {
         // apps were popular back in the day
-        final long toOld = ShortcutRepository.MAX_SOURCE_EVENT_AGE_MILLIS + 1;
+        final long toOld = mConfig.getMaxSourceEventAgeMillis() + 1;
         sourceImpression(APP_COMPONENT, true, NOW - toOld);
         sourceImpression(APP_COMPONENT, true, NOW - toOld);
         sourceImpression(APP_COMPONENT, true, NOW - toOld);

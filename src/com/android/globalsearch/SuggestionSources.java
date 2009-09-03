@@ -23,7 +23,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.os.Handler;
 import android.provider.Settings;
@@ -51,13 +50,10 @@ public class SuggestionSources implements SourceLookup {
 
     // The key for the preference that holds the selected web search source
     public static final String WEB_SEARCH_SOURCE_PREF = "web_search_source";
-    
-    // An override value for web search providers to provide more results than others.
-    private static final int WEB_RESULTS_OVERRIDE_LIMIT = 20;
 
-    private Context mContext;
-    private SearchManager mSearchManager;
-    private SharedPreferences mPreferences;
+    private final Context mContext;
+    private final SearchManager mSearchManager;
+    private final SharedPreferences mPreferences;
     private HashSet<String> mTrustedPackages;
     private boolean mLoaded;
 
@@ -317,8 +313,7 @@ public class SuggestionSources implements SourceLookup {
                 // Construct a SearchableSuggestionSource around the web search source. Allow
                 // the web search source to provide a larger number of results with
                 // WEB_RESULTS_OVERRIDE_LIMIT.
-                webSearchSource = SearchableSuggestionSource.create(
-                        mContext, webSearchable.getSearchActivity(), WEB_RESULTS_OVERRIDE_LIMIT);
+                webSearchSource = new SearchableSuggestionSource(mContext, webSearchable, true);
             }
         }
         return webSearchSource;

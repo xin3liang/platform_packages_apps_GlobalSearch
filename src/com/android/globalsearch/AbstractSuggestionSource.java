@@ -98,6 +98,13 @@ public abstract class AbstractSuggestionSource implements SuggestionSource {
     }
 
     /**
+     * @return {@code false}.
+     */
+    public boolean isWebSuggestionSource() {
+        return false;
+    }
+
+    /**
      * Validates a shortcut.  Returns a {@link SuggestionData} with the up to date information for
      * the shortcut if the shortcut is still valid, or <code>null</code> if the shortcut is not
      * valid.

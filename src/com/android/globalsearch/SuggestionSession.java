@@ -44,7 +44,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <code>queryAfterZeroResults</code> property to <code>true</code> in searchable.xml
  *
  * If there are no shortcuts or cached entries for a given query, we prefill with the results from
- * the previous query for up to {@link #PREFILL_MILLIS} millis until the first result comes back.
+ * the previous query for up to {@link Config#getPrefillMillis} ms until
+ * the first result comes back.
  * This results in a smoother experience with less flickering of zero results.
  *
  * This class is thread safe, guarded by "this", to protect against the fact that {@link #query}
@@ -59,6 +60,7 @@ public class SuggestionSession {
     private static final boolean SPEW = false;
     private static final String TAG = "GlobalSearch";
 
+    private final Config mConfig;
     private final SourceLookup mSourceLookup;
     private final ArrayList<SuggestionSource> mPromotableSources;
     private final ArrayList<SuggestionSource> mUnpromotableSources;
@@ -68,7 +70,7 @@ public class SuggestionSession {
     private final DelayedExecutor mDelayedExecutor;
     private final SuggestionFactory mSuggestionFactory;
     private SessionCallback mListener;
-    private int mNumPromotedSources = NUM_PROMOTED_SOURCES;
+    private int mNumPromotedSources;
 
     // guarded by "this"
 
@@ -82,41 +84,12 @@ public class SuggestionSession {
 
     // we only allow shortcuts from sources in this set
     private HashSet<ComponentName> mAllowShortcutsFrom;
-    /**
-     * The number of sources that have a chance to show results above the "more results" entry
-     * in one of {@link #MAX_RESULTS_TO_DISPLAY} slots.
-     */
-    static final int NUM_PROMOTED_SOURCES = 4;
 
     /**
      * Whether we cache the results for each query / source.  This avoids querying a source twice
      * for the same query, but uses more memory.
      */
     static final boolean CACHE_SUGGESTION_RESULTS = false;
-
-    /**
-     * Maximum number of results to display in the list, not including any
-     * built-in suggestions or corpus selection suggestions.
-     */
-    private static final int MAX_RESULTS_TO_DISPLAY = 7;
-
-    /**
-     * Maximum number of results to get from each source.
-     */
-    private static final int MAX_RESULTS_PER_SOURCE = 51 + MAX_RESULTS_TO_DISPLAY;
-
-    /**
-     * How long the promoted source have to respond before the "search the web" and "more results"
-     * entries are added to the end of the list, in millis.
-     */
-    private static final long PROMOTED_SOURCE_DEADLINE = 6000L;
-
-    /**
-     * How long an individual source has to respond before they will be cancelled.
-     */
-    static final long SOURCE_TIMEOUT_MILLIS = 10000L;
-
-    static final long PREFILL_MILLIS = 400L;
 
     /**
      * Interface for receiving notifications from session.
@@ -130,6 +103,7 @@ public class SuggestionSession {
     }
 
     /**
+     * @param config Configuration parameters
      * @param sourceLookup The sources to query for results
      * @param promotableSources The promotable sources, in the order that they should be queried.  If the
      *        web source is enabled, it will always be first.
@@ -140,7 +114,9 @@ public class SuggestionSession {
      * @param suggestionFactory Used to create particular suggestions.
      * @param cacheSuggestionResults Whether to cache the results of sources in hopes we can avoid
      */
-    public SuggestionSession(SourceLookup sourceLookup,
+    public SuggestionSession(
+            Config config,
+            SourceLookup sourceLookup,
             ArrayList<SuggestionSource> promotableSources,
             ArrayList<SuggestionSource> unpromotableSources,
             PerTagExecutor queryExecutor,
@@ -148,6 +124,7 @@ public class SuggestionSession {
             DelayedExecutor delayedExecutor,
             SuggestionFactory suggestionFactory,
             boolean cacheSuggestionResults) {
+        mConfig = config;
         mSourceLookup = sourceLookup;
         mPromotableSources = promotableSources;
         mUnpromotableSources = unpromotableSources;
@@ -156,6 +133,7 @@ public class SuggestionSession {
         mDelayedExecutor = delayedExecutor;
         mSuggestionFactory = suggestionFactory;
         mSessionCache = new SessionCache(cacheSuggestionResults);
+        mNumPromotedSources = config.getNumPromotedSources();
 
         final int numPromotable = promotableSources.size();
         final int numUnpromotable = unpromotableSources.size();
@@ -215,7 +193,7 @@ public class SuggestionSession {
                 public void run() {
                     cursor.onNewResults();
                 }
-            }, PREFILL_MILLIS);
+            }, mConfig.getPrefillMillis());
         }
         mPreviousCursor = cursor;
         return cursor;
@@ -290,8 +268,8 @@ public class SuggestionSession {
                 queryCacheResults.getResults(),
                 mSuggestionFactory.createGoToWebsiteSuggestion(query),
                 mSuggestionFactory.createSearchTheWebSuggestion(query),
-                MAX_RESULTS_TO_DISPLAY,
-                PROMOTED_SOURCE_DEADLINE,
+                mConfig.getMaxResultsToDisplay(),
+                mConfig.getPromotedSourceDeadlineMillis(),
                 mSuggestionFactory,
                 mSuggestionFactory);
 
@@ -305,6 +283,7 @@ public class SuggestionSession {
 
         // fire off queries / refreshers
         final AsyncMux asyncMux = new AsyncMux(
+                mConfig,
                 mQueryExecutor,
                 mRefreshExecutor,
                 mDelayedExecutor,
@@ -330,7 +309,7 @@ public class SuggestionSession {
             public void run() {
                 cursor.onNewResults();
             }
-        }, PROMOTED_SOURCE_DEADLINE);
+        }, mConfig.getPromotedSourceDeadlineMillis());
     }
 
     private HashSet<ComponentName> pickPromotedSources(ArrayList<SuggestionSource> sources) {
@@ -686,6 +665,7 @@ public class SuggestionSession {
      */
     static class AsyncMux extends SuggestionBacker {
 
+        private final Config mConfig;
         private final PerTagExecutor mQueryExecutor;
         private final Executor mRefreshExecutor;
         private final DelayedExecutor mDelayedExecutor;
@@ -704,6 +684,7 @@ public class SuggestionSession {
         private volatile boolean mCanceled = false;
 
         /**
+         * @param config Configuration parameters.
          * @param queryExecutor required by the query multiplexers.
          * @param refreshExecutor required by the refresh multiplexers.
          * @param delayedExecutor required by the query multiplexers.
@@ -716,6 +697,7 @@ public class SuggestionSession {
          * @param repo The shortcut repository needed to create the shortcut refresher.
          */
         AsyncMux(
+                Config config,
                 PerTagExecutor queryExecutor,
                 Executor refreshExecutor,
                 DelayedExecutor delayedExecutor,
@@ -726,6 +708,7 @@ public class SuggestionSession {
                 HashSet<ComponentName> promotedSources,
                 SourceSuggestionBacker backerToReportTo,
                 ShortcutRepository repo) {
+            mConfig = config;
             mQueryExecutor = queryExecutor;
             mRefreshExecutor = refreshExecutor;
             mDelayedExecutor = delayedExecutor;
@@ -794,7 +777,7 @@ public class SuggestionSession {
             }
             mShortcutRefresher = new ShortcutRefresher(
                     mRefreshExecutor, sourceLookup, mShortcutsToValidate,
-                    MAX_RESULTS_TO_DISPLAY, this, mRepo);
+                    mConfig.getMaxResultsToDisplay(), this, mRepo);
             if (DBG) Log.d(TAG, "sending shortcut refresher tasks for " +
                     mShortcutsToValidate.size() + " shortcuts.");
             mShortcutRefresher.refresh();
@@ -814,9 +797,14 @@ public class SuggestionSession {
                     promotedSources.add(source);
                 }
             }
+            final int maxResultsPerSource = mConfig.getMaxResultsPerSource();
             mPromotedSourcesQueryMux = new QueryMultiplexer(
-                    mQuery, promotedSources, MAX_RESULTS_PER_SOURCE, MAX_RESULTS_PER_SOURCE,
-                    this, mQueryExecutor, mDelayedExecutor);
+                    mQuery, promotedSources,
+                    maxResultsPerSource,
+                    mConfig.getWebResultsOverrideLimit(),
+                    maxResultsPerSource,
+                    this, mQueryExecutor, mDelayedExecutor,
+                    mConfig.getSourceTimeoutMillis());
             if (DBG) Log.d(TAG, "sending '" + mQuery + "' off to " + promotedSources.size() +
                     " promoted sources");
             mBackerToReportTo.reportPromotedQueryStartTime();
@@ -843,8 +831,12 @@ public class SuggestionSession {
             }
 
             mAdditionalSourcesQueryMux = new QueryMultiplexer(
-                    mQuery, additional, MAX_RESULTS_TO_DISPLAY, MAX_RESULTS_PER_SOURCE,
-                    this, mQueryExecutor, mDelayedExecutor);
+                    mQuery, additional,
+                    mConfig.getMaxResultsToDisplay(),
+                    mConfig.getWebResultsOverrideLimit(),
+                    mConfig.getMaxResultsPerSource(),
+                    this, mQueryExecutor, mDelayedExecutor,
+                    mConfig.getSourceTimeoutMillis());
             if (DBG) Log.d(TAG, "sending queries off to " + additional.size() + " promoted " +
                     "sources");
             mAdditionalSourcesQueryMux.sendQuery();

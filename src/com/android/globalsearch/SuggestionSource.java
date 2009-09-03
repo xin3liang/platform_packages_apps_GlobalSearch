@@ -95,4 +95,9 @@ public interface SuggestionSource {
      */
     Callable<SuggestionData> getShortcutValidationTask(SuggestionData shortcut);
 
+    /**
+     * Checks whether this is a web suggestion source.
+     */
+    boolean isWebSuggestionSource();
+
 }
