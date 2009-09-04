@@ -425,7 +425,7 @@ public class SuggestionSession {
     }
 
     synchronized void close() {
-        Log.d(TAG, "close()");
+        if (DBG) Log.d(TAG, "close()");
         if (mListener != null) mListener.closeSession();
     }
 
