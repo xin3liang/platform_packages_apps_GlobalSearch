@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import android.content.ComponentName;
+import android.test.suitebuilder.annotation.SmallTest;
 import com.google.android.collect.Lists;
 
 /**
@@ -32,6 +33,7 @@ import com.google.android.collect.Lists;
  * TODO: refactor out hard coded 'promotableWhenInsufficientRankingInfo' list in session manager
  * to make these tests less brittle.
  */
+@SmallTest
 public class SessionManagerTest extends TestCase {
 
 

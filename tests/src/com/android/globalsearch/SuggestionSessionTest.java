@@ -25,6 +25,7 @@ import android.content.ComponentName;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.test.MoreAsserts;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -40,6 +41,7 @@ import junit.framework.TestCase;
  * Tests for {@link SuggestionSession}, its interaction with {@link SuggestionCursor}, and how and
  * when the session fires queries off to the suggestion sources.
  */
+@SmallTest
 public class SuggestionSessionTest extends TestCase implements SuggestionFactory {
 
     private TestSuggestionSession mSession;

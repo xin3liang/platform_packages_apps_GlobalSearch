@@ -19,10 +19,12 @@ package com.android.globalsearch;
 import android.database.Cursor;
 import android.net.Uri;
 import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.MediumTest;
 
 /**
  * Tests for {@link SuggestionProvider}
  */
+@MediumTest
 public class SuggestionProviderTest extends AndroidTestCase {
 
     private static final String URI_PREFIX = 

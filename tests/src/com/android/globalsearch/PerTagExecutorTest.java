@@ -16,6 +16,7 @@
 
 package com.android.globalsearch;
 
+import android.test.suitebuilder.annotation.LargeTest;
 import junit.framework.TestCase;
 
 import java.util.concurrent.ExecutorService;
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests for {@link PerTagExecutor}.
  */
+@LargeTest
 public class PerTagExecutorTest extends TestCase {
 
     private ExecutorService mExecutor;

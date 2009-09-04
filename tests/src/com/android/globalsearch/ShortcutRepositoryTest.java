@@ -20,6 +20,7 @@ import android.app.SearchManager;
 import android.content.ComponentName;
 import android.test.AndroidTestCase;
 import android.test.MoreAsserts;
+import android.test.suitebuilder.annotation.MediumTest;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,6 +36,7 @@ import com.google.android.collect.Lists;
  * Attempts to test logic independent of the (sql) details of the implementation, so these should
  * be useful even in the face of a schema change.
  */
+@MediumTest
 public class ShortcutRepositoryTest extends AndroidTestCase {
 
     static final long NOW = 1239841162000L; // millis since epoch. some time in 2009

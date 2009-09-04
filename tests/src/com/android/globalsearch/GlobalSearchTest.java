@@ -21,10 +21,12 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.server.search.SearchableInfo;
 import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.MediumTest;
 
 /**
  * Tests for {@link GlobalSearch}
  */
+@MediumTest
 public class GlobalSearchTest extends AndroidTestCase {
 
     private static final ComponentName GLOBAL_SEARCH_COMPONENT

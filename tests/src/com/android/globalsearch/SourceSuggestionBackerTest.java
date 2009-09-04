@@ -20,6 +20,7 @@ import junit.framework.TestCase;
 import junit.framework.Assert;
 import android.content.ComponentName;
 import android.test.MoreAsserts;
+import android.test.suitebuilder.annotation.SmallTest;
 import com.google.android.collect.Sets;
 import com.google.android.collect.Lists;
 
@@ -36,6 +37,7 @@ import java.util.Arrays;
  * see the {@link #setUp()} method for the default setup of the backer that is used by most
  * test cases.
  */
+@SmallTest
 public class SourceSuggestionBackerTest extends TestCase
         implements SourceSuggestionBacker.MoreExpanderFactory,
         SourceSuggestionBacker.CorpusResultFactory {

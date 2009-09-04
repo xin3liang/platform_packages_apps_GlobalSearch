@@ -19,10 +19,12 @@ package com.android.globalsearch;
 import junit.framework.TestCase;
 
 import android.content.ComponentName;
+import android.test.suitebuilder.annotation.SmallTest;
 
 /**
  * Tests {@link SuggestionSession.SessionCache}
  */
+@SmallTest
 public class SessionCacheTest extends TestCase {
     private SuggestionSession.SessionCache mCache;
     private TestSuggestionSource.Builder mBuilder;
