@@ -100,7 +100,9 @@ class ShortcutRepositoryImplLog implements ShortcutRepository {
             // we use msec/sec to get 1000 as max score
             + (mConfig.getMaxStatAgeMillis() / 1000) + ")";
         String ordering_expr = "(" + hit_count_expr + " * " + scale_expr + ")";
-        String orderBy = ordering_expr + " DESC";
+        String preferLatest = "(" + last_hit_time_expr + " = (SELECT " + last_hit_time_expr +
+                " FROM " + ClickLog.TABLE_NAME + " WHERE " + where + "))";
+        String orderBy = preferLatest + " DESC, " + ordering_expr + " DESC";
         final String limit = Integer.toString(mConfig.getMaxShortcutsReturned());
         return SQLiteQueryBuilder.buildQueryString(
                 false, tables, columns, where, groupBy, having, orderBy, limit);

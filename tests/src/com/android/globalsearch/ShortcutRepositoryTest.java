@@ -63,6 +63,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
     protected ShortcutRepositoryImplLog mRepo;
     protected SuggestionData mApp1;
     protected SuggestionData mApp2;
+    protected SuggestionData mApp3;
     protected SuggestionData mContact1;
     protected SuggestionData mContact2;
 
@@ -80,6 +81,7 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
 
         mApp1 = makeApp("app1");
         mApp2 = makeApp("app2");
+        mApp3 = makeApp("app3");
 
         mContact1 = new SuggestionData.Builder(CONTACTS_COMPONENT)
                 .title("Joe Blow")
@@ -263,8 +265,65 @@ public class ShortcutRepositoryTest extends AndroidTestCase {
                 mApp2, mApp1);
         assertContentsInOrder(
                 "query 'a': expecting app2 to beat app1 since it has more hits",
-                mRepo.getShortcutsForQuery("app", NOW),
+                mRepo.getShortcutsForQuery("a", NOW),
                 mApp2, mApp1);
+    }
+
+    public void testMostRecentClickWins() {
+        // App 1 has 3 clicks
+        mRepo.reportStats(new SessionStats("app", mApp1), NOW - 5);
+        mRepo.reportStats(new SessionStats("app", mApp1), NOW - 5);
+        mRepo.reportStats(new SessionStats("app", mApp1), NOW - 5);
+        // App 2 has 2 clicks
+        mRepo.reportStats(new SessionStats("app", mApp2), NOW - 2);
+        mRepo.reportStats(new SessionStats("app", mApp2), NOW - 2);
+        // App 3 only has 1, but it's most recent
+        mRepo.reportStats(new SessionStats("app", mApp3), NOW - 1);
+
+        assertContentsInOrder("expected app3 to beat app1 and app2 because it's clicked last",
+                mRepo.getShortcutsForQuery("app", NOW),
+                mApp3, mApp1, mApp2);
+
+        mRepo.reportStats(new SessionStats("app", mApp2), NOW);
+
+        assertContentsInOrder(
+                "query 'app': expecting app2 to beat app1 since it's clicked last",
+                mRepo.getShortcutsForQuery("app", NOW),
+                mApp2, mApp1, mApp3);
+        assertContentsInOrder(
+                "query 'a': expecting app2 to beat app1 since it's clicked last",
+                mRepo.getShortcutsForQuery("a", NOW),
+                mApp2, mApp1, mApp3);
+        assertContentsInOrder(
+                "query '': expecting app2 to beat app1 since it's clicked last",
+                mRepo.getShortcutsForQuery("", NOW),
+                mApp2, mApp1, mApp3);
+    }
+
+    public void testMostRecentClickWinsOnEmptyQuery() {
+        mRepo.reportStats(new SessionStats("app", mApp1), NOW - 3);
+        mRepo.reportStats(new SessionStats("app", mApp1), NOW - 2);
+        mRepo.reportStats(new SessionStats("app", mApp2), NOW - 1);
+
+        assertContentsInOrder("expected app2 to beat app1 since it's clicked last",
+                mRepo.getShortcutsForQuery("", NOW),
+                mApp2, mApp1);
+    }
+
+    public void testMostRecentClickWinsEvenWithMoreThanLimitShortcuts() {
+        // Create MaxShortcutsReturned shortcuts
+        for (int i = 0; i < mConfig.getMaxShortcutsReturned(); i++) {
+            SuggestionData app = makeApp("TestApp" + i);
+            // Each of these shortcuts has two clicks
+            mRepo.reportStats(new SessionStats("app", app), NOW - 2);
+            mRepo.reportStats(new SessionStats("app", app), NOW - 1);
+        }
+
+        // mApp1 has only one click, but is more recent
+        mRepo.reportStats(new SessionStats("app", mApp1), NOW);
+        assertEquals(
+            "expecting app1 to beat all others since it's clicked last",
+            mApp1, mRepo.getShortcutsForQuery("app", NOW).get(0));
     }
 
     /**
