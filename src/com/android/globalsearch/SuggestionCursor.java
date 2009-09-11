@@ -119,7 +119,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
         /**
          * Called when an item is clicked.
          *
-         * @param click The suggestion that was clicked.
+         * @param clicked The suggestion that was clicked.
          * @param displayedSuggestions The suggestions that have been displayed to the user.
          */
         void onItemClicked(SuggestionData clicked, List<SuggestionData> displayedSuggestions);
@@ -128,6 +128,14 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
          * Called the first time "more" becomes visible
          */
         void onMoreVisible();
+
+        /**
+         * Called when the user starts a search without using a suggestion.
+         *
+         * @param query Search query.
+         * @param displayedSuggestions The suggestions that have been displayed to the user.
+         */
+        void onSearch(String query, List<SuggestionData> displayedSuggestions);
     }
 
     /**
@@ -203,6 +211,8 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
                 return respondClick(extras);
             case DialogCursorProtocol.THRESH_HIT:
                 return respondThreshHit(extras);
+            case DialogCursorProtocol.SEARCH:
+                return respondSearch(extras);
             default:
                 Log.e(TAG, "unexpected DialogCursorProtocol.METHOD " + method);
                 return Bundle.EMPTY;
@@ -262,11 +272,7 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
             return Bundle.EMPTY;
         }
 
-        // avoid exceptions from List.subList()
-        final int numSuggestions = mData.size();
-        if (maxDisplayed < -1) maxDisplayed = -1;
-        if (maxDisplayed >= numSuggestions) maxDisplayed = numSuggestions - 1;
-        List<SuggestionData> displayedSuggestions = mData.subList(0, maxDisplayed + 1);
+        List<SuggestionData> displayedSuggestions = getDisplayedSuggestions(maxDisplayed);
 
         if (mListener != null) mListener.onItemClicked(mData.get(pos), displayedSuggestions);
 
@@ -289,6 +295,14 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
         return Bundle.EMPTY;
     }
 
+    private List<SuggestionData> getDisplayedSuggestions(int maxDisplayed) {
+        // avoid exceptions from List.subList()
+        final int numSuggestions = mData.size();
+        if (maxDisplayed < -1) maxDisplayed = -1;
+        if (maxDisplayed >= numSuggestions) maxDisplayed = numSuggestions - 1;
+        return mData.subList(0, maxDisplayed + 1);
+    }
+
     /**
      * Handle receiving and sending back information associated with
      * {@link DialogCursorProtocol#THRESH_HIT}.
@@ -301,6 +315,26 @@ public class SuggestionCursor extends AbstractCursor implements SuggestionBacker
     private Bundle respondThreshHit(Bundle request) {
         mOnMoreCalled = true;
         if (mListener != null) mListener.onMoreVisible();
+        return Bundle.EMPTY;
+    }
+
+    /**
+     * Handles {@link DialogCursorProtocol#SEARCH}. This is used to notify GlobalSearch
+     * that a search was started without using a suggestion.
+     */
+    private Bundle respondSearch(Bundle request) {
+        String query = request.getString(DialogCursorProtocol.SEARCH_SEND_QUERY);
+        if (query == null) {
+            Log.w(TAG, "Got " + DialogCursorProtocol.SEARCH + " without "
+                    + DialogCursorProtocol.SEARCH_SEND_QUERY);
+            return Bundle.EMPTY;
+        }
+        int maxDisplayed = request.getInt(DialogCursorProtocol.SEARCH_SEND_MAX_DISPLAY_POS, -1);
+        if (DBG) Log.d(TAG, "respondSearch(), query=" + query + ", maxDisplayed=" + maxDisplayed);
+        if (mListener != null) {
+            List<SuggestionData> displayedSuggestions = getDisplayedSuggestions(maxDisplayed);
+            mListener.onSearch(query, displayedSuggestions);
+        }
         return Bundle.EMPTY;
     }
 

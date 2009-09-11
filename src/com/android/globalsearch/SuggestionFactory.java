@@ -16,6 +16,8 @@
 
 package com.android.globalsearch;
 
+import android.content.ComponentName;
+
 /**
  * Contains methods to create special results for the suggestion list such as "search the web",
  * "more results" and the corpus results.
@@ -23,6 +25,11 @@ package com.android.globalsearch;
 public interface SuggestionFactory extends SourceSuggestionBacker.MoreExpanderFactory,
         SourceSuggestionBacker.CorpusResultFactory {
 
+    /**
+     * Gets the component name that the suggestions returned by this factory
+     * return from {@link SuggestionData#getSource()}.
+     */
+    public ComponentName getSource();
 
     /**
      * Creates a one-off suggestion for searching the web with the current query.

@@ -22,6 +22,7 @@ import com.google.android.collect.Lists;
 import android.app.SearchManager;
 import android.app.SearchManager.DialogCursorProtocol;
 import android.content.ComponentName;
+import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.test.MoreAsserts;
@@ -51,6 +52,7 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
     private ComponentName mWebComponent;
     private SuggestionSource mWebSource;
     private SuggestionData mWebSuggestion;
+    private SuggestionData mSearchTheWebSuggestion;
     private SuggestionData mSuggestionFromA;
 
     @Override
@@ -58,6 +60,7 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
 
         mWebComponent = new ComponentName("com.android.web", "com.android.web.GOOG");
         mWebSuggestion = makeSimple(mWebComponent, "a web a");
+        mSearchTheWebSuggestion = createSearchTheWebSuggestion("a");
         mWebSource = new TestSuggestionSource.Builder()
                 .setComponent(mWebComponent)
                 .setLabel("web")
@@ -107,9 +110,21 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
 
     private static ComponentName BUILT_IN = new ComponentName("com.builtin", "class");
     private static SuggestionData MORE =
-            new SuggestionData.Builder(BUILT_IN) .title("more").build();
+            new SuggestionData.Builder(BUILT_IN)
+            .title("more")
+            .shortcutId(SearchManager.SUGGEST_NEVER_MAKE_SHORTCUT)
+            .build();
 
-    public SuggestionData createSearchTheWebSuggestion(String query) {return null;}
+    public ComponentName getSource() {
+        return BUILT_IN;
+    }
+
+    public SuggestionData createSearchTheWebSuggestion(String query) {
+        return new SuggestionData.Builder(BUILT_IN)
+                .title("search the web for " + query)
+                .intentAction(Intent.ACTION_WEB_SEARCH)
+                .build();
+    }
 
     public SuggestionData createGoToWebsiteSuggestion(String query) { return null; }
 
@@ -170,7 +185,8 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
             MoreAsserts.assertContentsInOrder("suggestions",
                     snapshot.suggestionTitles,
                     mWebSuggestion.getTitle(),
-                    mSuggestionFromA.getTitle());
+                    mSuggestionFromA.getTitle(),
+                    mSearchTheWebSuggestion.getTitle());
 
             MoreAsserts.assertEmpty("sources in progress", mEngine.getPendingSources());
         }
@@ -191,7 +207,8 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         MoreAsserts.assertContentsInOrder("suggestions",
                 snapshot.suggestionTitles,
                 mWebSuggestion.getTitle(),
-                mSuggestionFromA.getTitle());
+                mSuggestionFromA.getTitle(),
+                mSearchTheWebSuggestion.getTitle());
 
         MoreAsserts.assertEmpty("should be no sources in progress when results are cached.",
                 mEngine.getPendingSources());
@@ -217,7 +234,8 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
             final Snapshot snapshot = getSnapshot(cursor);
             MoreAsserts.assertContentsInOrder(
                 snapshot.suggestionTitles,
-                mWebSuggestion.getTitle());
+                mWebSuggestion.getTitle(),
+                mSearchTheWebSuggestion.getTitle());
         }
 
         {
@@ -270,7 +288,8 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         cursor.requery();
         final Snapshot snapshot = getSnapshot(cursor);
         MoreAsserts.assertContentsInOrder("suggestions.", snapshot.suggestionTitles,
-                mWebSuggestion.getTitle(), mSuggestionFromA.getTitle());
+                mWebSuggestion.getTitle(), mSuggestionFromA.getTitle(),
+                mSearchTheWebSuggestion.getTitle());
 
         sendClick(cursor, 0, 0);
         cursor.close();
@@ -308,10 +327,10 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         cursor.requery();
         final Snapshot snapshot = getSnapshot(cursor);
         MoreAsserts.assertContentsInOrder("suggestions.", snapshot.suggestionTitles,
-                mWebSuggestion.getTitle(), MORE.getTitle());
+                mWebSuggestion.getTitle(), mSearchTheWebSuggestion.getTitle(), MORE.getTitle());
         assertEquals("should want notification of display of index of 'more'",
-                1, snapshot.displayNotify);
-        sendClick(cursor, 0, 1);
+                2, snapshot.displayNotify);
+        sendClick(cursor, 0, 2);
         final List<SessionStats> stats = mEngine.getSessionStats();
         assertEquals("session stats.", 1, stats.size());
         assertEquals("clicked.", mWebSuggestion, stats.get(0).getClicked());
@@ -338,19 +357,21 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         {
             final Snapshot snapshot = getSnapshot(cursor);
             MoreAsserts.assertContentsInOrder("suggestions.", snapshot.suggestionTitles,
-                    mWebSuggestion.getTitle(), MORE.getTitle());
+                    mWebSuggestion.getTitle(), mSearchTheWebSuggestion.getTitle(),
+                    MORE.getTitle());
         }
 
         // click on "more"
-        final int selectedPosition = sendClick(cursor, 1, 2);
+        final int selectedPosition = sendClick(cursor, 2, 3);
         assertEquals("selected position should be index of 'more' after we click on 'more'",
-                1, selectedPosition);
+                2, selectedPosition);
         cursor.requery();
         {
             final Snapshot snapshot = getSnapshot(cursor);
             MoreAsserts.assertContentsInOrder("suggestions.",
                     snapshot.suggestionTitles,
                     mWebSuggestion.getTitle(),
+                    mSearchTheWebSuggestion.getTitle(),
                     MORE.getTitle(),
                     makeCorpusEntry(mComponentA).getTitle());
             assertFalse("isPending should be false once 'more results' are mixed in.",
@@ -377,14 +398,14 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         final Cursor cursor = mSession.query("a");
         mEngine.onSourceRespond(mWebComponent);
         cursor.requery();
-        assertEquals(2, cursor.getCount());
+        assertEquals(3, cursor.getCount());
 
         // click on "more"
-        int selectedPosition = sendClick(cursor, 1, 1);
+        int selectedPosition = sendClick(cursor, 2, 2);
         assertEquals("selected position should be index of 'more' after we click on 'more'",
-                1, selectedPosition);
+                2, selectedPosition);
         cursor.requery();
-        assertEquals(3, cursor.getCount());
+        assertEquals(4, cursor.getCount());
 
         List<SessionStats> stats = mEngine.getSessionStats();
         assertEquals("session stats.", 1, stats.size());
@@ -403,9 +424,9 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         cursor.requery();
 
         // click on More to collapse it
-        sendClick(cursor, 1, 2);
+        sendClick(cursor, 2, 3);
         cursor.requery();
-        assertEquals(2, cursor.getCount());
+        assertEquals(3, cursor.getCount());
 
         stats = mEngine.getSessionStats();
         assertEquals("session stats.", 2, stats.size());
@@ -413,6 +434,21 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         MoreAsserts.assertContentsInAnyOrder(
                 "sources viewed.",
                 stats.get(1).getSourceImpressions(), mWebComponent, mComponentA);
+    }
+
+    public void testSessionStats_search() {
+        final Cursor cursor = mSession.query("a");
+        mEngine.onSourceRespond(mWebComponent);
+        mEngine.onSourceRespond(mComponentA);
+        cursor.requery();
+
+        sendSearch(cursor, "a", 1);
+        final List<SessionStats> stats = mEngine.getSessionStats();
+        assertEquals("session stats.", 1, stats.size());
+        SuggestionData searchSuggestion = createSearchTheWebSuggestion("a");
+        assertEquals("clicked.", searchSuggestion, stats.get(0).getClicked());
+        MoreAsserts.assertContentsInAnyOrder("sources viewed.", stats.get(0).getSourceImpressions(),
+                mWebComponent, mComponentA);
     }
 
 // --------------------- Utility methods ---------------------
@@ -426,6 +462,13 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         return response.getInt(DialogCursorProtocol.CLICK_RECEIVE_SELECTED_POS, -1);
     }
 
+    private void sendSearch(Cursor cursor, String query, int maxDisplayedPosition) {
+        final Bundle b = new Bundle();
+        b.putInt(DialogCursorProtocol.METHOD, DialogCursorProtocol.SEARCH);
+        b.putString(DialogCursorProtocol.SEARCH_SEND_QUERY, query);
+        b.putInt(DialogCursorProtocol.SEARCH_SEND_MAX_DISPLAY_POS, maxDisplayedPosition);
+        cursor.respond(b);
+    }
 
     /**
      * @param cursor A cursor
