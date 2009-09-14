@@ -59,6 +59,10 @@ public class SuggestionFactoryImpl implements SuggestionFactory {
         mCorpusItemBackgroundColor = mContext.getResources().getColor(colorValue.resourceId);
     }
 
+    public ComponentName getSource() {
+        return BUILTIN_SOURCE_COMPONENT;
+    }
+
     /** {@inheritDoc} */
     public SuggestionData getMoreEntry(
             boolean expanded, List<SourceSuggestionBacker.SourceStat> sourceStats) {
@@ -175,7 +179,6 @@ public class SuggestionFactoryImpl implements SuggestionFactory {
                 .icon1(R.drawable.magnifying_glass)
                 .intentAction(Intent.ACTION_WEB_SEARCH)
                 .intentQuery(query)
-                .shortcutId(SearchManager.SUGGEST_NEVER_MAKE_SHORTCUT)
                 .build();
     }
 

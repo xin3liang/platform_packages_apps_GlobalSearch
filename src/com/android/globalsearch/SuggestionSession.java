@@ -138,6 +138,7 @@ public class SuggestionSession {
         final int numPromotable = promotableSources.size();
         final int numUnpromotable = unpromotableSources.size();
         mAllowShortcutsFrom = new HashSet<ComponentName>(numPromotable + numUnpromotable);
+        mAllowShortcutsFrom.add(mSuggestionFactory.getSource());
         for (int i = 0; i < numPromotable; i++) {
             mAllowShortcutsFrom.add(promotableSources.get(i).getComponentName());
         }
@@ -341,16 +342,24 @@ public class SuggestionSession {
 
         public void onItemClicked(SuggestionData clicked,
                 List<SuggestionData> viewedSuggestions) {
-            if (DBG) Log.d(TAG, "onItemClicked()");
+            if (DBG) Log.d(TAG, "onItemClicked(" + clicked + ")");
 
             // find click to report
             SuggestionData clickedSuggestion = null;
-            // Only record clicks on suggestions from external sources
-            if (isSourceSuggestion(clicked)) {
+            // Only record clicks on suggestions that are shortcuttable or from external sources
+            if (isShortcuttable(clicked) || isSourceSuggestion(clicked)) {
                 clickedSuggestion = clicked;
             }
 
             // find impressions to report
+            HashSet<ComponentName> sourceImpressions = getSourceImpressions(viewedSuggestions);
+
+            reportStats(new SessionStats(mAsyncMux.getQuery(),
+                    clickedSuggestion, sourceImpressions));
+        }
+
+        private HashSet<ComponentName> getSourceImpressions(
+                List<SuggestionData> viewedSuggestions) {
             final int numViewed = viewedSuggestions.size();
             HashSet<ComponentName> sourceImpressions = new HashSet<ComponentName>();
             for (int i = 0; i < numViewed; i++) {
@@ -370,9 +379,11 @@ public class SuggestionSession {
                     }
                 }
             }
+            return sourceImpressions;
+        }
 
-            reportStats(new SessionStats(mAsyncMux.getQuery(),
-                    clickedSuggestion, sourceImpressions));
+        private boolean isShortcuttable(SuggestionData suggestion) {
+            return !SearchManager.SUGGEST_NEVER_MAKE_SHORTCUT.equals(suggestion.getShortcutId());
         }
 
         /**
@@ -391,6 +402,14 @@ public class SuggestionSession {
         public void onMoreVisible() {
             if (DBG) Log.d(TAG, "onMoreVisible");
             mAsyncMux.sendOffAdditionalSourcesQueries();
+        }
+
+        public void onSearch(String query, List<SuggestionData> viewedSuggestions) {
+            // find impressions to report
+            HashSet<ComponentName> sourceImpressions = getSourceImpressions(viewedSuggestions);
+            SuggestionData searchSuggestion =
+                    mSuggestionFactory.createSearchTheWebSuggestion(query);
+            reportStats(new SessionStats(query, searchSuggestion, sourceImpressions));
         }
     }
 
