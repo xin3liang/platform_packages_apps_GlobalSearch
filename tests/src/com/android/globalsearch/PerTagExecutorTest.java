@@ -16,31 +16,26 @@
 
 package com.android.globalsearch;
 
-import android.test.suitebuilder.annotation.LargeTest;
-import junit.framework.TestCase;
+import android.test.suitebuilder.annotation.SmallTest;
 
-import java.util.concurrent.BlockingQueue;
+import java.util.LinkedList;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+
+import junit.framework.TestCase;
 
 /**
  * Tests for {@link PerTagExecutor}.
  */
-@LargeTest
+@SmallTest
 public class PerTagExecutorTest extends TestCase {
 
-    private ExecutorService mExecutor;
+    private MockExecutor mExecutor;
 
     @Override
     protected void setUp() throws Exception {
         super.setUp();
 
-        mExecutor = new ThreadPoolExecutor(4, 5,
-                100, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<Runnable>());
+        mExecutor = new MockExecutor();
     }
 
     public void testLimit() throws Exception {
@@ -57,13 +52,20 @@ public class PerTagExecutorTest extends TestCase {
         assertTrue(tagExecutor.execute("a", a3));
         assertFalse(tagExecutor.execute("b", b1));
 
-        mExecutor.shutdown();
-        mExecutor.awaitTermination(1, TimeUnit.SECONDS);
-
-        assertTrue(a1.hasRun());
-        assertTrue(a2.hasRun());
-        assertFalse(a3.hasRun());
-        assertTrue(b1.hasRun());
+        mExecutor.runNext(); // run a1, will trigger a3 to be runnable
+        assertTrue("a1 should have been run", a1.hasRun());
+        assertFalse("a2 should not have been run yet", a2.hasRun());
+        assertFalse("a3 should not have been run yet", a3.hasRun());
+        assertFalse("b1 should not have been run yet", b1.hasRun());
+        mExecutor.runNext(); // run a2
+        assertTrue("a2 should have been run", a2.hasRun());
+        assertFalse("a3 should not have been run yet", a3.hasRun());
+        assertFalse("b1 should not have been run yet", b1.hasRun());
+        mExecutor.runNext(); // run b1
+        assertTrue("b1 should have been run", b1.hasRun());
+        assertFalse("a3 should not have been run yet", a3.hasRun());
+        mExecutor.runNext(); // run a3
+        assertTrue("a3 should have been run", a3.hasRun());
     }
 
     public void testPendingRuns() throws Exception {
@@ -77,17 +79,15 @@ public class PerTagExecutorTest extends TestCase {
         tagExecutor.execute("a", a2);
         tagExecutor.execute("a", a3);
 
-        // let a1 finish, should trigger a3 to run
-        synchronized (a1) {
-            a1.notify();
-        }
-
-        mExecutor.shutdown();
-        mExecutor.awaitTermination(1, TimeUnit.SECONDS);
-
-        assertTrue(a1.hasRun());
-        assertTrue(a2.hasRun());
-        assertTrue(a3.hasRun());
+        mExecutor.runNext(); // run a1, will trigger a3 to be runnable
+        assertTrue("a1 should have been run", a1.hasRun());
+        assertFalse("a2 should not have been run yet", a2.hasRun());
+        assertFalse("a3 should not have been run yet", a3.hasRun());
+        mExecutor.runNext(); // run a2
+        assertTrue("a2 should have been run", a2.hasRun());
+        assertFalse("a3 should not have been run yet", a3.hasRun());
+        mExecutor.runNext(); // run a3
+        assertTrue("a3 should have been run", a3.hasRun());
     }
 
     public void testPendingRuns_intermediateDropped() throws Exception {
@@ -103,36 +103,51 @@ public class PerTagExecutorTest extends TestCase {
         tagExecutor.execute("a", a3);
         tagExecutor.execute("a", a4);
 
-        // let a1 finish, should trigger a3 to run
-        synchronized (a1) {
-            a1.notify();
-        }
-
-        mExecutor.shutdown();
-        mExecutor.awaitTermination(1, TimeUnit.SECONDS);
-
-        assertTrue(a1.hasRun());
-        assertTrue(a2.hasRun());
-        assertFalse("pending a3 should have been dropped when a4 was executed.", a3.hasRun());
-        assertTrue(a4.hasRun());
+        mExecutor.runNext(); // run a1, will trigger a3 to be runnable
+        assertTrue("a1 should have been run", a1.hasRun());
+        assertFalse("a2 should not have been run yet", a2.hasRun());
+        assertFalse("a3 should be dropped, not run", a3.hasRun());
+        assertFalse("a4 should not have been run yet", a4.hasRun());
+        mExecutor.runNext(); // run a2
+        assertTrue("a2 should have been run", a2.hasRun());
+        assertFalse("a3 should be dropped, not run", a3.hasRun());
+        assertFalse("a4 should not have been run yet", a4.hasRun());
+        mExecutor.runNext(); // run a4
+        assertFalse("a3 should be dropped, not run", a3.hasRun());
+        assertTrue("a4 should have been run", a4.hasRun());
     }
 
     /**
-     * A runnable that knows when it has been run, and waits until notified to finish.
+     * A simple executor that maintains a queue and executes one task synchronously every
+     * time {@link #runNext()} is called. This gives us predictable scheduling for the tests to
+     * avoid timeouts waiting for threads to finish.
+     */
+    private static class MockExecutor implements Executor {
+        private final LinkedList<Runnable> mQueue = new LinkedList<Runnable>();
+        public synchronized void execute(Runnable command) {
+            mQueue.addLast(command);
+        }
+        public synchronized boolean runNext() {
+            if (mQueue.isEmpty()) {
+                return false;
+            }
+            Runnable command = mQueue.removeFirst();
+            command.run();
+            return true;
+        }
+    }
+
+    /**
+     * A runnable that knows when it has been run.
      */
     private static class TRunnable implements Runnable {
         boolean mRun = false;
 
         public synchronized void run() {
             mRun = true;
-            try {
-                wait();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
         }
 
-        public boolean hasRun() {
+        public synchronized boolean hasRun() {
             return mRun;
         }
     }
