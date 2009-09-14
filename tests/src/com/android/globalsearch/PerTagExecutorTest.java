@@ -19,6 +19,8 @@ package com.android.globalsearch;
 import android.test.suitebuilder.annotation.LargeTest;
 import junit.framework.TestCase;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -36,7 +38,7 @@ public class PerTagExecutorTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
 
-        mExecutor = new ThreadPoolExecutor(4, 4,
+        mExecutor = new ThreadPoolExecutor(4, 5,
                 100, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<Runnable>());
     }

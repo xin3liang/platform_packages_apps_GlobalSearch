@@ -20,6 +20,7 @@ import android.util.Log;
 
 import java.util.HashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * Imposes a concurrency limit on each tag, queueing up at most one pending command to run.  If more
@@ -98,21 +99,39 @@ public class PerTagExecutor {
                 mPending = command;
                 return true;
             }
-            if (DBG) Log.d(TAG, mTag + ": " + "running");
-            mRunning++;
-            executor.execute(new Runnable() {
-                public void run() {
-                    try {
-                        command.run();
-                    } finally {
-                        doneRunning(executor);
-                    }
-                }
-            });
-            return false;
+            boolean accepted = execute(executor, command);
+            // if the executor rejected the task, pretend that it was stored as pending.
+            // it will just never get run.
+            return !accepted;
         }
 
-        private synchronized void doneRunning(Executor executor) {
+        /**
+         * Posts the command to the wrapped executor.
+         *
+         * @return {@code true} if the executor accepted the command.
+         */
+        private synchronized boolean execute(final Executor executor, final Runnable command) {
+            if (DBG) Log.d(TAG, mTag + ": " + "running");
+            mRunning++;
+            try {
+                executor.execute(new Runnable() {
+                    public void run() {
+                        try {
+                            command.run();
+                        } finally {
+                            doneRunning(executor);
+                        }
+                    }
+                });
+                return true;
+            } catch (RejectedExecutionException ex) {
+                Log.w(TAG, mTag + ": Rejected by the executor.");
+                return false;
+            }
+        }
+
+        // package private to be more efficiently callable from the inner class in execute()
+        synchronized void doneRunning(Executor executor) {
             if (mRunning <= 0) {
                 Log.w(TAG, "PerTagExecutor: how can i be done running if I'm not "
                         + "running already :-/");
@@ -125,7 +144,7 @@ public class PerTagExecutor {
                 if (DBG) Log.d(TAG, mTag + ": " + "running pending command");
                 Runnable toRun = mPending;
                 mPending = null;
-                run(executor, toRun);
+                execute(executor, toRun);
             }
         }
     }
