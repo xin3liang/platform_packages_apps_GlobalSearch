@@ -407,8 +407,7 @@ public class SuggestionSession {
         public void onSearch(String query, List<SuggestionData> viewedSuggestions) {
             // find impressions to report
             HashSet<ComponentName> sourceImpressions = getSourceImpressions(viewedSuggestions);
-            SuggestionData searchSuggestion =
-                    mSuggestionFactory.createSearchTheWebSuggestion(query);
+            SuggestionData searchSuggestion = mSuggestionFactory.createWebSearchShortcut(query);
             reportStats(new SessionStats(query, searchSuggestion, sourceImpressions));
         }
     }

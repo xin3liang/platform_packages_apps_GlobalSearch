@@ -126,6 +126,13 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
                 .build();
     }
 
+    public SuggestionData createWebSearchShortcut(String query) {
+        return new SuggestionData.Builder(BUILT_IN)
+                .title("web search shortcut for " + query)
+                .intentAction(Intent.ACTION_WEB_SEARCH)
+                .build();
+    }
+
     public SuggestionData createGoToWebsiteSuggestion(String query) { return null; }
 
     public SuggestionData getMoreEntry(
@@ -445,7 +452,7 @@ public class SuggestionSessionTest extends TestCase implements SuggestionFactory
         sendSearch(cursor, "a", 1);
         final List<SessionStats> stats = mEngine.getSessionStats();
         assertEquals("session stats.", 1, stats.size());
-        SuggestionData searchSuggestion = createSearchTheWebSuggestion("a");
+        SuggestionData searchSuggestion = createWebSearchShortcut("a");
         assertEquals("clicked.", searchSuggestion, stats.get(0).getClicked());
         MoreAsserts.assertContentsInAnyOrder("sources viewed.", stats.get(0).getSourceImpressions(),
                 mWebComponent, mComponentA);

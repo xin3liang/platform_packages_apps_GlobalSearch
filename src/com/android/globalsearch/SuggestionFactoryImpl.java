@@ -183,6 +183,23 @@ public class SuggestionFactoryImpl implements SuggestionFactory {
     }
 
     /**
+     * Creates a shortcut for a search made by the user without using a suggestion.
+     *
+     * @param query The query
+     */
+    public SuggestionData createWebSearchShortcut(String query) {
+        if (TextUtils.isEmpty(query)) {
+            return null;
+        }
+        return new SuggestionData.Builder(BUILTIN_SOURCE_COMPONENT)
+                .title(query)
+                .icon1(R.drawable.magnifying_glass)
+                .intentAction(Intent.ACTION_WEB_SEARCH)
+                .intentQuery(query)
+                .build();
+    }
+
+    /**
      * Creates a one-off suggestion for visiting the url specified by the current query,
      * or null if the current query does not look like a url.
      *
