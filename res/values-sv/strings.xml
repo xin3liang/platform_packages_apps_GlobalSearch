@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (C) 2009 The Android Open Source Project
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+-->
+<resources xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="global_search" msgid="1559383639633943667">"Snabbsökningsruta"</string>
+    <string name="search_hint" msgid="7327393700556312801">"Snabbsökningsruta"</string>
+    <string name="search_the_web" msgid="3101305283513526982">"Sök på webben"\n"efter <xliff:g id="TERM">%1$s</xliff:g>"</string>
+    <string name="go_to_website_title" msgid="2452460002069003538">"Öppna webbplatsen"</string>
+    <string name="more_results" msgid="1297081065013362588">"Fler resultat..."</string>
+  <plurals name="total_result_count">
+    <item quantity="one" msgid="7485942071987850270">"<xliff:g id="NUMBER">%d</xliff:g> resultat"</item>
+    <item quantity="few" msgid="6558220476009955065">"<xliff:g id="NUMBER">%d</xliff:g> resultat"</item>
+    <item quantity="other" msgid="8467279008490605482">"<xliff:g id="NUMBER">%d</xliff:g> resultat"</item>
+  </plurals>
+  <plurals name="additional_result_count">
+    <item quantity="one" msgid="7296900969259348969">"<xliff:g id="NUMBER">%d</xliff:g> ytterligare resultat"</item>
+    <item quantity="few" msgid="7805537205647548925">"<xliff:g id="NUMBER">%d</xliff:g> ytterligare resultat"</item>
+    <item quantity="other" msgid="112627503235084549">"<xliff:g id="NUMBER">%d</xliff:g> ytterligare resultat"</item>
+  </plurals>
+    <string name="result_count_count_separator" msgid="4483303385647871257">": "</string>
+    <string name="result_count_app_separator" msgid="1478281021873053507">", "</string>
+    <string name="search_settings" msgid="2522442443192038495">"Sökinställningar"</string>
+    <string name="web_search_category_title" msgid="9091556547843829495">"Webbsökning"</string>
+    <string name="web_search_source" msgid="3143612593956844440">"Webbsökmotor"</string>
+    <!-- no translation found for web_search_source_summary (5816356568062433567) -->
+    <skip />
+    <string name="search_engine_settings" msgid="615362367089124241">"Inställningar för sökmotor"</string>
+    <string name="search_engine_settings_summary_enabled" msgid="3454725442802836532">"Inställningar för <xliff:g id="PROVIDER">%1$s</xliff:g>"</string>
+    <string name="search_engine_settings_summary_disabled" msgid="348816788438307437">"Inga inställningar för <xliff:g id="PROVIDER">%1$s</xliff:g>"</string>
+    <string name="system_search_category_title" msgid="1035791922921085981">"Snabbsökningsruta"</string>
+    <string name="search_sources" msgid="2868416396406193214">"Sökbara objekt"</string>
+    <string name="search_sources_summary" msgid="8731536724682737524">"Välj vad du vill söka efter med telefonen"</string>
+    <string name="clear_shortcuts" msgid="2044881876759765193">"Ta bort genväg för sökning"</string>
+    <string name="clear_shortcuts_summary" msgid="247652062610173214">"Ta bort sökvägar till nyligen valda sökresultat"</string>
+    <string name="clear_shortcuts_prompt" msgid="6457730799428681273">"Du tar bort alla genvägar till nyligen valda sökresultat."\n\n"(Om du vill ta bort Webbläsarhistoriken använder du inställningarna i webbläsaren.)"</string>
+    <string name="agree" msgid="5936827660124788057">"OK"</string>
+    <string name="disagree" msgid="8368106764820833311">"Avbryt"</string>
+</resources>

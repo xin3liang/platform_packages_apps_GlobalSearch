@@ -20,12 +20,16 @@
     <string name="search_the_web" msgid="3101305283513526982">"ウェブを検索"\n"「<xliff:g id="TERM">%1$s</xliff:g>」"</string>
     <string name="go_to_website_title" msgid="2452460002069003538">"ウェブサイトに移動"</string>
     <string name="more_results" msgid="1297081065013362588">"もっと見る..."</string>
-    <!-- no translation found for total_result_count:one (7485942071987850270) -->
-    <!-- no translation found for total_result_count:few (6558220476009955065) -->
-    <!-- no translation found for total_result_count:other (8467279008490605482) -->
-    <!-- no translation found for additional_result_count:one (7296900969259348969) -->
-    <!-- no translation found for additional_result_count:few (7805537205647548925) -->
-    <!-- no translation found for additional_result_count:other (112627503235084549) -->
+  <plurals name="total_result_count">
+    <item quantity="one" msgid="7485942071987850270">"<xliff:g id="NUMBER">%d</xliff:g>件の結果"</item>
+    <item quantity="few" msgid="6558220476009955065">"<xliff:g id="NUMBER">%d</xliff:g>件の結果"</item>
+    <item quantity="other" msgid="8467279008490605482">"<xliff:g id="NUMBER">%d</xliff:g>件の結果"</item>
+  </plurals>
+  <plurals name="additional_result_count">
+    <item quantity="one" msgid="7296900969259348969">"その他<xliff:g id="NUMBER">%d</xliff:g>件の結果"</item>
+    <item quantity="few" msgid="7805537205647548925">"その他<xliff:g id="NUMBER">%d</xliff:g>件の結果"</item>
+    <item quantity="other" msgid="112627503235084549">"その他<xliff:g id="NUMBER">%d</xliff:g>件の結果"</item>
+  </plurals>
     <string name="result_count_count_separator" msgid="4483303385647871257">": "</string>
     <string name="result_count_app_separator" msgid="1478281021873053507">"、 "</string>
     <string name="search_settings" msgid="2522442443192038495">"検索設定"</string>
@@ -34,10 +38,8 @@
     <!-- no translation found for web_search_source_summary (5816356568062433567) -->
     <skip />
     <string name="search_engine_settings" msgid="615362367089124241">"検索エンジンの設定"</string>
-    <!-- no translation found for search_engine_settings_summary_enabled (3454725442802836532) -->
-    <skip />
-    <!-- no translation found for search_engine_settings_summary_disabled (348816788438307437) -->
-    <skip />
+    <string name="search_engine_settings_summary_enabled" msgid="3454725442802836532">"<xliff:g id="PROVIDER">%1$s</xliff:g>の設定"</string>
+    <string name="search_engine_settings_summary_disabled" msgid="348816788438307437">"<xliff:g id="PROVIDER">%1$s</xliff:g>用に設定されていません"</string>
     <string name="system_search_category_title" msgid="1035791922921085981">"クイック検索ボックス"</string>
     <string name="search_sources" msgid="2868416396406193214">"検索対象"</string>
     <string name="search_sources_summary" msgid="8731536724682737524">"携帯内部の検索する対象を選択する"</string>
