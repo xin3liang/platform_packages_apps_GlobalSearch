@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.database.ContentObserver;
 import android.os.Handler;
 import android.provider.Settings;
@@ -246,11 +247,15 @@ public class SuggestionSources implements SourceLookup {
         ArrayList<SuggestionSource> trusted = new ArrayList<SuggestionSource>();
         ArrayList<SuggestionSource> untrusted = new ArrayList<SuggestionSource>();
         for (SearchableInfo searchable : mSearchManager.getSearchablesInGlobalSearch()) {
-            SuggestionSource source = new SearchableSuggestionSource(mContext, searchable);
-            if (isTrustedSource(source)) {
-                trusted.add(source);
-            } else {
-                untrusted.add(source);
+            try {
+                SuggestionSource source = new SearchableSuggestionSource(mContext, searchable);
+                if (isTrustedSource(source)) {
+                    trusted.add(source);
+                } else {
+                    untrusted.add(source);
+                }
+            } catch (NameNotFoundException ex) {
+                Log.e(TAG, "Searchable activity not found: " + ex.getMessage());
             }
         }
         for (SuggestionSource s : trusted) {
@@ -313,7 +318,12 @@ public class SuggestionSources implements SourceLookup {
                 // Construct a SearchableSuggestionSource around the web search source. Allow
                 // the web search source to provide a larger number of results with
                 // WEB_RESULTS_OVERRIDE_LIMIT.
-                webSearchSource = new SearchableSuggestionSource(mContext, webSearchable, true);
+                try {
+                    webSearchSource =
+                            new SearchableSuggestionSource(mContext, webSearchable, true);
+                } catch (NameNotFoundException ex) {
+                    Log.e(TAG, "Searchable activity not found: " + ex.getMessage());
+                }
             }
         }
         return webSearchSource;

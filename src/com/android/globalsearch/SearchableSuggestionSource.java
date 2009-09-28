@@ -77,22 +77,19 @@ public class SearchableSuggestionSource extends AbstractSuggestionSource {
     // (like "Manage search history") to the bottom of the list when appropriate.
     private static final String SUGGEST_COLUMN_PIN_TO_BOTTOM = "suggest_pin_to_bottom";
 
-    public SearchableSuggestionSource(Context context, SearchableInfo searchable) {
+    public SearchableSuggestionSource(Context context, SearchableInfo searchable)
+            throws NameNotFoundException {
         this(context, searchable, false);
     }
 
     public SearchableSuggestionSource(Context context, SearchableInfo searchable,
-            boolean isWebSuggestionSource) {
+            boolean isWebSuggestionSource) throws NameNotFoundException {
         mContext = context;
         mSearchable = searchable;
         ComponentName componentName = mSearchable.getSearchActivity();
         mFlattenedComponentName = componentName.flattenToShortString();
-        try {
-            mActivityInfo = context.getPackageManager()
-                    .getActivityInfo(componentName, PackageManager.GET_META_DATA);
-        } catch (NameNotFoundException ex) {
-            throw new RuntimeException("Searchable activity " + componentName + " not found.");
-        }
+        mActivityInfo = context.getPackageManager()
+                .getActivityInfo(componentName, PackageManager.GET_META_DATA);
         mPackageResourceUriPrefix = "android.resource://" + componentName.getPackageName() + "/";
 
         // The suggestions may come from a provider different than the activity which contains the
