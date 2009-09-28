@@ -66,16 +66,9 @@ public class SuggestionFactoryImpl implements SuggestionFactory {
     /** {@inheritDoc} */
     public SuggestionData getMoreEntry(
             boolean expanded, List<SourceSuggestionBacker.SourceStat> sourceStats) {
-        StringBuilder desc = new StringBuilder();
-        String appSeparator = mContext.getString(R.string.result_count_app_separator);
-        String countSeparator = mContext.getString(R.string.result_count_count_separator);
-        int sourceCount = sourceStats.size();
-
-        // TODO: In the code below where we append an extra space after the appSeparator,
-        // ideally we'd like to encode this space in the localized
-        // string instead. However trailing whitespace is trimmed from strings in strings.xml,
-        // so this doesn't work. Figure out how to make that respect whitespace.
+        String desc = "";
         boolean anyPending = false;
+        final int sourceCount = sourceStats.size();
         for (int i = 0; i < sourceCount; i++) {
             SourceSuggestionBacker.SourceStat sourceStat = sourceStats.get(i);
             if (sourceStat.getResponseStatus() != SourceStat.RESPONSE_FINISHED) {
@@ -83,12 +76,15 @@ public class SuggestionFactoryImpl implements SuggestionFactory {
             }
             int suggestionCount = sourceStat.getNumResults();
             if (suggestionCount > 0) {
-                if (desc.length() > 0) {
-                    desc.append(appSeparator);
+                String appLabel = sourceStat.getLabel();
+                String count = getCountString(suggestionCount, sourceStat.getQueryLimit());
+                String appCount = mContext.getString(R.string.result_count_count_separator,
+                        appLabel, count);
+                if (TextUtils.isEmpty(desc)) {
+                    desc = appCount;
+                } else {
+                    desc = mContext.getString(R.string.result_count_app_separator, desc, appCount);
                 }
-                desc.append(sourceStat.getLabel()).append(countSeparator)
-                        .append(getCountString(suggestionCount, sourceStat.getQueryLimit()));
-
             }
         }
         int icon = expanded ? R.drawable.more_results_expanded : R.drawable.more_results;

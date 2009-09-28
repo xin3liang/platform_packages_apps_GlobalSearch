@@ -70,19 +70,13 @@
         <item quantity="other"><xliff:g id="number" example="5">%d</xliff:g> additional results</item>
     </plurals>
 
-    <!-- The separator used for distinguishing app names from their counts
-         in the "More results..." list item of global
-         search. For example, if it's a colon (:) followed by a space, then
-         the final string might look like: "Apps: 1".
-         Double quotes are needed around the string if it contains leading
-         or trailing whitespace. -->
-    <string name="result_count_count_separator">": "</string>
+    <!-- Used for showing app names and their counts in the "More results..." list item of global
+         search. -->
+    <string name="result_count_count_separator"><xliff:g id="application" example="Contacts">%1$s</xliff:g>: <xliff:g id="number" example="5">%2$s</xliff:g></string>
 
-    <!-- The separator character used for distinguishing different apps
-         and their result counts in the "More results..." list item of global
-         search. For example, if it's a comma (,) followed by a space, then the
-         final string might look like: "Apps: 1, Google: 4, Contacts: 8". -->
-    <string name="result_count_app_separator">", "</string>
+    <!-- Used for showing multiple app result counts in the "More results..." list item of global
+         search. -->
+    <string name="result_count_app_separator"><xliff:g id="app1" example="Apps: 1">%1$s</xliff:g>, <xliff:g id="app2" example="Contacts: 8">%2$s</xliff:g></string>
 
     <!-- Search settings stuff -->
     
