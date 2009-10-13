@@ -40,7 +40,7 @@
     <string name="search_engine_settings_summary_enabled" msgid="2199475599593010870">"Indstillinger for %1$s"</string>
     <string name="search_engine_settings_summary_disabled" msgid="6479198472126139365">"Ingen indstillinger for %1$s"</string>
     <string name="system_search_category_title" msgid="1035791922921085981">"Lynsøgning"</string>
-    <string name="search_sources" msgid="2868416396406193214">"Elementer, der kan søges efter"</string>
+    <string name="search_sources" msgid="2868416396406193214">"Elem., der kan søges efter"</string>
     <string name="search_sources_summary" msgid="8731536724682737524">"Vælg, hvad du vil søge efter på telefonen"</string>
     <string name="clear_shortcuts" msgid="2044881876759765193">"Ryd søgegenveje"</string>
     <string name="clear_shortcuts_summary" msgid="247652062610173214">"Ryd genveje til nyligt valgte søgeresultater"</string>
