@@ -30,8 +30,8 @@
     <item quantity="few" msgid="7805537205647548925">"추가 결과 <xliff:g id="NUMBER">%d</xliff:g>개"</item>
     <item quantity="other" msgid="112627503235084549">"추가 결과 <xliff:g id="NUMBER">%d</xliff:g>개"</item>
   </plurals>
-    <string name="result_count_count_separator" msgid="4483303385647871257">": "</string>
-    <string name="result_count_app_separator" msgid="1478281021873053507">", "</string>
+    <string name="result_count_count_separator" msgid="2676388893042530276">"<xliff:g id="APPLICATION">%1$s</xliff:g>: <xliff:g id="NUMBER">%2$s</xliff:g>"</string>
+    <string name="result_count_app_separator" msgid="6526206655233772836">"<xliff:g id="APP1">%1$s</xliff:g>, <xliff:g id="APP2">%2$s</xliff:g>"</string>
     <string name="search_settings" msgid="2522442443192038495">"검색 설정"</string>
     <string name="web_search_category_title" msgid="9091556547843829495">"웹 검색"</string>
     <string name="web_search_source" msgid="3143612593956844440">"웹 검색엔진"</string>

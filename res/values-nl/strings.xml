@@ -30,8 +30,10 @@
     <item quantity="few" msgid="7805537205647548925">"<xliff:g id="NUMBER">%d</xliff:g> extra resultaten"</item>
     <item quantity="other" msgid="112627503235084549">"<xliff:g id="NUMBER">%d</xliff:g> extra resultaten"</item>
   </plurals>
-    <string name="result_count_count_separator" msgid="4483303385647871257">": "</string>
-    <string name="result_count_app_separator" msgid="1478281021873053507">", "</string>
+    <!-- no translation found for result_count_count_separator (2676388893042530276) -->
+    <skip />
+    <!-- no translation found for result_count_app_separator (6526206655233772836) -->
+    <skip />
     <string name="search_settings" msgid="2522442443192038495">"Zoekinstellingen"</string>
     <string name="web_search_category_title" msgid="9091556547843829495">"Zoeken op internet"</string>
     <string name="web_search_source" msgid="3143612593956844440">"Online zoekmachine"</string>

@@ -21,17 +21,17 @@
     <string name="go_to_website_title" msgid="2452460002069003538">"前往網站"</string>
     <string name="more_results" msgid="1297081065013362588">"更多結果..."</string>
   <plurals name="total_result_count">
-    <item quantity="one" msgid="7485942071987850270">"<xliff:g id="NUMBER">%d</xliff:g> 筆結果"</item>
-    <item quantity="few" msgid="6558220476009955065">"<xliff:g id="NUMBER">%d</xliff:g> 筆結果"</item>
-    <item quantity="other" msgid="8467279008490605482">"<xliff:g id="NUMBER">%d</xliff:g> 筆結果"</item>
+    <item quantity="one" msgid="7485942071987850270">"<xliff:g id="NUMBER">%d</xliff:g> 項結果"</item>
+    <item quantity="few" msgid="6558220476009955065">"<xliff:g id="NUMBER">%d</xliff:g> 項結果"</item>
+    <item quantity="other" msgid="8467279008490605482">"<xliff:g id="NUMBER">%d</xliff:g> 項結果"</item>
   </plurals>
   <plurals name="additional_result_count">
-    <item quantity="one" msgid="7296900969259348969">"還有 <xliff:g id="NUMBER">%d</xliff:g> 筆結果"</item>
-    <item quantity="few" msgid="7805537205647548925">"還有 <xliff:g id="NUMBER">%d</xliff:g> 筆結果"</item>
-    <item quantity="other" msgid="112627503235084549">"還有 <xliff:g id="NUMBER">%d</xliff:g> 筆結果"</item>
+    <item quantity="one" msgid="7296900969259348969">"還有 <xliff:g id="NUMBER">%d</xliff:g> 項結果"</item>
+    <item quantity="few" msgid="7805537205647548925">"還有 <xliff:g id="NUMBER">%d</xliff:g> 項結果"</item>
+    <item quantity="other" msgid="112627503235084549">"還有 <xliff:g id="NUMBER">%d</xliff:g> 項結果"</item>
   </plurals>
-    <string name="result_count_count_separator" msgid="4483303385647871257">"： "</string>
-    <string name="result_count_app_separator" msgid="1478281021873053507">"； "</string>
+    <string name="result_count_count_separator" msgid="2676388893042530276">"<xliff:g id="APPLICATION">%1$s</xliff:g>：<xliff:g id="NUMBER">%2$s</xliff:g>"</string>
+    <string name="result_count_app_separator" msgid="6526206655233772836">"<xliff:g id="APP1">%1$s</xliff:g>，<xliff:g id="APP2">%2$s</xliff:g>"</string>
     <string name="search_settings" msgid="2522442443192038495">"搜尋設定"</string>
     <string name="web_search_category_title" msgid="9091556547843829495">"網頁搜尋"</string>
     <string name="web_search_source" msgid="3143612593956844440">"網頁搜尋引擎"</string>
