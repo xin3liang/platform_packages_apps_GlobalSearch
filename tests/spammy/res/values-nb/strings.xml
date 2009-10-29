@@ -16,5 +16,5 @@
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_label" msgid="5533057855690840659">"Forslag som inneholder nettsøppel"</string>
-    <string name="settings_description" msgid="5726575212957741757">"Mange uaktuelle forslag"</string>
+    <string name="settings_description" msgid="5726575212957741757">"Mange irrelevante forslag"</string>
 </resources>
