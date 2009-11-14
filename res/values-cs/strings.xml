@@ -17,13 +17,13 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="global_search" msgid="1559383639633943667">"Pole rychlého vyhledávání"</string>
     <string name="search_hint" msgid="7327393700556312801">"Pole rychlého vyhledávání"</string>
-    <string name="search_the_web" msgid="3101305283513526982">"Vyhledávat na webu"\n"výraz „<xliff:g id="TERM">%1$s</xliff:g>“"</string>
+    <string name="search_the_web" msgid="3101305283513526982">"Vyhledat na webu"\n"výraz „<xliff:g id="TERM">%1$s</xliff:g>“"</string>
     <string name="go_to_website_title" msgid="2452460002069003538">"Přejít na web"</string>
     <string name="more_results" msgid="1297081065013362588">"Další výsledky..."</string>
   <plurals name="total_result_count">
-    <item quantity="one" msgid="7485942071987850270">"Počet výsledků: <xliff:g id="NUMBER">%d</xliff:g>"</item>
-    <item quantity="few" msgid="6558220476009955065">"Počet výsledků: <xliff:g id="NUMBER">%d</xliff:g>"</item>
-    <item quantity="other" msgid="8467279008490605482">"Počet výsledků: <xliff:g id="NUMBER">%d</xliff:g>"</item>
+    <item quantity="one" msgid="7485942071987850270">"<xliff:g id="NUMBER">%d</xliff:g> výsledek"</item>
+    <item quantity="few" msgid="6558220476009955065">"<xliff:g id="NUMBER">%d</xliff:g> výsledky"</item>
+    <item quantity="other" msgid="8467279008490605482">"<xliff:g id="NUMBER">%d</xliff:g> výsledků"</item>
   </plurals>
   <plurals name="additional_result_count">
     <item quantity="one" msgid="7296900969259348969">"Počet dalších výsledků: <xliff:g id="NUMBER">%d</xliff:g>"</item>

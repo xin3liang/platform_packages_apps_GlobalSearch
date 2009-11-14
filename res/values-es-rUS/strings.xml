@@ -16,7 +16,7 @@
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="global_search" msgid="1559383639633943667">"Cuadro de búsqueda rápida"</string>
-    <string name="search_hint" msgid="7327393700556312801">"Cuadro de búsqueda rápida"</string>
+    <string name="search_hint" msgid="7327393700556312801">"Cuadro de búsq. rápida"</string>
     <string name="search_the_web" msgid="3101305283513526982">"Buscar en la web"\n"durante \'<xliff:g id="TERM">%1$s</xliff:g>\'"</string>
     <string name="go_to_website_title" msgid="2452460002069003538">"Ir al sitio web"</string>
     <string name="more_results" msgid="1297081065013362588">"Más resultados..."</string>
